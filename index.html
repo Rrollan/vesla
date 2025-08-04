@@ -183,19 +183,12 @@
             border: 2px solid #4a4a4a;
             border-radius: 12px;
             padding: 15px;
-            cursor: pointer;
             transition: all 0.3s ease;
-            position: relative;
         }
 
         .social-item:hover {
             border-color: #00b4d8;
             transform: translateY(-2px);
-        }
-
-        .social-item.selected {
-            border-color: #ff6b35;
-            background: #4a4a4a;
         }
 
         .social-checkbox {
@@ -208,6 +201,7 @@
             align-items: center;
             justify-content: center;
             font-weight: 500;
+            margin-bottom: 10px;
         }
 
         .social-icon {
@@ -216,12 +210,8 @@
         }
 
         .social-username {
-            margin-top: 10px;
-            display: none;
-        }
-
-        .social-item.selected .social-username {
-            display: block;
+            margin-top: 0;
+            width: 100%;
         }
 
         .dish-select {
@@ -358,6 +348,8 @@
 
         <!-- Форма личных данных -->
         <div id="personalInfoScreen" class="form-screen">
+            <button class="btn-back" onclick="showWelcomeScreen()">← Назад</button>
+            
             <div class="form-header">
                 <h2>Личные данные</h2>
                 <p class="subtitle">Шаг 1 из 2</p>
@@ -395,18 +387,16 @@
                 <div class="form-group">
                     <label>Социальные сети *</label>
                     <div class="social-grid">
-                        <div class="social-item" onclick="toggleSocial('instagram')">
-                            <input type="checkbox" id="instagram" class="social-checkbox">
-                            <label for="instagram" class="social-label">
+                        <div class="social-item">
+                            <div class="social-label">
                                 <span class="social-icon">📷</span> Instagram
-                            </label>
+                            </div>
                             <input type="text" class="social-username" id="instagramUsername" placeholder="@username">
                         </div>
-                        <div class="social-item" onclick="toggleSocial('tiktok')">
-                            <input type="checkbox" id="tiktok" class="social-checkbox">
-                            <label for="tiktok" class="social-label">
+                        <div class="social-item">
+                            <div class="social-label">
                                 <span class="social-icon">🎵</span> TikTok
-                            </label>
+                            </div>
                             <input type="text" class="social-username" id="tiktokUsername" placeholder="@username">
                         </div>
                     </div>
@@ -425,7 +415,7 @@
                 <p class="subtitle">Шаг 2 из 2</p>
             </div>
             <div class="progress-bar">
-                <div class="progress-fill" style="width: 50%"></div>
+                <div class="progress-fill" style="width: 100%"></div>
             </div>
 
             <form id="orderForm">
@@ -497,7 +487,7 @@
                             <input type="radio" name="dish" value="Сет Зачетный 24 шт" class="dish-radio">
                             <label>Сет Зачетный 24 шт</label>
                         </div>
-                        <div class="dish-item" onclick="selectDish(this, 'Сет Килосет 32 шт')">
+                        <div class="ship-item" onclick="selectDish(this, 'Сет Килосет 32 шт')">
                             <input type="radio" name="dish" value="Сет Килосет 32 шт" class="dish-radio">
                             <label>Сет Килосет 32 шт</label>
                         </div>
@@ -555,6 +545,13 @@
             order: {}
         };
 
+        // Показать главный экран
+        function showWelcomeScreen() {
+            document.getElementById('welcomeScreen').style.display = 'flex';
+            document.getElementById('personalInfoScreen').style.display = 'none';
+            document.getElementById('orderScreen').style.display = 'none';
+        }
+
         // Показать экран личных данных
         function showPersonalInfo() {
             document.getElementById('welcomeScreen').style.display = 'none';
@@ -567,23 +564,6 @@
             document.getElementById('welcomeScreen').style.display = 'none';
             document.getElementById('personalInfoScreen').style.display = 'none';
             document.getElementById('orderScreen').style.display = 'block';
-        }
-
-        // Переключение социальных сетей
-        function toggleSocial(network) {
-            event.stopPropagation();
-            const item = event.currentTarget;
-            const checkbox = item.querySelector('.social-checkbox');
-            const usernameInput = item.querySelector('.social-username');
-            
-            checkbox.checked = !checkbox.checked;
-            item.classList.toggle('selected');
-            
-            if (checkbox.checked) {
-                usernameInput.focus();
-            } else {
-                usernameInput.value = '';
-            }
         }
 
         // Выбор блюда
@@ -606,30 +586,18 @@
             const email = document.getElementById('email').value.trim();
             const telegram = document.getElementById('telegram').value.trim();
             
-            const instagramChecked = document.getElementById('instagram').checked;
-            const tiktokChecked = document.getElementById('tiktok').checked;
             const instagramUsername = document.getElementById('instagramUsername').value.trim();
             const tiktokUsername = document.getElementById('tiktokUsername').value.trim();
 
-            // Проверка заполнения
+            // Проверка заполнения основных полей
             if (!firstName || !lastName || !phone || !email || !telegram) {
                 alert('Пожалуйста, заполните все обязательные поля');
                 return;
             }
 
             // Проверка социальных сетей
-            if (!instagramChecked && !tiktokChecked) {
-                alert('Пожалуйста, выберите хотя бы одну социальную сеть');
-                return;
-            }
-
-            if (instagramChecked && !instagramUsername) {
-                alert('Пожалуйста, укажите ваш никнейм в Instagram');
-                return;
-            }
-
-            if (tiktokChecked && !tiktokUsername) {
-                alert('Пожалуйста, укажите ваш никнейм в TikTok');
+            if (!instagramUsername && !tiktokUsername) {
+                alert('Пожалуйста, укажите ваш никнейм хотя бы в одной социальной сети');
                 return;
             }
 
@@ -641,8 +609,8 @@
                 email,
                 telegram,
                 socials: {
-                    instagram: instagramChecked ? instagramUsername : null,
-                    tiktok: tiktokChecked ? tiktokUsername : null
+                    instagram: instagramUsername || null,
+                    tiktok: tiktokUsername || null
                 }
             };
 
