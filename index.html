@@ -105,6 +105,13 @@
         .btn-primary:active {
             transform: translateY(0);
         }
+        
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: 0 5px 20px rgba(255, 107, 53, 0.3);
+        }
 
         /* Формы */
         .form-screen {
@@ -139,6 +146,7 @@
         input[type="tel"],
         input[type="email"],
         input[type="number"],
+        input[type="date"],
         select,
         textarea {
             width: 100%;
@@ -149,6 +157,8 @@
             color: #fff;
             font-size: 16px;
             transition: all 0.3s ease;
+            -webkit-appearance: none; /* для input[type="date"] */
+            appearance: none; /* для input[type="date"] */
         }
 
         input:focus,
@@ -158,6 +168,12 @@
             border-color: #00b4d8;
             background: #404040;
         }
+        
+        input[type="date"]::-webkit-calendar-picker-indicator {
+            filter: invert(1);
+            cursor: pointer;
+        }
+
 
         .btn-back {
             background: #4a4a4a;
@@ -330,6 +346,7 @@
         .checklist {
             list-style: none;
             margin: 15px 0;
+            padding-left: 0;
         }
 
         .checklist li {
@@ -411,8 +428,9 @@
         }
 
         .warning-message {
-            background: #ff4444;
-            color: white;
+            background: rgba(255, 68, 68, 0.2);
+            color: #ffaeae;
+            border: 1px solid #ff4444;
             padding: 15px;
             border-radius: 12px;
             margin: 20px 0;
@@ -422,7 +440,6 @@
 </head>
 <body>
     <div class="container">
-        <!-- Главный экран -->
         <div id="welcomeScreen" class="welcome-screen">
             <div class="logo-container">
                 <div class="logo-icon">🍱</div>
@@ -432,7 +449,6 @@
             <button class="btn-primary" onclick="startRegistration()">Начать</button>
         </div>
 
-        <!-- Форма регистрации -->
         <div id="registrationScreen" class="form-screen">
             <div class="form-header">
                 <h2>Регистрация</h2>
@@ -469,7 +485,6 @@
             </form>
         </div>
 
-        <!-- Личный кабинет -->
         <div id="dashboardScreen" class="dashboard">
             <div class="user-info">
                 <h2 id="userName"></h2>
@@ -482,7 +497,6 @@
             <button class="btn-primary" onclick="startCollaboration()">Начать сотрудничество</button>
         </div>
 
-        <!-- Выбор набора (для микроблогеров) -->
         <div id="setSelectionScreen" class="form-screen set-selection">
             <button class="btn-back" onclick="showDashboard()">← Назад</button>
             
@@ -492,7 +506,7 @@
 
             <div class="set-item" onclick="selectSet(this, 'set1')">
                 <div class="set-title">Набор 1 "Классик"</div>
-                <div class="set-description">32 роллы: Филадельфия классик (8шт), Калифорния с крабом (8шт), Лосось терияки (8шт), Тунец спайси (8шт)</div>
+                <div class="set-description">32 ролла: Филадельфия классик (8шт), Калифорния с крабом (8шт), Лосось терияки (8шт), Тунец спайси (8шт)</div>
             </div>
 
             <div class="set-item" onclick="selectSet(this, 'set2')">
@@ -508,7 +522,6 @@
             <button type="button" id="nextFromSet" class="btn-primary" onclick="showDateTimeSelection()" disabled>Далее</button>
         </div>
 
-        <!-- Выбор даты и времени -->
         <div id="dateTimeScreen" class="form-screen datetime-selection">
             <button class="btn-back" onclick="showSetSelection()">← Назад</button>
             
@@ -529,7 +542,6 @@
             <button type="button" id="nextFromDateTime" class="btn-primary" onclick="showAddressForm()" disabled>Далее</button>
         </div>
 
-        <!-- Форма адреса -->
         <div id="addressScreen" class="form-screen">
             <button class="btn-back" id="backFromAddress" onclick="showDateTimeSelection()">← Назад</button>
             
@@ -570,7 +582,6 @@
                     <input type="tel" id="recipientPhone" required placeholder="+7 (___) ___-__-__">
                 </div>
 
-                <!-- Поле для макроблогеров -->
                 <div id="orderScreenshotGroup" class="form-group" style="display: none;">
                     <label>Скриншот заказа на сумму бартера *</label>
                     <div class="file-upload">
@@ -590,7 +601,6 @@
             </form>
         </div>
 
-        <!-- Инструкции -->
         <div id="instructionsScreen" class="form-screen">
             <button class="btn-back" onclick="showAddressForm()">← Назад</button>
             
@@ -620,13 +630,12 @@
             <button type="button" class="btn-primary" onclick="submitOrder()">Оформить заказ</button>
         </div>
 
-        <!-- Модальные окна -->
         <div id="successModal" class="modal">
             <div class="modal-content">
                 <div class="success-icon">✅</div>
                 <h2>Заказ оформлен!</h2>
                 <p class="subtitle">Через 24 часа после доставки вам придет напоминание об отчете</p>
-                <button class="btn-primary" onclick="closeModal()">Закрыть</button>
+                <button class="btn-primary" onclick="closeApp()">Закрыть</button>
             </div>
         </div>
 
@@ -650,36 +659,65 @@
     </div>
 
     <script>
-        // Инициализация Telegram WebApp
         const tg = window.Telegram.WebApp;
-        tg.ready();
-        tg.expand();
 
         // Глобальные переменные
         let userData = {
             registration: {},
-            order: {},
             level: '',
+            levelText: '',
             promoCode: ''
         };
 
         let selectedSet = '';
         let selectedDate = '';
         let selectedTime = '';
+        
+        // --- НОВЫЙ БЛОК: Запуск приложения и проверка пользователя ---
+        window.onload = function() {
+            tg.ready();
+            tg.expand();
+            
+            checkUserAuthentication();
+        };
+        
+        function checkUserAuthentication() {
+            const user = tg.initDataUnsafe?.user;
+            if (!user || !user.id) {
+                showWelcomeScreen();
+                return;
+            }
+            
+            const userKey = 'bloggerData_' + user.id;
+            const savedData = localStorage.getItem(userKey);
+            
+            if (savedData) {
+                // Пользователь найден, "входим" в личный кабинет
+                userData = JSON.parse(savedData);
+                document.getElementById('userName').textContent = userData.registration.firstName;
+                document.getElementById('userLevel').textContent = userData.levelText;
+                document.getElementById('promoCode').textContent = userData.promoCode;
+                showDashboard();
+            } else {
+                // Новый пользователь
+                showWelcomeScreen();
+            }
+        }
+        
+        // --- КОНЕЦ НОВОГО БЛОКА ---
 
-        // Автозаполнение данных из Telegram
+
+        // Автозаполнение данных из Telegram при регистрации
         function initTelegramData() {
             const user = tg.initDataUnsafe?.user;
             if (user) {
                 document.getElementById('firstName').value = user.first_name || '';
-                // Telegram не предоставляет номер телефона через WebApp API
-                // Поэтому пользователь должен ввести его вручную
             }
         }
 
         // Генерация промокода
         function generatePromoCode(name, level) {
-            const prefix = level === 'micro' ? 'MICRO' : 'MACRO';
+            const prefix = level.startsWith('macro') ? 'MACRO' : 'MICRO';
             const randomNum = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
             return `${prefix}${randomNum}`;
         }
@@ -695,7 +733,7 @@
             }
         }
 
-        // Показать экраны
+        // Навигация по экранам
         function showWelcomeScreen() {
             hideAllScreens();
             document.getElementById('welcomeScreen').style.display = 'flex';
@@ -721,14 +759,14 @@
             hideAllScreens();
             document.getElementById('dateTimeScreen').style.display = 'block';
             setupDateInput();
+            updateTimeSlots(); // Вызываем сразу, чтобы показать слоты для текущей даты
         }
 
         function showAddressForm() {
             hideAllScreens();
             document.getElementById('addressScreen').style.display = 'block';
             
-            // Показать поле скриншота для макроблогеров
-            if (userData.level === 'macro-a' || userData.level === 'macro-b') {
+            if (userData.level.startsWith('macro')) {
                 document.getElementById('orderScreenshotGroup').style.display = 'block';
                 document.getElementById('backFromAddress').onclick = () => showDashboard();
             } else {
@@ -752,12 +790,11 @@
             });
         }
 
-        // Начать регистрацию
+        // Логика приложения
         function startRegistration() {
             showRegistration();
         }
 
-        // Отправка регистрации
         function submitRegistration() {
             const firstName = document.getElementById('firstName').value.trim();
             const phone = document.getElementById('phone').value.trim();
@@ -765,42 +802,41 @@
             const followersCount = parseInt(document.getElementById('followersCount').value);
             const avgViews = parseInt(document.getElementById('avgViews').value);
 
-            // Валидация
             if (!firstName || !phone || !instagramLogin || !followersCount || !avgViews) {
-                showError('Ошибка валидации', 'Пожалуйста, заполните все обязательные поля');
+                showError('Ошибка валидации', 'Пожалуйста, заполните все обязательные поля.');
                 return;
             }
 
-            // Проверка минимального количества просмотров
             if (avgViews < 300) {
                 showRejectionModal();
                 return;
             }
 
-            // Определение уровня блогера
             const bloggerData = determineBloggerLevel(followersCount);
             
-            // Сохранение данных
             userData.registration = {
-                firstName,
-                phone,
-                instagramLogin,
-                followersCount,
-                avgViews
+                firstName, phone, instagramLogin, followersCount, avgViews
             };
             
             userData.level = bloggerData.level;
+            userData.levelText = bloggerData.text;
             userData.promoCode = generatePromoCode(firstName, bloggerData.level);
 
-            // Отображение в личном кабинете
-            document.getElementById('userName').textContent = firstName;
-            document.getElementById('userLevel').textContent = bloggerData.text;
+            // --- ИЗМЕНЕНО: Сохранение данных в localStorage ---
+            const user = tg.initDataUnsafe?.user;
+            if (user && user.id) {
+                const userKey = 'bloggerData_' + user.id;
+                localStorage.setItem(userKey, JSON.stringify(userData));
+            }
+            // --- КОНЕЦ ИЗМЕНЕНИЙ ---
+
+            document.getElementById('userName').textContent = userData.registration.firstName;
+            document.getElementById('userLevel').textContent = userData.levelText;
             document.getElementById('promoCode').textContent = userData.promoCode;
 
             showDashboard();
         }
 
-        // Начать сотрудничество
         function startCollaboration() {
             if (userData.level === 'micro') {
                 showSetSelection();
@@ -809,31 +845,31 @@
             }
         }
 
-        // Выбор набора
         function selectSet(element, setId) {
-            document.querySelectorAll('.set-item').forEach(item => {
-                item.classList.remove('selected');
-            });
-            
+            document.querySelectorAll('.set-item').forEach(item => item.classList.remove('selected'));
             element.classList.add('selected');
             selectedSet = setId;
             document.getElementById('nextFromSet').disabled = false;
         }
 
-        // Настройка выбора даты
         function setupDateInput() {
             const dateInput = document.getElementById('deliveryDate');
             const today = new Date();
             const maxDate = new Date();
-            maxDate.setDate(today.getDate() + 14); // 2 недели вперед
+            maxDate.setDate(today.getDate() + 14); 
             
             dateInput.min = today.toISOString().split('T')[0];
             dateInput.max = maxDate.toISOString().split('T')[0];
         }
 
-        // Обновление временных слотов
         function updateTimeSlots() {
-            const selectedDate = document.getElementById('deliveryDate').value;
+            // --- ИСПРАВЛЕНО: Убран const, теперь изменяем глобальную переменную ---
+            selectedDate = document.getElementById('deliveryDate').value;
+            // --- КОНЕЦ ИСПРАВЛЕНИЙ ---
+            
+            selectedTime = ''; // Сбрасываем выбранное время при смене даты
+            document.getElementById('nextFromDateTime').disabled = true;
+
             if (!selectedDate) return;
 
             const dayOfWeek = new Date(selectedDate).getDay();
@@ -841,11 +877,10 @@
             timeSlotsContainer.innerHTML = '';
 
             let timeSlots = [];
-            
-            // Чт-Вс: 10:00–18:00, Пн-Ср: 10:00–20:00
-            if (dayOfWeek >= 1 && dayOfWeek <= 3) { // Пн-Ср
+            // Вс-Ср: 10:00–20:00 (getDay() 0,1,2,3), Чт-Сб: 10:00–18:00 (getDay() 4,5,6)
+            if ([0, 1, 2, 3].includes(dayOfWeek)) {
                 timeSlots = ['10:00', '12:00', '14:00', '16:00', '18:00', '20:00'];
-            } else if (dayOfWeek >= 4 || dayOfWeek === 0) { // Чт-Вс
+            } else {
                 timeSlots = ['10:00', '12:00', '14:00', '16:00', '18:00'];
             }
 
@@ -858,126 +893,98 @@
             });
         }
 
-        // Выбор временного слота
         function selectTimeSlot(element, time) {
-            // Проверка доступности слота (симуляция)
-            if (Math.random() < 0.1) { // 10% шанс что слот занят
-                showError('Слот недоступен', 'К сожалению, на выбранное время уже забронировано. Пожалуйста, выберите другое.');
-                return;
-            }
-
-            document.querySelectorAll('.time-slot').forEach(slot => {
-                slot.classList.remove('selected');
-            });
-            
+            document.querySelectorAll('.time-slot').forEach(slot => slot.classList.remove('selected'));
             element.classList.add('selected');
             selectedTime = time;
             document.getElementById('nextFromDateTime').disabled = false;
         }
 
-        // Валидация формы адреса
         function validateAddressForm() {
             const city = document.getElementById('city').value;
             const street = document.getElementById('street').value.trim();
             const recipientPhone = document.getElementById('recipientPhone').value.trim();
 
             if (!city || !street || !recipientPhone) {
-                showError('Ошибка валидации', 'Пожалуйста, заполните все обязательные поля');
+                showError('Ошибка валидации', 'Пожалуйста, заполните все обязательные поля.');
                 return false;
             }
 
-            // Проверка скриншота для макроблогеров
-            if ((userData.level === 'macro-a' || userData.level === 'macro-b') && 
-                !document.getElementById('orderScreenshot').files.length) {
-                showError('Ошибка валидации', 'Пожалуйста, загрузите скриншот заказа');
+            if (userData.level.startsWith('macro') && !document.getElementById('orderScreenshot').files.length) {
+                showError('Ошибка валидации', 'Пожалуйста, загрузите скриншот заказа.');
                 return false;
             }
 
             return true;
         }
 
-        // Отправка заказа
         async function submitOrder() {
-            // Собираем данные заказа
-            const orderData = {
-                registration: userData.registration,
-                level: userData.level,
-                promoCode: userData.promoCode,
-                set: selectedSet,
-                date: selectedDate,
-                time: selectedTime,
-                address: {
-                    city: document.getElementById('city').value,
-                    street: document.getElementById('street').value.trim(),
-                    entrance: document.getElementById('entrance').value.trim(),
-                    floor: document.getElementById('floor').value.trim(),
-                    recipientPhone: document.getElementById('recipientPhone').value.trim(),
-                    comment: document.getElementById('comment').value.trim()
-                }
-            };
-
             // Формируем сообщение для Telegram
             let message = `🆕 *Новая заявка на бартер*\n\n`;
             message += `👤 *Блогер:*\n`;
-            message += `Имя: ${orderData.registration.firstName}\n`;
-            message += `Телефон: ${orderData.registration.phone}\n`;
-            message += `Instagram: ${orderData.registration.instagramLogin}\n`;
-            message += `Подписчики: ${orderData.registration.followersCount}\n`;
-            message += `Средние просмотры: ${orderData.registration.avgViews}\n`;
-            message += `Уровень: ${document.getElementById('userLevel').textContent}\n`;
-            message += `Промокод: ${orderData.promoCode}\n\n`;
+            message += `Имя: ${userData.registration.firstName}\n`;
+            message += `Телефон: ${userData.registration.phone}\n`;
+            message += `Instagram: ${userData.registration.instagramLogin}\n`;
+            message += `Подписчики: ${userData.registration.followersCount}\n`;
+            message += `Средние просмотры: ${userData.registration.avgViews}\n`;
+            message += `Уровень: ${userData.levelText}\n`;
+            message += `Промокод: \`${userData.promoCode}\`\n\n`;
+            
+            const address = {
+                city: document.getElementById('city').value,
+                street: document.getElementById('street').value.trim(),
+                entrance: document.getElementById('entrance').value.trim() || '-',
+                floor: document.getElementById('floor').value.trim() || '-',
+                recipientPhone: document.getElementById('recipientPhone').value.trim(),
+                comment: document.getElementById('comment').value.trim() || '-'
+            };
 
             if (userData.level === 'micro') {
-                message += `🍱 *Заказ:*\n`;
+                message += `🍱 *Заказ (микроблогер):*\n`;
                 const setNames = {
                     'set1': 'Набор 1 "Классик"',
                     'set2': 'Набор 2 "Премиум"',
                     'set3': 'Набор 3 "Микс"'
                 };
-                message += `${setNames[selectedSet]}\n`;
-                message += `Дата: ${selectedDate}\n`;
-                message += `Время: ${selectedTime}\n\n`;
+                message += `Выбранный набор: ${setNames[selectedSet]}\n`;
+                message += `Дата доставки: ${selectedDate || 'Не указана'}\n`; // Добавлена проверка
+                message += `Время доставки: ${selectedTime}\n\n`;
+            } else {
+                 message += `🍱 *Заказ (макроблогер):*\n`;
+                 message += `(Скриншот заказа будет в следующем сообщении)\n\n`;
             }
 
-            message += `📍 *Доставка:*\n`;
-            message += `Город: ${orderData.address.city}\n`;
-            message += `Адрес: ${orderData.address.street}\n`;
-            if (orderData.address.entrance) message += `Подъезд: ${orderData.address.entrance}\n`;
-            if (orderData.address.floor) message += `Этаж: ${orderData.address.floor}\n`;
-            message += `Телефон получателя: ${orderData.address.recipientPhone}\n`;
-            if (orderData.address.comment) message += `Комментарий: ${orderData.address.comment}\n`;
-
-            // Отправка в Telegram
-            const botToken = '8227812944:AAFy8ydOkUeCj3Qkjg7_Xsq6zyQpcUyMShY';
-            const chatId = '1345815453';
+            message += `📍 *Адрес доставки:*\n`;
+            message += `Город: ${address.city}\n`;
+            message += `Улица, дом: ${address.street}\n`;
+            message += `Подъезд: ${address.entrance}, Этаж: ${address.floor}\n`;
+            message += `Телефон получателя: ${address.recipientPhone}\n`;
+            message += `Комментарий: ${address.comment}\n`;
             
+            // --- ИЗМЕНЕНО: Отправка данных в бота ---
             try {
-                const response = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        chat_id: chatId,
-                        text: message,
-                        parse_mode: 'Markdown'
-                    })
-                });
+                 tg.sendData(message);
+                 // Примечание: отправка файла (скриншота) через WebApp напрямую невозможна.
+                 // Бот должен быть готов получить текстовое сообщение и запросить у пользователя фото отдельно.
+                 // Здесь мы просто уведомляем, что скриншот должен быть.
+                 
+                 showSuccessModal();
 
-                if (response.ok) {
-                    showSuccessModal();
-                } else {
-                    showError('Ошибка', 'Произошла ошибка при отправке заявки. Попробуйте позже.');
-                }
             } catch (error) {
-                showError('Ошибка', 'Произошла ошибка при отправке заявки. Попробуйте позже.');
-                console.error('Error:', error);
+                showError('Ошибка отправки', 'Не удалось отправить данные. Попробуйте снова.');
+                console.error(error);
             }
+            // --- КОНЕЦ ИЗМЕНЕНИЙ ---
         }
-
+        
         // Модальные окна
         function showSuccessModal() {
             document.getElementById('successModal').style.display = 'flex';
+        }
+
+        function closeApp() {
+            document.getElementById('successModal').style.display = 'none';
+            tg.close();
         }
 
         function showError(title, message) {
@@ -985,122 +992,19 @@
             document.getElementById('errorMessage').textContent = message;
             document.getElementById('errorModal').style.display = 'flex';
         }
-
-        function showRejectionModal() {
-            document.getElementById('rejectionModal').style.display = 'flex';
-        }
-
-        function closeModal() {
-            document.getElementById('successModal').style.display = 'none';
-            showDashboard();
-        }
-
+        
         function closeErrorModal() {
             document.getElementById('errorModal').style.display = 'none';
         }
 
+        function showRejectionModal() {
+            document.getElementById('rejectionModal').style.display = 'flex';
+        }
+        
         function closeRejectionModal() {
             document.getElementById('rejectionModal').style.display = 'none';
             showWelcomeScreen();
         }
-
-        // Маска для телефона
-        function setupPhoneMask(inputId) {
-            document.getElementById(inputId).addEventListener('input', function(e) {
-                let value = e.target.value.replace(/\D/g, '');
-                let formattedValue = '';
-                
-                if (value.length > 0) {
-                    if (value.startsWith('7')) {
-                        formattedValue = '+7';
-                        if (value.length > 1) {
-                            formattedValue += ' (' + value.substring(1, 4);
-                        }
-                        if (value.length > 4) {
-                            formattedValue += ') ' + value.substring(4, 7);
-                        }
-                        if (value.length > 7) {
-                            formattedValue += '-' + value.substring(7, 9);
-                        }
-                        if (value.length > 9) {
-                            formattedValue += '-' + value.substring(9, 11);
-                        }
-                    } else {
-                        formattedValue = '+7 (' + value.substring(0, 3);
-                        if (value.length > 3) {
-                            formattedValue += ') ' + value.substring(3, 6);
-                        }
-                        if (value.length > 6) {
-                            formattedValue += '-' + value.substring(6, 8);
-                        }
-                        if (value.length > 8) {
-                            formattedValue += '-' + value.substring(8, 10);
-                        }
-                    }
-                }
-                
-                e.target.value = formattedValue;
-            });
-        }
-
-        // Инициализация при загрузке
-        document.addEventListener('DOMContentLoaded', function() {
-            setupPhoneMask('phone');
-            setupPhoneMask('recipientPhone');
-            
-            // Предотвращение отправки форм по Enter
-            document.querySelectorAll('form').forEach(form => {
-                form.addEventListener('submit', e => {
-                    e.preventDefault();
-                });
-            });
-
-            // Обработка загрузки файла
-            document.getElementById('orderScreenshot').addEventListener('change', function(e) {
-                const label = document.querySelector('.file-upload-label');
-                if (e.target.files.length > 0) {
-                    label.textContent = '✅ Файл загружен: ' + e.target.files[0].name;
-                    label.style.borderColor = '#00b4d8';
-                } else {
-                    label.textContent = '📷 Загрузить скриншот заказа';
-                    label.style.borderColor = '#4a4a4a';
-                }
-            });
-        });
-
-        // Проверка существующего пользователя (симуляция)
-        function checkExistingUser() {
-            // В реальном приложении здесь была бы проверка в базе данных
-            // По Telegram ID пользователя
-            const user = tg.initDataUnsafe?.user;
-            if (user && localStorage.getItem('userData_' + user.id)) {
-                const savedData = JSON.parse(localStorage.getItem('userData_' + user.id));
-                userData = savedData;
-                
-                document.getElementById('userName').textContent = userData.registration.firstName;
-                document.getElementById('userLevel').textContent = determineBloggerLevel(userData.registration.followersCount).text;
-                document.getElementById('promoCode').textContent = userData.promoCode;
-                
-                showDashboard();
-                return true;
-            }
-            return false;
-        }
-
-        // Сохранение данных пользователя
-        function saveUserData() {
-            const user = tg.initDataUnsafe?.user;
-            if (user) {
-                localStorage.setItem('userData_' + user.id, JSON.stringify(userData));
-            }
-        }
-
-        // Инициализация приложения
-        window.onload = function() {
-            if (!checkExistingUser()) {
-                showWelcomeScreen();
-            }
-        };
     </script>
 </body>
 </html>
