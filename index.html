@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Заказ еды по бартеру</title>
+    <title>VESLA - Сотрудничество с блогерами</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         * {
@@ -14,7 +14,7 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #2a2a2a;
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
             color: #fff;
             min-height: 100vh;
             overflow-x: hidden;
@@ -33,109 +33,61 @@
             to { opacity: 1; transform: translateY(0); }
         }
 
+        @keyframes slideIn {
+            from { transform: translateX(100%); }
+            to { transform: translateX(0); }
+        }
+
         @keyframes pulse {
             0% { transform: scale(1); }
             50% { transform: scale(1.05); }
             100% { transform: scale(1); }
         }
 
-        /* Главная страница */
-        .welcome-screen {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
+        /* Общие стили экранов */
+        .screen {
+            display: none;
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        .screen.active {
+            display: block;
+        }
+
+        /* Заголовки */
+        .header {
             text-align: center;
-            animation: fadeIn 0.6s ease-out;
+            padding: 30px 0;
         }
 
-        .logo-container {
-            width: 120px;
-            height: 120px;
-            background: linear-gradient(135deg, #00b4d8, #ff6b35);
-            border-radius: 30px;
+        .logo {
+            width: 100px;
+            height: 100px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 25px;
             display: flex;
             align-items: center;
             justify-content: center;
-            margin-bottom: 30px;
-            box-shadow: 0 10px 30px rgba(0, 180, 216, 0.3);
+            margin: 0 auto 20px;
+            font-size: 40px;
             animation: pulse 2s infinite;
-        }
-
-        .logo-icon {
-            font-size: 60px;
         }
 
         h1 {
             font-size: 28px;
-            margin-bottom: 15px;
-            background: linear-gradient(135deg, #00b4d8, #ff6b35);
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
 
         .subtitle {
-            color: #999;
+            color: #a0a0a0;
             font-size: 16px;
-            margin-bottom: 40px;
             line-height: 1.5;
         }
 
-        .btn-primary {
-            background: linear-gradient(135deg, #00b4d8, #ff6b35);
-            color: white;
-            border: none;
-            padding: 18px 40px;
-            border-radius: 50px;
-            font-size: 18px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 5px 20px rgba(255, 107, 53, 0.3);
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(255, 107, 53, 0.4);
-        }
-
-        .btn-primary:active {
-            transform: translateY(0);
-        }
-
         /* Формы */
-        .form-screen {
-            display: none;
-            animation: fadeIn 0.5s ease-out;
-        }
-
-        .form-header {
-            text-align: center;
-            margin-bottom: 30px;
-            padding: 20px 0;
-        }
-
-        .form-header h2 {
-            font-size: 24px;
-            margin-bottom: 10px;
-        }
-
-        .progress-bar {
-            background: #3a3a3a;
-            height: 6px;
-            border-radius: 3px;
-            margin-bottom: 30px;
-            overflow: hidden;
-        }
-
-        .progress-fill {
-            height: 100%;
-            background: linear-gradient(90deg, #00b4d8, #ff6b35);
-            border-radius: 3px;
-            transition: width 0.3s ease;
-        }
-
         .form-group {
             margin-bottom: 20px;
         }
@@ -143,20 +95,21 @@
         label {
             display: block;
             margin-bottom: 8px;
-            color: #ccc;
+            color: #e0e0e0;
             font-size: 14px;
-            font-weight: 500;
+            font-weight: 600;
         }
 
         input[type="text"],
         input[type="tel"],
-        input[type="email"],
+        input[type="number"],
+        input[type="file"],
         select,
         textarea {
             width: 100%;
             padding: 15px;
-            background: #3a3a3a;
-            border: 2px solid #4a4a4a;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.2);
             border-radius: 12px;
             color: #fff;
             font-size: 16px;
@@ -167,110 +120,311 @@
         select:focus,
         textarea:focus {
             outline: none;
-            border-color: #00b4d8;
-            background: #404040;
+            border-color: #667eea;
+            background: rgba(255, 255, 255, 0.15);
+            box-shadow: 0 0 15px rgba(102, 126, 234, 0.3);
         }
 
-        .social-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
+        input::placeholder {
+            color: #a0a0a0;
+        }
+
+        /* Кнопки */
+        .btn {
+            padding: 15px 30px;
+            border: none;
+            border-radius: 50px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+            display: block;
+            width: 100%;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.5);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.5);
+        }
+
+        .btn-back {
+            background: transparent;
+            color: #667eea;
+            border: none;
+            padding: 10px;
+            margin-bottom: 20px;
+            font-size: 16px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-back:hover {
+            color: #764ba2;
+        }
+
+        /* Личный кабинет */
+        .profile-card {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 25px;
+            margin-bottom: 25px;
+            backdrop-filter: blur(10px);
+        }
+
+        .profile-header {
+            display: flex;
+            align-items: center;
             gap: 15px;
             margin-bottom: 20px;
         }
 
-        .social-item {
-            background: #3a3a3a;
-            border: 2px solid #4a4a4a;
-            border-radius: 12px;
-            padding: 15px;
-            transition: all 0.3s ease;
-        }
-
-        .social-item:hover {
-            border-color: #00b4d8;
-            transform: translateY(-2px);
-        }
-
-        .social-checkbox {
-            position: absolute;
-            opacity: 0;
-        }
-
-        .social-label {
+        .profile-avatar {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-weight: 500;
-            margin-bottom: 10px;
+            font-size: 24px;
+            font-weight: bold;
         }
 
-        .social-icon {
-            margin-right: 8px;
+        .profile-info h3 {
             font-size: 20px;
+            margin-bottom: 5px;
         }
 
-        .social-username {
-            margin-top: 0;
-            width: 100%;
+        .level-badge {
+            padding: 5px 12px;
+            border-radius: 15px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
         }
 
-        .dish-select {
-            background: #3a3a3a;
+        .level-micro {
+            background: linear-gradient(135deg, #43cea2, #185a9d);
+        }
+
+        .level-macro-a {
+            background: linear-gradient(135deg, #fa709a, #fee140);
+        }
+
+        .level-macro-b {
+            background: linear-gradient(135deg, #a8edea, #fed6e3);
+            color: #333;
+        }
+
+        .promo-section {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: center;
+        }
+
+        .promo-code {
+            font-size: 24px;
+            font-weight: bold;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin: 10px 0;
+            letter-spacing: 2px;
+        }
+
+        .copy-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: #fff;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        .remaining-orders {
+            background: rgba(255, 193, 7, 0.2);
+            border: 1px solid rgba(255, 193, 7, 0.5);
+            border-radius: 10px;
             padding: 15px;
-            border-radius: 12px;
-            margin-bottom: 20px;
-            max-height: 300px;
-            overflow-y: auto;
+            margin: 20px 0;
+            text-align: center;
         }
 
-        .dish-item {
-            padding: 12px;
-            margin-bottom: 8px;
-            background: #2a2a2a;
-            border-radius: 8px;
+        /* Выбор наборов */
+        .set-grid {
+            display: grid;
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .set-item {
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 15px;
+            padding: 20px;
             cursor: pointer;
             transition: all 0.3s ease;
+        }
+
+        .set-item:hover {
+            border-color: #667eea;
+            transform: translateY(-2px);
+        }
+
+        .set-item.selected {
+            background: rgba(102, 126, 234, 0.2);
+            border-color: #667eea;
+        }
+
+        .set-item h4 {
+            margin-bottom: 10px;
+            color: #667eea;
+        }
+
+        /* Календарь */
+        .calendar-container {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .calendar-header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 5px;
+            margin-bottom: 20px;
+        }
+
+        .calendar-day {
+            aspect-ratio: 1;
             display: flex;
             align-items: center;
-        }
-
-        .dish-item:hover {
-            background: #4a4a4a;
-            transform: translateX(5px);
-        }
-
-        .dish-item.selected {
-            background: linear-gradient(135deg, rgba(0, 180, 216, 0.2), rgba(255, 107, 53, 0.2));
-            border: 1px solid #ff6b35;
-        }
-
-        .dish-radio {
-            margin-right: 12px;
-        }
-
-        .btn-next,
-        .btn-submit {
-            width: 100%;
-            margin-top: 30px;
-        }
-
-        .btn-back {
-            background: #4a4a4a;
-            color: #fff;
-            border: none;
-            padding: 12px 24px;
-            border-radius: 50px;
-            font-size: 16px;
+            justify-content: center;
+            border-radius: 8px;
             cursor: pointer;
-            margin-bottom: 20px;
+            font-size: 14px;
             transition: all 0.3s ease;
         }
 
-        .btn-back:hover {
-            background: #5a5a5a;
+        .calendar-day.available {
+            background: rgba(102, 126, 234, 0.3);
+            color: #fff;
         }
 
-        /* Модальное окно */
+        .calendar-day.available:hover {
+            background: rgba(102, 126, 234, 0.5);
+        }
+
+        .calendar-day.selected {
+            background: #667eea;
+            color: #fff;
+        }
+
+        .calendar-day.disabled {
+            color: #666;
+            cursor: not-allowed;
+        }
+
+        .time-slots {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .time-slot {
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .time-slot:hover {
+            background: rgba(102, 126, 234, 0.3);
+        }
+
+        .time-slot.selected {
+            background: #667eea;
+        }
+
+        .time-slot.booked {
+            background: rgba(220, 53, 69, 0.3);
+            cursor: not-allowed;
+        }
+
+        /* Чеклист */
+        .checklist {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 25px;
+            margin: 20px 0;
+        }
+
+        .checklist h3 {
+            color: #667eea;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .checklist-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            margin-bottom: 15px;
+            padding: 10px;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .checklist-icon {
+            color: #667eea;
+            font-size: 18px;
+            margin-top: 2px;
+        }
+
+        .example-text {
+            background: rgba(102, 126, 234, 0.1);
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            border-radius: 0 10px 10px 0;
+            margin: 15px 0;
+            font-style: italic;
+        }
+
+        /* Модальные окна */
         .modal {
             display: none;
             position: fixed;
@@ -284,8 +438,13 @@
             justify-content: center;
         }
 
+        .modal.active {
+            display: flex;
+        }
+
         .modal-content {
-            background: #3a3a3a;
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            border: 1px solid rgba(255, 255, 255, 0.2);
             padding: 30px;
             border-radius: 20px;
             text-align: center;
@@ -294,7 +453,7 @@
             animation: fadeIn 0.3s ease-out;
         }
 
-        .success-icon {
+        .modal-icon {
             font-size: 60px;
             margin-bottom: 20px;
         }
@@ -309,116 +468,162 @@
                 font-size: 24px;
             }
             
-            .btn-primary {
-                padding: 15px 30px;
-                font-size: 16px;
+            .btn {
+                padding: 12px 24px;
+                font-size: 14px;
+            }
+
+            .calendar-grid {
+                gap: 3px;
+            }
+
+            .time-slots {
+                grid-template-columns: repeat(2, 1fr);
             }
         }
 
-        /* Scrollbar стилизация */
-        ::-webkit-scrollbar {
-            width: 8px;
+        /* Скрытие элементов */
+        .hidden {
+            display: none !important;
         }
 
-        ::-webkit-scrollbar-track {
-            background: #2a2a2a;
+        /* Загрузчик */
+        .loader {
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
         }
 
-        ::-webkit-scrollbar-thumb {
-            background: #4a4a4a;
-            border-radius: 4px;
-        }
-
-        ::-webkit-scrollbar-thumb:hover {
-            background: #5a5a5a;
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <!-- Главный экран -->
-        <div id="welcomeScreen" class="welcome-screen">
-            <div class="logo-container">
-                <div class="logo-icon">🍱</div>
-            </div>
-            <h1>Заказ еды по бартеру</h1>
-            <p class="subtitle">Эксклюзивное предложение<br>для блогеров и инфлюенсеров</p>
-            <button class="btn-primary" onclick="showPersonalInfo()">Оформить заказ</button>
-        </div>
-
-        <!-- Форма личных данных -->
-        <div id="personalInfoScreen" class="form-screen">
-            <button class="btn-back" onclick="showWelcomeScreen()">← Назад</button>
-            
-            <div class="form-header">
-                <h2>Личные данные</h2>
-                <p class="subtitle">Шаг 1 из 2</p>
-            </div>
-            <div class="progress-bar">
-                <div class="progress-fill" style="width: 50%"></div>
+        <!-- Экран регистрации -->
+        <div id="registrationScreen" class="screen active">
+            <div class="header">
+                <div class="logo">🍱</div>
+                <h1>VESLA</h1>
+                <p class="subtitle">Сотрудничество с блогерами</p>
             </div>
 
-            <form id="personalForm">
+            <form id="registrationForm">
                 <div class="form-group">
-                    <label for="firstName">Имя *</label>
-                    <input type="text" id="firstName" required placeholder="Введите ваше имя">
+                    <label for="regName">Имя *</label>
+                    <input type="text" id="regName" required placeholder="Ваше имя">
                 </div>
 
                 <div class="form-group">
-                    <label for="lastName">Фамилия *</label>
-                    <input type="text" id="lastName" required placeholder="Введите вашу фамилию">
+                    <label for="regPhone">Телефон *</label>
+                    <input type="tel" id="regPhone" required placeholder="+7 (___) ___-__-__">
                 </div>
 
                 <div class="form-group">
-                    <label for="phone">Номер телефона *</label>
-                    <input type="tel" id="phone" required placeholder="+7 (___) ___-__-__">
+                    <label for="regInstagram">Instagram *</label>
+                    <input type="text" id="regInstagram" required placeholder="@username">
                 </div>
 
                 <div class="form-group">
-                    <label for="email">Email *</label>
-                    <input type="email" id="email" required placeholder="example@mail.com">
+                    <label for="regFollowers">Количество подписчиков *</label>
+                    <input type="number" id="regFollowers" required placeholder="0" min="0">
                 </div>
 
                 <div class="form-group">
-                    <label for="telegram">Никнейм в Telegram *</label>
-                    <input type="text" id="telegram" required placeholder="@username">
+                    <label for="regStoryViews">Просмотры сторис (среднее) *</label>
+                    <input type="number" id="regStoryViews" required placeholder="0" min="0">
                 </div>
 
-                <div class="form-group">
-                    <label>Социальные сети *</label>
-                    <div class="social-grid">
-                        <div class="social-item">
-                            <div class="social-label">
-                                <span class="social-icon">📷</span> Instagram
-                            </div>
-                            <input type="text" class="social-username" id="instagramUsername" placeholder="@username">
-                        </div>
-                        <div class="social-item">
-                            <div class="social-label">
-                                <span class="social-icon">🎵</span> TikTok
-                            </div>
-                            <input type="text" class="social-username" id="tiktokUsername" placeholder="@username">
-                        </div>
-                    </div>
-                </div>
-
-                <button type="button" class="btn-primary btn-next" onclick="validateAndNext()">Далее</button>
+                <button type="submit" class="btn btn-primary">Зарегистрироваться</button>
             </form>
         </div>
 
-        <!-- Форма заказа -->
-        <div id="orderScreen" class="form-screen">
-            <button class="btn-back" onclick="showPersonalInfo()">← Назад</button>
-            
-            <div class="form-header">
-                <h2>Детали заказа</h2>
-                <p class="subtitle">Шаг 2 из 2</p>
+        <!-- Личный кабинет -->
+        <div id="dashboardScreen" class="screen">
+            <div class="profile-card">
+                <div class="profile-header">
+                    <div class="profile-avatar" id="userAvatar">👤</div>
+                    <div class="profile-info">
+                        <h3 id="userName">Имя пользователя</h3>
+                        <span class="level-badge" id="userLevel">Микро</span>
+                    </div>
+                </div>
+
+                <div class="promo-section">
+                    <p>Ваш промокод:</p>
+                    <div class="promo-code" id="userPromoCode">VESLA123</div>
+                    <button class="copy-btn" onclick="copyPromoCode()">📋 Скопировать</button>
+                </div>
+
+                <div class="remaining-orders">
+                    <p id="remainingOrdersText">Осталось 1 бартер на эту неделю</p>
+                </div>
+
+                <button class="btn btn-primary" onclick="startCollaboration()">Начать сотрудничество</button>
             </div>
-            <div class="progress-bar">
-                <div class="progress-fill" style="width: 100%"></div>
+        </div>
+
+        <!-- Экран оформления бартера -->
+        <div id="barterScreen" class="screen">
+            <button class="btn-back" onclick="goToDashboard()">← Назад</button>
+
+            <div class="header">
+                <h1>Оформление бартера</h1>
             </div>
 
-            <form id="orderForm">
+            <!-- Выбор набора (только для микроблогеров) -->
+            <div id="setSelectionSection" class="hidden">
+                <h3>Выберите набор:</h3>
+                <div class="set-grid">
+                    <div class="set-item" onclick="selectSet(1)">
+                        <h4>Набор 1</h4>
+                        <p>Классический сет с роллами и суши</p>
+                    </div>
+                    <div class="set-item" onclick="selectSet(2)">
+                        <h4>Набор 2</h4>
+                        <p>Премиум сет с лососем и икрой</p>
+                    </div>
+                    <div class="set-item" onclick="selectSet(3)">
+                        <h4>Набор 3</h4>
+                        <p>Большой семейный сет</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Календарь (только для микроблогеров) -->
+            <div id="calendarSection" class="hidden">
+                <div class="calendar-container">
+                    <div class="calendar-header">
+                        <h3>Выберите дату и время</h3>
+                        <p id="currentMonth">Август 2025</p>
+                    </div>
+                    <div class="calendar-grid" id="calendarGrid">
+                        <!-- Дни будут сгенерированы JS -->
+                    </div>
+                    <div class="time-slots" id="timeSlots">
+                        <!-- Временные слоты будут сгенерированы JS -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Загрузка скриншота (только для макроблогеров) -->
+            <div id="screenshotSection" class="hidden">
+                <div class="form-group">
+                    <label for="orderScreenshot">Скриншот заказа на сумму бартера *</label>
+                    <input type="file" id="orderScreenshot" accept="image/*" required>
+                </div>
+            </div>
+
+            <!-- Адресная форма -->
+            <div id="addressForm">
+                <h3>Адрес доставки</h3>
+                
                 <div class="form-group">
                     <label for="city">Город *</label>
                     <select id="city" required>
@@ -432,103 +637,138 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="address">Адрес доставки *</label>
-                    <textarea id="address" rows="3" required placeholder="Улица, дом, квартира"></textarea>
+                    <label for="street">Улица, дом *</label>
+                    <input type="text" id="street" required placeholder="ул. Примерная, д. 123">
                 </div>
 
                 <div class="form-group">
-                    <label>Выберите блюдо *</label>
-                    <div class="dish-select">
-                        <div class="dish-item" onclick="selectDish(this, 'Сет &quot;Питер&quot; 32 шт')">
-                            <input type="radio" name="dish" value="Сет 'Питер' 32 шт" class="dish-radio">
-                            <label>Сет "Питер" 32 шт</label>
-                        </div>
-                        <div class="dish-item" onclick="selectDish(this, 'Сет Антистресс 32 шт')">
-                            <input type="radio" name="dish" value="Сет Антистресс 32 шт" class="dish-radio">
-                            <label>Сет Антистресс 32 шт</label>
-                        </div>
-                        <div class="dish-item" onclick="selectDish(this, 'Сет Больше, чем ... 2 кг. 64 шт')">
-                            <input type="radio" name="dish" value="Сет Больше, чем ... 2 кг. 64 шт" class="dish-radio">
-                            <label>Сет Больше, чем ... 2 кг. 64 шт</label>
-                        </div>
-                        <div class="dish-item" onclick="selectDish(this, 'Сет Вкусный 32шт')">
-                            <input type="radio" name="dish" value="Сет Вкусный 32шт" class="dish-radio">
-                            <label>Сет Вкусный 32шт</label>
-                        </div>
-                        <div class="dish-item" onclick="selectDish(this, 'Сет Вместо шопинга 32 шт')">
-                            <input type="radio" name="dish" value="Сет Вместо шопинга 32 шт" class="dish-radio">
-                            <label>Сет Вместо шопинга 32 шт</label>
-                        </div>
-                        <div class="dish-item" onclick="selectDish(this, 'Сет Всё и сразу! 48 шт')">
-                            <input type="radio" name="dish" value="Сет Всё и сразу! 48 шт" class="dish-radio">
-                            <label>Сет Всё и сразу! 48 шт</label>
-                        </div>
-                        <div class="dish-item" onclick="selectDish(this, 'Сет Всё включено 20 шт')">
-                            <input type="radio" name="dish" value="Сет Всё включено 20 шт" class="dish-radio">
-                            <label>Сет Всё включено 20 шт</label>
-                        </div>
-                        <div class="dish-item" onclick="selectDish(this, 'Сет Все включено 32шт')">
-                            <input type="radio" name="dish" value="Сет Все включено 32шт" class="dish-radio">
-                            <label>Сет Все включено 32шт</label>
-                        </div>
-                        <div class="dish-item" onclick="selectDish(this, 'Сет Для всех 40 шт')">
-                            <input type="radio" name="dish" value="Сет Для всех 40 шт" class="dish-radio">
-                            <label>Сет Для всех 40 шт</label>
-                        </div>
-                        <div class="dish-item" onclick="selectDish(this, 'Сет Для самых важных 32 шт')">
-                            <input type="radio" name="dish" value="Сет Для самых важных 32 шт" class="dish-radio">
-                            <label>Сет Для самых важных 32 шт</label>
-                        </div>
-                        <div class="dish-item" onclick="selectDish(this, 'Сет Для своих 28 шт')">
-                            <input type="radio" name="dish" value="Сет Для своих 28 шт" class="dish-radio">
-                            <label>Сет Для своих 28 шт</label>
-                        </div>
-                        <div class="dish-item" onclick="selectDish(this, 'Сет Зачетный 24 шт')">
-                            <input type="radio" name="dish" value="Сет Зачетный 24 шт" class="dish-radio">
-                            <label>Сет Зачетный 24 шт</label>
-                        </div>
-                        <div class="ship-item" onclick="selectDish(this, 'Сет Килосет 32 шт')">
-                            <input type="radio" name="dish" value="Сет Килосет 32 шт" class="dish-radio">
-                            <label>Сет Килосет 32 шт</label>
-                        </div>
-                        <div class="dish-item" onclick="selectDish(this, 'Сет Любимка 32 шт')">
-                            <input type="radio" name="dish" value="Сет Любимка 32 шт" class="dish-radio">
-                            <label>Сет Любимка 32 шт</label>
-                        </div>
-                        <div class="dish-item" onclick="selectDish(this, 'Сет План &quot;Б&quot; 40 шт')">
-                            <input type="radio" name="dish" value="Сет План 'Б' 40 шт" class="dish-radio">
-                            <label>Сет План "Б" 40 шт</label>
-                        </div>
-                        <div class="dish-item" onclick="selectDish(this, 'Сет Похрустим 28шт')">
-                            <input type="radio" name="dish" value="Сет Похрустим 28шт" class="dish-radio">
-                            <label>Сет Похрустим 28шт</label>
-                        </div>
-                        <div class="dish-item" onclick="selectDish(this, 'Сет Прожарка 28 шт')">
-                            <input type="radio" name="dish" value="Сет Прожарка 28 шт" class="dish-radio">
-                            <label>Сет Прожарка 28 шт</label>
-                        </div>
-                        <div class="dish-item" onclick="selectDish(this, 'Сет Психотерапевт 32 шт')">
-                            <input type="radio" name="dish" value="Сет Психотерапевт 32 шт" class="dish-radio">
-                            <label>Сет Психотерапевт 32 шт</label>
-                        </div>
-                        <div class="dish-item" onclick="selectDish(this, 'Сет Романтик 24шт')">
-                            <input type="radio" name="dish" value="Сет Романтик 24шт" class="dish-radio">
-                            <label>Сет Романтик 24шт</label>
-                        </div>
+                    <label for="entrance">Подъезд</label>
+                    <input type="text" id="entrance" placeholder="1">
+                </div>
+
+                <div class="form-group">
+                    <label for="floor">Этаж</label>
+                    <input type="text" id="floor" placeholder="5">
+                </div>
+
+                <div class="form-group">
+                    <label for="recipientPhone">Телефон получателя *</label>
+                    <input type="tel" id="recipientPhone" required placeholder="+7 (___) ___-__-__">
+                </div>
+
+                <div class="form-group">
+                    <label for="comment">Комментарий</label>
+                    <textarea id="comment" rows="3" placeholder="Дополнительная информация..."></textarea>
+                </div>
+
+                <button class="btn btn-primary" onclick="submitBarter()">Оформить бартер</button>
+            </div>
+        </div>
+
+        <!-- Экран чеклиста -->
+        <div id="checklistScreen" class="screen">
+            <div class="header">
+                <h1>Чеклист для сторис</h1>
+                <p class="subtitle">Не забудьте выполнить все пункты</p>
+            </div>
+
+            <div class="checklist">
+                <h3>📋 Обязательные пункты:</h3>
+                
+                <div class="checklist-item">
+                    <span class="checklist-icon">✅</span>
+                    <div>
+                        <strong>Упомянуть бренд</strong><br>
+                        <small>Обязательно назовите VESLA в сторис</small>
                     </div>
                 </div>
 
-                <button type="button" class="btn-primary btn-submit" onclick="submitOrder()">Оформить заявку</button>
+                <div class="checklist-item">
+                    <span class="checklist-icon">📱</span>
+                    <div>
+                        <strong>Отметить Instagram</strong><br>
+                        <small>Поставьте тег @vesla.kz</small>
+                    </div>
+                </div>
+
+                <div class="checklist-item">
+                    <span class="checklist-icon">📦</span>
+                    <div>
+                        <strong>Показать упаковку и еду</strong><br>
+                        <small>Сфотографируйте красивую подачу</small>
+                    </div>
+                </div>
+
+                <div class="checklist-item">
+                    <span class="checklist-icon">🎯</span>
+                    <div>
+                        <strong>Озвучить промокод</strong><br>
+                        <small>Скажите промокод: <span id="checklistPromoCode">VESLA123</span></small>
+                    </div>
+                </div>
+
+                <div class="example-text">
+                    <strong>Пример текста:</strong><br>
+                    "Я заказала у @vesla.kz — это просто космос! Кладут больше лосося и даже промокод дали — вот он: <span id="examplePromoCode">VESLA123</span>"
+                </div>
+
+                <p style="text-align: center; margin: 20px 0; color: #ffc107;">
+                    ⏰ Через 24 часа не забудьте отправить отчёт!
+                </p>
+
+                <button class="btn btn-primary" onclick="goToDashboard()">Понятно</button>
+            </div>
+        </div>
+
+        <!-- Экран отчёта -->
+        <div id="reportScreen" class="screen">
+            <button class="btn-back" onclick="goToDashboard()">← Назад</button>
+
+            <div class="header">
+                <h1>Отчёт о выполнении</h1>
+                <p class="subtitle">Загрузите данные о сторис</p>
+            </div>
+
+            <form id="reportForm">
+                <div class="form-group">
+                    <label for="storyScreenshot">Скриншот сторис *</label>
+                    <input type="file" id="storyScreenshot" accept="image/*" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="storyViews">Количество просмотров *</label>
+                    <input type="number" id="storyViews" required placeholder="0" min="0">
+                </div>
+
+                <button type="submit" class="btn btn-primary">Отправить отчёт</button>
             </form>
         </div>
 
-        <!-- Модальное окно успеха -->
+        <!-- Модальные окна -->
+        <div id="errorModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-icon">❌</div>
+                <h3>Недостаточно просмотров</h3>
+                <p>Спасибо за интерес! На данный момент сотрудничество доступно для блогеров со средней аудиторией от 300 просмотров сторис.</p>
+                <button class="btn btn-secondary" onclick="closeModal('errorModal')">Понятно</button>
+            </div>
+        </div>
+
         <div id="successModal" class="modal">
             <div class="modal-content">
-                <div class="success-icon">✅</div>
-                <h2>Заявка отправлена!</h2>
-                <p class="subtitle">Менеджер свяжется с вами в ближайшее время</p>
-                <button class="btn-primary" onclick="closeModal()">Закрыть</button>
+                <div class="modal-icon">✅</div>
+                <h3 id="successTitle">Успешно!</h3>
+                <p id="successMessage">Ваша заявка отправлена</p>
+                <button class="btn btn-primary" onclick="closeModal('successModal')">Закрыть</button>
+            </div>
+        </div>
+
+        <div id="slotBookedModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-icon">⚠️</div>
+                <h3>Слот занят</h3>
+                <p>К сожалению, на выбранное время уже забронировано. Пожалуйста, выберите другое.</p>
+                <button class="btn btn-secondary" onclick="closeModal('slotBookedModal')">Выбрать другое время</button>
             </div>
         </div>
     </div>
@@ -539,193 +779,463 @@
         tg.ready();
         tg.expand();
 
-        // Данные формы
-        let formData = {
-            personal: {},
-            order: {}
-        };
+        // Глобальные переменные
+        let currentUser = null;
+        let selectedSet = null;
+        let selectedDate = null;
+        let selectedTime = null;
+        let bookedSlots = ['2025-08-07 14:00', '2025-08-08 16:00']; // Имитация занятых слотов
 
-        // Показать главный экран
-        function showWelcomeScreen() {
-            document.getElementById('welcomeScreen').style.display = 'flex';
-            document.getElementById('personalInfoScreen').style.display = 'none';
-            document.getElementById('orderScreen').style.display = 'none';
+        // Инициализация приложения
+        function init() {
+            // Получаем данные пользователя из Telegram
+            if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
+                const user = tg.initDataUnsafe.user;
+                
+                // Проверяем, зарегистрирован ли пользователь
+                const userData = getUserData(user.id);
+                
+                if (userData) {
+                    currentUser = userData;
+                    showDashboard();
+                } else {
+                    // Автозаполнение формы регистрации
+                    document.getElementById('regName').value = user.first_name || '';
+                    // Telegram не предоставляет номер телефона, оставляем пустым
+                    showScreen('registrationScreen');
+                }
+            } else {
+                // Для тестирования без Telegram
+                showScreen('registrationScreen');
+            }
+
+            // Инициализация обработчиков событий
+            initEventListeners();
         }
 
-        // Показать экран личных данных
-        function showPersonalInfo() {
-            document.getElementById('welcomeScreen').style.display = 'none';
-            document.getElementById('personalInfoScreen').style.display = 'block';
-            document.getElementById('orderScreen').style.display = 'none';
+        // Инициализация обработчиков событий
+        function initEventListeners() {
+            // Форма регистрации
+            document.getElementById('registrationForm').addEventListener('submit', handleRegistration);
+            
+            // Форма отчёта
+            document.getElementById('reportForm').addEventListener('submit', handleReport);
+
+            // Маска для телефона
+            setupPhoneMask('regPhone');
+            setupPhoneMask('recipientPhone');
         }
 
-        // Показать экран заказа
-        function showOrderScreen() {
-            document.getElementById('welcomeScreen').style.display = 'none';
-            document.getElementById('personalInfoScreen').style.display = 'none';
-            document.getElementById('orderScreen').style.display = 'block';
-        }
-
-        // Выбор блюда
-        function selectDish(element, dishName) {
-            // Убираем выделение со всех
-            document.querySelectorAll('.dish-item').forEach(item => {
-                item.classList.remove('selected');
+        // Настройка маски телефона
+        function setupPhoneMask(inputId) {
+            const input = document.getElementById(inputId);
+            input.addEventListener('input', function(e) {
+                let value = e.target.value.replace(/\D/g, '');
+                let formattedValue = '';
+                
+                if (value.length > 0) {
+                    formattedValue = '+7';
+                    if (value.length > 1) {
+                        formattedValue += ' (' + value.substring(1, 4);
+                    }
+                    if (value.length > 4) {
+                        formattedValue += ') ' + value.substring(4, 7);
+                    }
+                    if (value.length > 7) {
+                        formattedValue += '-' + value.substring(7, 9);
+                    }
+                    if (value.length > 9) {
+                        formattedValue += '-' + value.substring(9, 11);
+                    }
+                }
+                
+                e.target.value = formattedValue;
             });
-            
-            // Выделяем текущий
-            element.classList.add('selected');
-            element.querySelector('.dish-radio').checked = true;
         }
 
-        // Валидация и переход к следующему шагу
-        function validateAndNext() {
-            const firstName = document.getElementById('firstName').value.trim();
-            const lastName = document.getElementById('lastName').value.trim();
-            const phone = document.getElementById('phone').value.trim();
-            const email = document.getElementById('email').value.trim();
-            const telegram = document.getElementById('telegram').value.trim();
+        // Обработка регистрации
+        function handleRegistration(e) {
+            e.preventDefault();
             
-            const instagramUsername = document.getElementById('instagramUsername').value.trim();
-            const tiktokUsername = document.getElementById('tiktokUsername').value.trim();
+            const formData = {
+                name: document.getElementById('regName').value.trim(),
+                phone: document.getElementById('regPhone').value.trim(),
+                instagram: document.getElementById('regInstagram').value.trim(),
+                followers: parseInt(document.getElementById('regFollowers').value),
+                storyViews: parseInt(document.getElementById('regStoryViews').value)
+            };
 
-            // Проверка заполнения основных полей
-            if (!firstName || !lastName || !phone || !email || !telegram) {
+            // Валидация
+            if (!formData.name || !formData.phone || !formData.instagram || !formData.followers || !formData.storyViews) {
                 alert('Пожалуйста, заполните все обязательные поля');
                 return;
             }
 
-            // Проверка социальных сетей
-            if (!instagramUsername && !tiktokUsername) {
-                alert('Пожалуйста, укажите ваш никнейм хотя бы в одной социальной сети');
+            // Проверка минимального количества просмотров
+            if (formData.storyViews < 300) {
+                showModal('errorModal');
                 return;
             }
 
-            // Сохраняем данные
-            formData.personal = {
-                firstName,
-                lastName,
-                phone,
-                email,
-                telegram,
-                socials: {
-                    instagram: instagramUsername || null,
-                    tiktok: tiktokUsername || null
-                }
+            // Определение уровня блогера
+            let level = 'micro';
+            if (formData.followers > 10500) {
+                level = 'macro-b';
+            } else if (formData.followers > 6000) {
+                level = 'macro-a';
+            }
+
+            // Генерация промокода
+            const promoCode = 'VESLA' + Math.random().toString(36).substring(2, 7).toUpperCase();
+
+            // Создание пользователя
+            currentUser = {
+                id: tg.initDataUnsafe?.user?.id || Date.now(),
+                ...formData,
+                level,
+                promoCode,
+                remainingOrders: 1,
+                registrationDate: new Date().toISOString()
             };
 
-            showOrderScreen();
+            // Сохранение в localStorage (в реальном приложении - отправка на сервер)
+            saveUserData(currentUser);
+
+            showDashboard();
         }
 
-        // Отправка заказа
-        async function submitOrder() {
-            const city = document.getElementById('city').value;
-            const address = document.getElementById('address').value.trim();
-            const selectedDish = document.querySelector('input[name="dish"]:checked');
+        // Показать дашборд
+        function showDashboard() {
+            document.getElementById('userName').textContent = currentUser.name;
+            document.getElementById('userAvatar').textContent = currentUser.name.charAt(0).toUpperCase();
+            document.getElementById('userPromoCode').textContent = currentUser.promoCode;
+            document.getElementById('remainingOrdersText').textContent = 
+                `Осталось ${currentUser.remainingOrders} бартер на эту неделю`;
 
-            if (!city || !address || !selectedDish) {
+            // Установка класса уровня
+            const levelBadge = document.getElementById('userLevel');
+            levelBadge.className = 'level-badge';
+            
+            switch(currentUser.level) {
+                case 'micro':
+                    levelBadge.classList.add('level-micro');
+                    levelBadge.textContent = 'Микро';
+                    break;
+                case 'macro-a':
+                    levelBadge.classList.add('level-macro-a');
+                    levelBadge.textContent = 'Макро A';
+                    break;
+                case 'macro-b':
+                    levelBadge.classList.add('level-macro-b');
+                    levelBadge.textContent = 'Макро B';
+                    break;
+            }
+
+            showScreen('dashboardScreen');
+        }
+
+        // Начать сотрудничество
+        function startCollaboration() {
+            if (currentUser.remainingOrders <= 0) {
+                alert('У вас не осталось доступных бартеров на эту неделю');
+                return;
+            }
+
+            setupBarterScreen();
+            showScreen('barterScreen');
+        }
+
+        // Настройка экрана бартера
+        function setupBarterScreen() {
+            const setSection = document.getElementById('setSelectionSection');
+            const calendarSection = document.getElementById('calendarSection');
+            const screenshotSection = document.getElementById('screenshotSection');
+
+            if (currentUser.level === 'micro') {
+                // Для микроблогеров показываем выбор набора и календарь
+                setSection.classList.remove('hidden');
+                calendarSection.classList.remove('hidden');
+                screenshotSection.classList.add('hidden');
+                generateCalendar();
+            } else {
+                // Для макроблогеров показываем только загрузку скриншота
+                setSection.classList.add('hidden');
+                calendarSection.classList.add('hidden');
+                screenshotSection.classList.remove('hidden');
+            }
+
+            // Автозаполнение телефона получателя
+            document.getElementById('recipientPhone').value = currentUser.phone;
+        }
+
+        // Выбор набора
+        function selectSet(setNumber) {
+            selectedSet = setNumber;
+            
+            // Убираем выделение со всех наборов
+            document.querySelectorAll('.set-item').forEach(item => {
+                item.classList.remove('selected');
+            });
+            
+            // Выделяем выбранный набор
+            event.target.closest('.set-item').classList.add('selected');
+        }
+
+        // Генерация календаря
+        function generateCalendar() {
+            const grid = document.getElementById('calendarGrid');
+            const today = new Date();
+            const currentMonth = today.getMonth();
+            const currentYear = today.getFullYear();
+            
+            // Заголовки дней недели
+            const weekdays = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+            weekdays.forEach(day => {
+                const dayHeader = document.createElement('div');
+                dayHeader.textContent = day;
+                dayHeader.style.fontWeight = 'bold';
+                dayHeader.style.textAlign = 'center';
+                dayHeader.style.padding = '10px 0';
+                grid.appendChild(dayHeader);
+            });
+
+            // Генерация дней месяца (показываем следующие 14 дней)
+            for (let i = 0; i < 14; i++) {
+                const date = new Date(today);
+                date.setDate(today.getDate() + i);
+                
+                const dayElement = document.createElement('div');
+                dayElement.className = 'calendar-day available';
+                dayElement.textContent = date.getDate();
+                dayElement.onclick = () => selectDate(date);
+                
+                grid.appendChild(dayElement);
+            }
+        }
+
+        // Выбор даты
+        function selectDate(date) {
+            selectedDate = date;
+            
+            // Убираем выделение со всех дней
+            document.querySelectorAll('.calendar-day').forEach(day => {
+                day.classList.remove('selected');
+            });
+            
+            // Выделяем выбранный день
+            event.target.classList.add('selected');
+            
+            generateTimeSlots(date);
+        }
+
+        // Генерация временных слотов
+        function generateTimeSlots(date) {
+            const slotsContainer = document.getElementById('timeSlots');
+            slotsContainer.innerHTML = '';
+            
+            const dayOfWeek = date.getDay();
+            let startHour, endHour;
+            
+            // Определяем рабочие часы в зависимости от дня недели
+            if (dayOfWeek >= 4 || dayOfWeek === 0) { // Чт-Вс
+                startHour = 10;
+                endHour = 18;
+            } else { // Пн-Ср
+                startHour = 10;
+                endHour = 20;
+            }
+            
+            // Генерируем слоты по 2 часа
+            for (let hour = startHour; hour < endHour; hour += 2) {
+                const timeStr = `${hour.toString().padStart(2, '0')}:00`;
+                const dateTimeStr = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')} ${timeStr}`;
+                
+                const slotElement = document.createElement('div');
+                slotElement.className = 'time-slot';
+                slotElement.textContent = timeStr;
+                
+                // Проверяем, занят ли слот
+                if (bookedSlots.includes(dateTimeStr)) {
+                    slotElement.classList.add('booked');
+                    slotElement.onclick = () => showModal('slotBookedModal');
+                } else {
+                    slotElement.onclick = () => selectTime(timeStr);
+                }
+                
+                slotsContainer.appendChild(slotElement);
+            }
+        }
+
+        // Выбор времени
+        function selectTime(time) {
+            selectedTime = time;
+            
+            // Убираем выделение со всех слотов
+            document.querySelectorAll('.time-slot').forEach(slot => {
+                slot.classList.remove('selected');
+            });
+            
+            // Выделяем выбранный слот
+            event.target.classList.add('selected');
+        }
+
+        // Отправка бартера
+        function submitBarter() {
+            const city = document.getElementById('city').value;
+            const street = document.getElementById('street').value.trim();
+            const entrance = document.getElementById('entrance').value.trim();
+            const floor = document.getElementById('floor').value.trim();
+            const recipientPhone = document.getElementById('recipientPhone').value.trim();
+            const comment = document.getElementById('comment').value.trim();
+
+            // Валидация обязательных полей
+            if (!city || !street || !recipientPhone) {
+                alert('Пожалуйста, заполните все обязательные поля');
+                return;
+            }
+
+            // Дополнительная валидация для микроблогеров
+            if (currentUser.level === 'micro') {
+                if (!selectedSet) {
+                    alert('Пожалуйста, выберите набор');
+                    return;
+                }
+                if (!selectedDate || !selectedTime) {
+                    alert('Пожалуйста, выберите дату и время');
+                    return;
+                }
+            }
+
+            // Дополнительная валидация для макроблогеров
+            if (currentUser.level !== 'micro') {
+                const screenshot = document.getElementById('orderScreenshot').files[0];
+                if (!screenshot) {
+                    alert('Пожалуйста, загрузите скриншот заказа');
+                    return;
+                }
+            }
+
+            // Формирование данных бартера
+            const barterData = {
+                userId: currentUser.id,
+                city,
+                address: `${street}${entrance ? ', подъезд ' + entrance : ''}${floor ? ', этаж ' + floor : ''}`,
+                recipientPhone,
+                comment,
+                orderDate: new Date().toISOString()
+            };
+
+            if (currentUser.level === 'micro') {
+                barterData.selectedSet = selectedSet;
+                barterData.deliveryDate = selectedDate.toISOString();
+                barterData.deliveryTime = selectedTime;
+            }
+
+            // Симуляция отправки на сервер
+            console.log('Barter data:', barterData);
+
+            // Уменьшаем количество доступных бартеров
+            currentUser.remainingOrders--;
+            saveUserData(currentUser);
+
+            // Обновляем промокоды в чеклисте
+            document.getElementById('checklistPromoCode').textContent = currentUser.promoCode;
+            document.getElementById('examplePromoCode').textContent = currentUser.promoCode;
+
+            // Показываем чеклист
+            showScreen('checklistScreen');
+        }
+
+        // Обработка отчёта
+        function handleReport(e) {
+            e.preventDefault();
+            
+            const screenshot = document.getElementById('storyScreenshot').files[0];
+            const views = parseInt(document.getElementById('storyViews').value);
+
+            if (!screenshot || !views) {
                 alert('Пожалуйста, заполните все поля');
                 return;
             }
 
-            formData.order = {
-                city,
-                address,
-                dish: selectedDish.value
+            // Симуляция отправки отчёта
+            const reportData = {
+                userId: currentUser.id,
+                storyViews: views,
+                reportDate: new Date().toISOString()
             };
 
-            // Формируем сообщение для Telegram
-            const message = `
-🆕 *Новая заявка на бартер*
+            console.log('Report data:', reportData);
 
-👤 *Клиент:*
-Имя: ${formData.personal.firstName} ${formData.personal.lastName}
-Телефон: ${formData.personal.phone}
-Email: ${formData.personal.email}
-Telegram: ${formData.personal.telegram}
+            showModal('successModal');
+            document.getElementById('successTitle').textContent = 'Отчёт отправлен!';
+            document.getElementById('successMessage').textContent = 'Спасибо за сотрудничество!';
+        }
 
-📱 *Социальные сети:*
-${formData.personal.socials.instagram ? `Instagram: ${formData.personal.socials.instagram}` : ''}
-${formData.personal.socials.tiktok ? `TikTok: ${formData.personal.socials.tiktok}` : ''}
-
-📍 *Доставка:*
-Город: ${formData.order.city}
-Адрес: ${formData.order.address}
-
-🍱 *Заказ:*
-${formData.order.dish}
-            `;
-
-            // Отправка в Telegram
-            const botToken = '8227812944:AAFy8ydOkUeCj3Qkjg7_Xsq6zyQpcUyMShY';
-            const chatId = '1345815453';
+        // Копирование промокода
+        function copyPromoCode() {
+            const promoCode = currentUser.promoCode;
             
-            try {
-                const response = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        chat_id: chatId,
-                        text: message,
-                        parse_mode: 'Markdown'
-                    })
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(promoCode).then(() => {
+                    alert('Промокод скопирован!');
                 });
-
-                if (response.ok) {
-                    showSuccessModal();
-                } else {
-                    alert('Произошла ошибка при отправке заявки. Попробуйте позже.');
-                }
-            } catch (error) {
-                alert('Произошла ошибка при отправке заявки. Попробуйте позже.');
-                console.error('Error:', error);
+            } else {
+                // Fallback для старых браузеров
+                const textArea = document.createElement('textarea');
+                textArea.value = promoCode;
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+                alert('Промокод скопирован!');
             }
         }
 
-        // Показать модальное окно успеха
-        function showSuccessModal() {
-            document.getElementById('successModal').style.display = 'flex';
+        // Управление экранами
+        function showScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(screen => {
+                screen.classList.remove('active');
+            });
+            document.getElementById(screenId).classList.add('active');
         }
 
-        // Закрыть модальное окно
-        function closeModal() {
-            document.getElementById('successModal').style.display = 'none';
-            // Закрываем мини-приложение
-            tg.close();
+        // Переходы между экранами
+        function goToDashboard() {
+            showDashboard();
         }
 
-        // Маска для телефона
-        document.getElementById('phone').addEventListener('input', function(e) {
-            let value = e.target.value.replace(/\D/g, '');
-            let formattedValue = '';
-            
-            if (value.length > 0) {
-                formattedValue = '+7';
-                if (value.length > 1) {
-                    formattedValue += ' (' + value.substring(1, 4);
-                }
-                if (value.length > 4) {
-                    formattedValue += ') ' + value.substring(4, 7);
-                }
-                if (value.length > 7) {
-                    formattedValue += '-' + value.substring(7, 9);
-                }
-                if (value.length > 9) {
-                    formattedValue += '-' + value.substring(9, 11);
-                }
-            }
-            
-            e.target.value = formattedValue;
-        });
+        function goToReport() {
+            showScreen('reportScreen');
+        }
 
-        // Предотвращение отправки форм по Enter
-        document.querySelectorAll('form').forEach(form => {
-            form.addEventListener('submit', e => {
-                e.preventDefault();
+        // Управление модальными окнами
+        function showModal(modalId) {
+            document.getElementById(modalId).classList.add('active');
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('active');
+        }
+
+        // Работа с данными пользователя (localStorage)
+        function saveUserData(userData) {
+            localStorage.setItem(`vesla_user_${userData.id}`, JSON.stringify(userData));
+        }
+
+        function getUserData(userId) {
+            const data = localStorage.getItem(`vesla_user_${userId}`);
+            return data ? JSON.parse(data) : null;
+        }
+
+        // Закрытие модальных окон по клику вне области
+        document.querySelectorAll('.modal').forEach(modal => {
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    modal.classList.remove('active');
+                }
             });
         });
-    </script>
-</body>
-</html>
+
+        // Инициализация приложения при загрузке
+        document.addEventListener('DOMContentLoaded', init);
