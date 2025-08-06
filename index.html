@@ -156,6 +156,7 @@
         input[type="tel"],
         input[type="email"],
         input[type="number"],
+        input[type="date"],
         select,
         textarea {
             width: 100%;
@@ -387,7 +388,7 @@
 
         .order-header {
             display: flex;
-            justify-content: between;
+            justify-content: space-between;
             align-items: center;
             margin-bottom: 10px;
         }
@@ -460,7 +461,7 @@
             color: #ff4444;
         }
 
-        /* Остальные стили... */
+        /* Файловая загрузка */
         .file-upload {
             position: relative;
             display: inline-block;
@@ -624,6 +625,25 @@
             font-weight: bold;
         }
 
+        /* Статус индикаторы */
+        .loading-indicator {
+            color: #00b4d8;
+            font-size: 14px;
+            padding: 15px;
+            text-align: center;
+            background: rgba(0, 180, 216, 0.1);
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+
+        .telegram-info {
+            background: #3a3a3a;
+            padding: 20px;
+            border-radius: 12px;
+            margin: 20px 0;
+            border-left: 4px solid #00b4d8;
+        }
+
         /* Адаптивность */
         @media (max-width: 380px) {
             .container {
@@ -670,12 +690,12 @@
             <p class="subtitle">Эксклюзивное предложение<br>для блогеров и инфлюенсеров</p>
             <div class="welcome-buttons">
                 <button class="btn-primary" onclick="showRegistration()">Регистрация</button>
-                <button class="btn-secondary" onclick="showLogin()">Вход в аккаунт</button>
+                <button class="btn-secondary" onclick="showLogin()">Ручной вход</button>
             </div>
             <div class="auto-login-info" id="autoLoginInfo" style="display: none;">
-                <p style="color: #999; font-size: 14px; margin-top: 20px;">
-                    🔄 Выполняется автоматический вход по Telegram...
-                </p>
+                <div class="loading-indicator">
+                    🔄 Выполняется автоматический вход через Telegram...
+                </div>
             </div>
         </div>
 
@@ -701,11 +721,11 @@
                 <button type="button" class="btn-secondary" onclick="showWelcomeScreen()">← Назад</button>
             </form>
 
-            <div class="login-help" style="margin-top: 30px; padding: 20px; background: #3a3a3a; border-radius: 12px;">
-                <h4 style="color: #00b4d8; margin-bottom: 10px;">💡 Подсказка</h4>
+            <div class="telegram-info">
+                <h4 style="color: #00b4d8; margin-bottom: 10px;">💡 Автоматический вход</h4>
                 <p style="color: #ccc; font-size: 14px; line-height: 1.5;">
-                    Если вы запускаете приложение из Telegram, система попытается автоматически найти ваш аккаунт. 
-                    Если автовход не сработал, введите телефон и Instagram, которые использовали при регистрации.
+                    Если вы открыли приложение через Telegram бот, система попытается найти ваш аккаунт автоматически. 
+                    Если это не сработало, введите телефон и Instagram из вашей регистрации.
                 </p>
             </div>
         </div>
@@ -744,6 +764,7 @@
                 </div>
 
                 <button type="button" class="btn-primary" onclick="submitRegistration()">Зарегистрироваться</button>
+                <button type="button" class="btn-secondary" onclick="showWelcomeScreen()">← Назад</button>
             </form>
         </div>
 
@@ -813,7 +834,7 @@
             </div>
         </div>
 
-        <!-- Остальные экраны... (копируем из оригинального кода) -->
+        <!-- Остальные экраны... -->
         
         <!-- Выбор набора (для микроблогеров) -->
         <div id="setSelectionScreen" class="form-screen set-selection">
@@ -1033,9 +1054,31 @@
 
     <script>
         // Инициализация Telegram WebApp
-        const tg = window.Telegram.WebApp;
-        tg.ready();
-        tg.expand();
+        let tg;
+        let telegramUser = null;
+
+        // Безопасная инициализация Telegram WebApp
+        function initTelegram() {
+            try {
+                if (typeof window.Telegram !== 'undefined' && window.Telegram.WebApp) {
+                    tg = window.Telegram.WebApp;
+                    tg.ready();
+                    tg.expand();
+                    
+                    // Получаем данные пользователя
+                    if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
+                        telegramUser = tg.initDataUnsafe.user;
+                        console.log('Telegram user found:', telegramUser);
+                    } else {
+                        console.log('No Telegram user data available');
+                    }
+                } else {
+                    console.log('Telegram WebApp not available');
+                }
+            } catch (error) {
+                console.error('Error initializing Telegram:', error);
+            }
+        }
 
         // Глобальные переменные
         let userData = {
@@ -1049,56 +1092,179 @@
         let selectedDate = '';
         let selectedTime = '';
 
-        // Системные данные (имитация базы данных)
+        // Системные данные
         let systemData = {
             users: {},
             orders: [],
-            admins: [1345815453, 987654321] // ID админов
+            admins: [1345815453, 987654321], // ID админов
+            usersByPhone: {}, // Индекс пользователей по телефону
+            usersByInstagram: {} // Индекс пользователей по Instagram
         };
 
-        // Проверка является ли пользователь админом
-        function isAdmin() {
-            const user = tg.initDataUnsafe?.user;
-            return user && systemData.admins.includes(user.id);
-        }
+        // Константы для хранения данных
+        const STORAGE_KEYS = {
+            SYSTEM_DATA: 'bloggers_system_data',
+            USER_DATA_PREFIX: 'blogger_user_'
+        };
 
         // Получение уникального ID пользователя
         function getUserId() {
-            const user = tg.initDataUnsafe?.user;
-            return user ? user.id : 'demo_user';
+            if (telegramUser) {
+                return 'tg_' + telegramUser.id;
+            }
+            // Fallback для тестирования без Telegram
+            return 'demo_user_' + Math.random().toString(36).substr(2, 9);
         }
 
-        // Сохранение данных в localStorage
+        // Проверка является ли пользователь админом
+        function isAdmin() {
+            return telegramUser && systemData.admins.includes(telegramUser.id);
+        }
+
+        // Сохранение данных
         function saveData() {
-            const userId = getUserId();
-            localStorage.setItem('userData_' + userId, JSON.stringify(userData));
-            localStorage.setItem('systemData', JSON.stringify(systemData));
+            try {
+                const userId = getUserId();
+                
+                // Сохраняем пользовательские данные
+                const userDataKey = STORAGE_KEYS.USER_DATA_PREFIX + userId;
+                localStorage.setItem(userDataKey, JSON.stringify(userData));
+                
+                // Обновляем системные данные
+                systemData.users[userId] = {
+                    ...userData,
+                    userId: userId,
+                    telegramId: telegramUser ? telegramUser.id : null,
+                    lastActivity: new Date().toISOString()
+                };
+                
+                // Обновляем индексы
+                if (userData.registration.phone) {
+                    systemData.usersByPhone[userData.registration.phone] = userId;
+                }
+                if (userData.registration.instagramLogin) {
+                    systemData.usersByInstagram[userData.registration.instagramLogin.toLowerCase()] = userId;
+                }
+                
+                // Сохраняем системные данные
+                localStorage.setItem(STORAGE_KEYS.SYSTEM_DATA, JSON.stringify(systemData));
+                
+                console.log('Data saved successfully');
+            } catch (error) {
+                console.error('Error saving data:', error);
+            }
         }
 
-        // Загрузка данных из localStorage
+        // Загрузка данных
         function loadData() {
-            const userId = getUserId();
-            const savedUserData = localStorage.getItem('userData_' + userId);
-            const savedSystemData = localStorage.getItem('systemData');
+            try {
+                // Загружаем системные данные
+                const savedSystemData = localStorage.getItem(STORAGE_KEYS.SYSTEM_DATA);
+                if (savedSystemData) {
+                    systemData = { ...systemData, ...JSON.parse(savedSystemData) };
+                    console.log('System data loaded:', Object.keys(systemData.users).length, 'users');
+                }
+                
+                // Загружаем данные пользователя
+                const userId = getUserId();
+                const userDataKey = STORAGE_KEYS.USER_DATA_PREFIX + userId;
+                const savedUserData = localStorage.getItem(userDataKey);
+                
+                if (savedUserData) {
+                    userData = JSON.parse(savedUserData);
+                    console.log('User data loaded for:', userId);
+                    return true;
+                }
+                
+                console.log('No user data found for:', userId);
+                return false;
+            } catch (error) {
+                console.error('Error loading data:', error);
+                return false;
+            }
+        }
+
+        // Поиск пользователя по Telegram ID
+        function findUserByTelegramId(telegramId) {
+            for (const [userId, user] of Object.entries(systemData.users)) {
+                if (user.telegramId === telegramId) {
+                    return { userId, userData: user };
+                }
+            }
+            return null;
+        }
+
+        // Поиск пользователя по телефону и Instagram
+        function findUserByCredentials(phone, instagram) {
+            const phoneUserId = systemData.usersByPhone[phone];
+            const instagramUserId = systemData.usersByInstagram[instagram.toLowerCase()];
             
-            if (savedUserData) {
-                userData = JSON.parse(savedUserData);
+            // Пользователь должен совпадать и по телефону, и по Instagram
+            if (phoneUserId && instagramUserId && phoneUserId === instagramUserId) {
+                return {
+                    userId: phoneUserId,
+                    userData: systemData.users[phoneUserId]
+                };
             }
             
-            if (savedSystemData) {
-                systemData = JSON.parse(savedSystemData);
+            return null;
+        }
+
+        // Проверка на дублирование при регистрации
+        function checkForDuplicateRegistration(phone, instagram) {
+            const phoneExists = systemData.usersByPhone[phone];
+            const instagramExists = systemData.usersByInstagram[instagram.toLowerCase()];
+            
+            return {
+                phoneExists: !!phoneExists,
+                instagramExists: !!instagramExists,
+                canRegister: !phoneExists && !instagramExists
+            };
+        }
+
+        // Автоматический вход через Telegram
+        function attemptTelegramAutoLogin() {
+            if (!telegramUser) {
+                console.log('No Telegram user data for auto-login');
+                return false;
             }
+            
+            console.log('Attempting Telegram auto-login for user:', telegramUser.id);
+            
+            // Ищем пользователя по Telegram ID
+            const existingUser = findUserByTelegramId(telegramUser.id);
+            
+            if (existingUser) {
+                console.log('Found existing user:', existingUser.userId);
+                userData = existingUser.userData;
+                
+                // Обновляем последнюю активность
+                userData.lastActivity = new Date().toISOString();
+                saveData();
+                
+                return true;
+            }
+            
+            console.log('No existing user found for Telegram ID:', telegramUser.id);
+            return false;
         }
 
         // Автозаполнение данных из Telegram
-        function initTelegramData() {
-            const user = tg.initDataUnsafe?.user;
-            if (user) {
-                document.getElementById('firstName').value = user.first_name || '';
+        function fillTelegramData() {
+            if (telegramUser) {
+                const firstNameField = document.getElementById('firstName');
+                if (firstNameField && telegramUser.first_name) {
+                    firstNameField.value = telegramUser.first_name;
+                }
                 
-                // Генерируем аватар из первой буквы имени
-                const avatar = user.first_name ? user.first_name.charAt(0).toUpperCase() : '👤';
-                document.getElementById('userAvatar').textContent = avatar;
+                // Генерируем аватар
+                const avatar = telegramUser.first_name ? telegramUser.first_name.charAt(0).toUpperCase() : '👤';
+                const avatarEl = document.getElementById('userAvatar');
+                if (avatarEl) {
+                    avatarEl.textContent = avatar;
+                }
+                
+                console.log('Telegram data filled:', telegramUser.first_name);
             }
         }
 
@@ -1113,16 +1279,33 @@
             }
         }
 
-        // Показать экраны
+        // Функции показа экранов
+        function hideAllScreens() {
+            const screens = [
+                'welcomeScreen', 'registrationScreen', 'loginScreen', 'dashboardScreen', 
+                'setSelectionScreen', 'dateTimeScreen', 'addressScreen', 'instructionsScreen', 'crmScreen'
+            ];
+            screens.forEach(screen => {
+                const element = document.getElementById(screen);
+                if (element) element.style.display = 'none';
+            });
+        }
+
         function showWelcomeScreen() {
             hideAllScreens();
             document.getElementById('welcomeScreen').style.display = 'flex';
+            document.getElementById('autoLoginInfo').style.display = 'none';
         }
 
         function showRegistration() {
             hideAllScreens();
             document.getElementById('registrationScreen').style.display = 'block';
-            initTelegramData();
+            fillTelegramData();
+        }
+
+        function showLogin() {
+            hideAllScreens();
+            document.getElementById('loginScreen').style.display = 'block';
         }
 
         function showDashboard() {
@@ -1139,6 +1322,204 @@
             hideAllScreens();
             document.getElementById('crmScreen').style.display = 'block';
             updateCRMData();
+        }
+
+        // Вход пользователя
+        function submitLogin() {
+            const phone = document.getElementById('loginPhone').value.trim();
+            const instagram = document.getElementById('loginInstagram').value.trim();
+            
+            if (!phone || !instagram) {
+                showError('Ошибка валидации', 'Пожалуйста, заполните все поля');
+                return;
+            }
+            
+            console.log('Attempting manual login for:', phone, instagram);
+            
+            const existingUser = findUserByCredentials(phone, instagram);
+            
+            if (existingUser) {
+                console.log('User found, logging in:', existingUser.userId);
+                userData = existingUser.userData;
+                
+                // Если есть Telegram пользователь, связываем аккаунты
+                if (telegramUser && !userData.telegramId) {
+                    userData.telegramId = telegramUser.id;
+                    console.log('Linked Telegram account to existing user');
+                }
+                
+                userData.lastActivity = new Date().toISOString();
+                saveData();
+                showDashboard();
+            } else {
+                showError('Пользователь не найден', 'Проверьте правильность введенных данных или пройдите регистрацию');
+            }
+        }
+
+        // Регистрация пользователя
+        function submitRegistration() {
+            const firstName = document.getElementById('firstName').value.trim();
+            const phone = document.getElementById('phone').value.trim();
+            const instagramLogin = document.getElementById('instagramLogin').value.trim();
+            const followersCount = parseInt(document.getElementById('followersCount').value);
+            const avgViews = parseInt(document.getElementById('avgViews').value);
+
+            // Валидация
+            if (!firstName || !phone || !instagramLogin || !followersCount || !avgViews) {
+                showError('Ошибка валидации', 'Пожалуйста, заполните все обязательные поля');
+                return;
+            }
+
+            // Проверка минимального количества просмотров
+            if (avgViews < 300) {
+                showRejectionModal();
+                return;
+            }
+            
+            // Проверка на дублирование
+            const duplicateCheck = checkForDuplicateRegistration(phone, instagramLogin);
+            
+            if (!duplicateCheck.canRegister) {
+                let errorMessage = 'Аккаунт с такими данными уже зарегистрирован:\n';
+                if (duplicateCheck.phoneExists) {
+                    errorMessage += '• Телефон уже используется\n';
+                }
+                if (duplicateCheck.instagramExists) {
+                    errorMessage += '• Instagram уже используется\n';
+                }
+                errorMessage += '\nВойдите в существующий аккаунт или используйте другие данные.';
+                
+                showError('Аккаунт уже существует', errorMessage);
+                return;
+            }
+
+            // Определение уровня блогера
+            const bloggerData = determineBloggerLevel(followersCount);
+            
+            // Сохранение данных
+            userData = {
+                registration: {
+                    firstName,
+                    phone,
+                    instagramLogin,
+                    followersCount,
+                    avgViews
+                },
+                level: bloggerData.level,
+                orders: [],
+                telegramId: telegramUser ? telegramUser.id : null,
+                registrationDate: new Date().toISOString(),
+                lastActivity: new Date().toISOString()
+            };
+
+            console.log('Registering new user:', userData);
+            saveData();
+            showDashboard();
+        }
+
+        // Обновление dashboard
+        function updateDashboard() {
+            if (userData.registration && userData.registration.firstName) {
+                document.getElementById('userName').textContent = userData.registration.firstName;
+                document.getElementById('followersDisplay').textContent = userData.registration.followersCount?.toLocaleString() || '0';
+                document.getElementById('viewsDisplay').textContent = userData.registration.avgViews?.toLocaleString() || '0';
+                
+                const levelData = determineBloggerLevel(userData.registration.followersCount || 0);
+                document.getElementById('userLevel').textContent = levelData.text;
+                
+                // Обновляем аватар
+                if (telegramUser && telegramUser.first_name) {
+                    document.getElementById('userAvatar').textContent = telegramUser.first_name.charAt(0).toUpperCase();
+                } else if (userData.registration.firstName) {
+                    document.getElementById('userAvatar').textContent = userData.registration.firstName.charAt(0).toUpperCase();
+                }
+            }
+        }
+
+        // Обновление CRM данных
+        function updateCRMData() {
+            document.getElementById('totalUsers').textContent = Object.keys(systemData.users).length;
+            document.getElementById('totalOrders').textContent = systemData.orders.length;
+            document.getElementById('newOrders').textContent = systemData.orders.filter(order => order.status === 'new').length;
+            
+            const ordersList = document.getElementById('ordersList');
+            ordersList.innerHTML = '';
+            
+            if (systemData.orders.length === 0) {
+                ordersList.innerHTML = '<div style="padding: 40px; text-align: center; color: #999;">Пока нет заказов</div>';
+                return;
+            }
+            
+            systemData.orders.slice(-10).reverse().forEach(order => {
+                const orderElement = document.createElement('div');
+                orderElement.className = 'order-item';
+                orderElement.innerHTML = `
+                    <div class="order-header">
+                        <span class="order-id">#${order.id}</span>
+                        <span class="order-status status-${order.status}">${getStatusText(order.status)}</span>
+                    </div>
+                    <div class="order-info">
+                        <strong>${order.userName}</strong> (${order.userLevel})<br>
+                        ${order.phone} | ${order.instagram}<br>
+                        ${order.city}, ${order.street}<br>
+                        <small>${order.date || new Date(order.createdAt).toLocaleDateString()}</small>
+                    </div>
+                `;
+                ordersList.appendChild(orderElement);
+            });
+        }
+
+        function getStatusText(status) {
+            const statusMap = {
+                'new': 'Новый',
+                'confirmed': 'Подтвержден',
+                'delivered': 'Доставлен'
+            };
+            return statusMap[status] || 'Неизвестно';
+        }
+
+        // Инициализация приложения
+        function initializeApp() {
+            console.log('Initializing app...');
+            
+            // Инициализируем Telegram
+            initTelegram();
+            
+            // Загружаем данные
+            loadData();
+            
+            // Показываем админ панель если нужно
+            if (isAdmin()) {
+                document.getElementById('adminPanel').style.display = 'block';
+            }
+            
+            // Пытаемся выполнить автовход через Telegram
+            if (attemptTelegramAutoLogin()) {
+                console.log('Auto-login successful');
+                showDashboard();
+                return;
+            }
+            
+            // Проверяем есть ли сохраненные данные пользователя
+            if (userData.registration && userData.registration.firstName) {
+                console.log('Found existing user data');
+                showDashboard();
+                return;
+            }
+            
+            // Показываем приветственный экран
+            console.log('Showing welcome screen');
+            showWelcomeScreen();
+        }
+
+        // Остальные функции приложения...
+        
+        function startCollaboration() {
+            if (userData.level === 'micro') {
+                showSetSelection();
+            } else {
+                showAddressForm();
+            }
         }
 
         function showSetSelection() {
@@ -1173,223 +1554,6 @@
             document.getElementById('instructionsScreen').style.display = 'block';
         }
 
-        function hideAllScreens() {
-            const screens = ['welcomeScreen', 'registrationScreen', 'dashboardScreen', 'setSelectionScreen', 'dateTimeScreen', 'addressScreen', 'instructionsScreen', 'crmScreen'];
-            screens.forEach(screen => {
-                document.getElementById(screen).style.display = 'none';
-            });
-        }
-
-        // Обновление dashboard
-        function updateDashboard() {
-            if (userData.registration.firstName) {
-                document.getElementById('userName').textContent = userData.registration.firstName;
-                document.getElementById('followersDisplay').textContent = userData.registration.followersCount?.toLocaleString() || '0';
-                document.getElementById('viewsDisplay').textContent = userData.registration.avgViews?.toLocaleString() || '0';
-                
-                const levelData = determineBloggerLevel(userData.registration.followersCount || 0);
-                document.getElementById('userLevel').textContent = levelData.text;
-            }
-        }
-
-        // Обновление CRM данных
-        function updateCRMData() {
-            document.getElementById('totalUsers').textContent = Object.keys(systemData.users).length;
-            document.getElementById('totalOrders').textContent = systemData.orders.length;
-            document.getElementById('newOrders').textContent = systemData.orders.filter(order => order.status === 'new').length;
-            
-            const ordersList = document.getElementById('ordersList');
-            ordersList.innerHTML = '';
-            
-            if (systemData.orders.length === 0) {
-                ordersList.innerHTML = '<div style="padding: 40px; text-align: center; color: #999;">Пока нет заказов</div>';
-                return;
-            }
-            
-            systemData.orders.slice(-10).reverse().forEach(order => {
-                const orderElement = document.createElement('div');
-                orderElement.className = 'order-item';
-                orderElement.innerHTML = `
-                    <div class="order-header">
-                        <span class="order-id">#${order.id}</span>
-                        <span class="order-status status-${order.status}">${getStatusText(order.status)}</span>
-                    </div>
-                    <div class="order-info">
-                        <strong>${order.userName}</strong> (${order.userLevel})<br>
-                        ${order.phone} | ${order.instagram}<br>
-                        ${order.city}, ${order.street}<br>
-                        <small>${order.date}</small>
-                    </div>
-                `;
-                ordersList.appendChild(orderElement);
-            });
-        }
-
-        function getStatusText(status) {
-            const statusMap = {
-                'new': 'Новый',
-                'confirmed': 'Подтвержден',
-                'delivered': 'Доставлен'
-            };
-            return statusMap[status] || 'Неизвестно';
-        }
-
-        // Проверка пользователя и автовход
-        function checkUserAndStart() {
-            const userId = getUserId();
-            const savedData = localStorage.getItem('userData_' + userId);
-            
-            if (savedData) {
-                userData = JSON.parse(savedData);
-                if (userData.registration && userData.registration.firstName) {
-                    showDashboard();
-                    return;
-                }
-            }
-            
-            showRegistration();
-        }
-
-        // Регистрация
-        function submitRegistration() {
-            const firstName = document.getElementById('firstName').value.trim();
-            const phone = document.getElementById('phone').value.trim();
-            const instagramLogin = document.getElementById('instagramLogin').value.trim();
-            const followersCount = parseInt(document.getElementById('followersCount').value);
-            const avgViews = parseInt(document.getElementById('avgViews').value);
-
-            // Валидация
-            if (!firstName || !phone || !instagramLogin || !followersCount || !avgViews) {
-                showError('Ошибка валидации', 'Пожалуйста, заполните все обязательные поля');
-                return;
-            }
-
-            // Проверка минимального количества просмотров
-            if (avgViews < 300) {
-                showRejectionModal();
-                return;
-            }
-
-            // Определение уровня блогера
-            const bloggerData = determineBloggerLevel(followersCount);
-            
-            // Сохранение данных
-            userData.registration = {
-                firstName,
-                phone,
-                instagramLogin,
-                followersCount,
-                avgViews
-            };
-            
-            userData.level = bloggerData.level;
-            userData.orders = [];
-
-            // Сохранение в системные данные
-            const userId = getUserId();
-            systemData.users[userId] = userData;
-
-            saveData();
-            showDashboard();
-        }
-
-        // Начать сотрудничество
-        function startCollaboration() {
-            if (userData.level === 'micro') {
-                showSetSelection();
-            } else {
-                showAddressForm();
-            }
-        }
-
-        // История заказов
-        function showOrderHistory() {
-            const historyList = document.getElementById('orderHistoryList');
-            historyList.innerHTML = '';
-            
-            if (!userData.orders || userData.orders.length === 0) {
-                historyList.innerHTML = '<div style="text-align: center; padding: 20px; color: #999;">Пока нет заказов</div>';
-            } else {
-                userData.orders.forEach(order => {
-                    const orderDiv = document.createElement('div');
-                    orderDiv.style.cssText = 'padding: 15px; border: 1px solid #4a4a4a; border-radius: 10px; margin-bottom: 10px;';
-                    orderDiv.innerHTML = `
-                        <div style="font-weight: 600; color: #00b4d8;">#${order.id}</div>
-                        <div style="font-size: 14px; color: #ccc; margin-top: 5px;">
-                            ${order.set || 'Макроблогер'}<br>
-                            ${order.date}<br>
-                            <span style="color: ${order.status === 'delivered' ? '#28a745' : '#ff6b35'};">${getStatusText(order.status)}</span>
-                        </div>
-                    `;
-                    historyList.appendChild(orderDiv);
-                });
-            }
-            
-            document.getElementById('orderHistoryModal').style.display = 'flex';
-        }
-
-        function closeOrderHistory() {
-            document.getElementById('orderHistoryModal').style.display = 'none';
-        }
-
-        // Редактирование профиля
-        function editProfile() {
-            // Заполнение формы текущими данными
-            document.getElementById('editFirstName').value = userData.registration.firstName || '';
-            document.getElementById('editPhone').value = userData.registration.phone || '';
-            document.getElementById('editInstagram').value = userData.registration.instagramLogin || '';
-            document.getElementById('editFollowers').value = userData.registration.followersCount || '';
-            document.getElementById('editViews').value = userData.registration.avgViews || '';
-            
-            document.getElementById('editProfileModal').style.display = 'flex';
-        }
-
-        function saveProfile() {
-            const firstName = document.getElementById('editFirstName').value.trim();
-            const phone = document.getElementById('editPhone').value.trim();
-            const instagramLogin = document.getElementById('editInstagram').value.trim();
-            const followersCount = parseInt(document.getElementById('editFollowers').value);
-            const avgViews = parseInt(document.getElementById('editViews').value);
-
-            if (!firstName || !phone || !instagramLogin || !followersCount || !avgViews) {
-                showError('Ошибка валидации', 'Пожалуйста, заполните все поля');
-                return;
-            }
-
-            userData.registration = {
-                firstName,
-                phone,
-                instagramLogin,
-                followersCount,
-                avgViews
-            };
-
-            userData.level = determineBloggerLevel(followersCount).level;
-
-            // Обновление в системных данных
-            const userId = getUserId();
-            systemData.users[userId] = userData;
-
-            saveData();
-            updateDashboard();
-            closeEditProfile();
-            
-            showSuccessMessage('Профиль обновлен!');
-        }
-
-        function closeEditProfile() {
-            document.getElementById('editProfileModal').style.display = 'none';
-        }
-
-        // Выход из аккаунта
-        function logout() {
-            const userId = getUserId();
-            localStorage.removeItem('userData_' + userId);
-            userData = { registration: {}, order: {}, level: '', orders: [] };
-            showWelcomeScreen();
-        }
-
-        // Выбор набора
         function selectSet(element, setId) {
             document.querySelectorAll('.set-item').forEach(item => {
                 item.classList.remove('selected');
@@ -1400,7 +1564,6 @@
             document.getElementById('nextFromSet').disabled = false;
         }
 
-        // Настройка выбора даты
         function setupDateInput() {
             const dateInput = document.getElementById('deliveryDate');
             const today = new Date();
@@ -1411,12 +1574,12 @@
             dateInput.max = maxDate.toISOString().split('T')[0];
         }
 
-        // Обновление временных слотов
         function updateTimeSlots() {
-            const selectedDate = document.getElementById('deliveryDate').value;
-            if (!selectedDate) return;
+            const selectedDateValue = document.getElementById('deliveryDate').value;
+            if (!selectedDateValue) return;
 
-            const dayOfWeek = new Date(selectedDate).getDay();
+            selectedDate = selectedDateValue;
+            const dayOfWeek = new Date(selectedDateValue).getDay();
             const timeSlotsContainer = document.getElementById('timeSlots');
             timeSlotsContainer.innerHTML = '';
 
@@ -1437,7 +1600,6 @@
             });
         }
 
-        // Выбор временного слота
         function selectTimeSlot(element, time) {
             if (Math.random() < 0.1) {
                 showError('Слот недоступен', 'К сожалению, на выбранное время уже забронировано. Пожалуйста, выберите другое.');
@@ -1453,7 +1615,6 @@
             document.getElementById('nextFromDateTime').disabled = false;
         }
 
-        // Валидация формы адреса
         function validateAddressForm() {
             const city = document.getElementById('city').value;
             const street = document.getElementById('street').value.trim();
@@ -1473,11 +1634,9 @@
             return true;
         }
 
-        // Отправка заказа
         async function submitOrder() {
             const orderId = Date.now();
             
-            // Создание заказа
             const newOrder = {
                 id: orderId,
                 userId: getUserId(),
@@ -1565,6 +1724,115 @@
             }
         }
 
+        // История заказов
+        function showOrderHistory() {
+            const historyList = document.getElementById('orderHistoryList');
+            historyList.innerHTML = '';
+            
+            if (!userData.orders || userData.orders.length === 0) {
+                historyList.innerHTML = '<div style="text-align: center; padding: 20px; color: #999;">Пока нет заказов</div>';
+            } else {
+                userData.orders.forEach(order => {
+                    const orderDiv = document.createElement('div');
+                    orderDiv.style.cssText = 'padding: 15px; border: 1px solid #4a4a4a; border-radius: 10px; margin-bottom: 10px;';
+                    orderDiv.innerHTML = `
+                        <div style="font-weight: 600; color: #00b4d8;">#${order.id}</div>
+                        <div style="font-size: 14px; color: #ccc; margin-top: 5px;">
+                            ${order.set || 'Макроблогер'}<br>
+                            ${order.date || new Date(order.createdAt).toLocaleDateString()}<br>
+                            <span style="color: ${order.status === 'delivered' ? '#28a745' : '#ff6b35'};">${getStatusText(order.status)}</span>
+                        </div>
+                    `;
+                    historyList.appendChild(orderDiv);
+                });
+            }
+            
+            document.getElementById('orderHistoryModal').style.display = 'flex';
+        }
+
+        function closeOrderHistory() {
+            document.getElementById('orderHistoryModal').style.display = 'none';
+        }
+
+        // Редактирование профиля
+        function editProfile() {
+            document.getElementById('editFirstName').value = userData.registration.firstName || '';
+            document.getElementById('editPhone').value = userData.registration.phone || '';
+            document.getElementById('editInstagram').value = userData.registration.instagramLogin || '';
+            document.getElementById('editFollowers').value = userData.registration.followersCount || '';
+            document.getElementById('editViews').value = userData.registration.avgViews || '';
+            
+            document.getElementById('editProfileModal').style.display = 'flex';
+        }
+
+        function saveProfile() {
+            const firstName = document.getElementById('editFirstName').value.trim();
+            const phone = document.getElementById('editPhone').value.trim();
+            const instagramLogin = document.getElementById('editInstagram').value.trim();
+            const followersCount = parseInt(document.getElementById('editFollowers').value);
+            const avgViews = parseInt(document.getElementById('editViews').value);
+
+            if (!firstName || !phone || !instagramLogin || !followersCount || !avgViews) {
+                showError('Ошибка валидации', 'Пожалуйста, заполните все поля');
+                return;
+            }
+
+            // Проверяем изменились ли ключевые поля
+            const oldPhone = userData.registration.phone;
+            const oldInstagram = userData.registration.instagramLogin;
+            
+            if (phone !== oldPhone || instagramLogin !== oldInstagram) {
+                // Проверяем на конфликты с другими пользователями
+                const duplicateCheck = checkForDuplicateRegistration(phone, instagramLogin);
+                const userId = getUserId();
+                
+                // Исключаем текущего пользователя из проверки
+                if (duplicateCheck.phoneExists && systemData.usersByPhone[phone] !== userId) {
+                    showError('Ошибка', 'Телефон уже используется другим пользователем');
+                    return;
+                }
+                
+                if (duplicateCheck.instagramExists && systemData.usersByInstagram[instagramLogin.toLowerCase()] !== userId) {
+                    showError('Ошибка', 'Instagram уже используется другим пользователем');
+                    return;
+                }
+                
+                // Обновляем индексы
+                delete systemData.usersByPhone[oldPhone];
+                delete systemData.usersByInstagram[oldInstagram.toLowerCase()];
+            }
+
+            userData.registration = {
+                firstName,
+                phone,
+                instagramLogin,
+                followersCount,
+                avgViews
+            };
+
+            userData.level = determineBloggerLevel(followersCount).level;
+            userData.lastActivity = new Date().toISOString();
+
+            saveData();
+            updateDashboard();
+            closeEditProfile();
+            
+            showSuccessMessage('Профиль обновлен!');
+        }
+
+        function closeEditProfile() {
+            document.getElementById('editProfileModal').style.display = 'none';
+        }
+
+        // Выход из аккаунта
+        function logout() {
+            const userId = getUserId();
+            const userDataKey = STORAGE_KEYS.USER_DATA_PREFIX + userId;
+            localStorage.removeItem(userDataKey);
+            userData = { registration: {}, order: {}, level: '', orders: [] };
+            showWelcomeScreen();
+        }
+
         // Модальные окна
         function showSuccessModal() {
             document.getElementById('successModal').style.display = 'flex';
@@ -1602,7 +1870,10 @@
 
         // Маска для телефона
         function setupPhoneMask(inputId) {
-            document.getElementById(inputId).addEventListener('input', function(e) {
+            const input = document.getElementById(inputId);
+            if (!input) return;
+            
+            input.addEventListener('input', function(e) {
                 let value = e.target.value.replace(/\D/g, '');
                 let formattedValue = '';
                 
@@ -1639,18 +1910,15 @@
             });
         }
 
-        // Инициализация при загрузке
+        // Инициализация при загрузке DOM
         document.addEventListener('DOMContentLoaded', function() {
-            loadData();
+            console.log('DOM loaded, setting up...');
             
+            // Настройка масок телефонов
             setupPhoneMask('phone');
+            setupPhoneMask('loginPhone');
             setupPhoneMask('recipientPhone');
             setupPhoneMask('editPhone');
-            
-            // Показ кнопки админ панели для админов
-            if (isAdmin()) {
-                document.getElementById('adminPanel').style.display = 'block';
-            }
             
             // Предотвращение отправки форм по Enter
             document.querySelectorAll('form').forEach(form => {
@@ -1660,23 +1928,29 @@
             });
 
             // Обработка загрузки файла
-            document.getElementById('orderScreenshot').addEventListener('change', function(e) {
-                const label = document.querySelector('.file-upload-label');
-                if (e.target.files.length > 0) {
-                    label.textContent = '✅ Файл загружен: ' + e.target.files[0].name;
-                    label.style.borderColor = '#00b4d8';
-                } else {
-                    label.textContent = '📷 Загрузить скриншот заказа';
-                    label.style.borderColor = '#4a4a4a';
-                }
-            });
+            const fileInput = document.getElementById('orderScreenshot');
+            if (fileInput) {
+                fileInput.addEventListener('change', function(e) {
+                    const label = document.querySelector('.file-upload-label');
+                    if (e.target.files.length > 0) {
+                        label.textContent = '✅ Файл загружен: ' + e.target.files[0].name;
+                        label.style.borderColor = '#00b4d8';
+                    } else {
+                        label.textContent = '📷 Загрузить скриншот заказа';
+                        label.style.borderColor = '#4a4a4a';
+                    }
+                });
+            }
+
+            // Инициализируем приложение
+            setTimeout(initializeApp, 100);
         });
 
-        // Инициализация приложения
-        window.onload = function() {
-            loadData();
-            checkUserAndStart();
-        };
+        // Инициализация при полной загрузке страницы
+        window.addEventListener('load', function() {
+            console.log('Window loaded');
+            // Дополнительная инициализация если нужно
+        });
     </script>
 </body>
 </html>
