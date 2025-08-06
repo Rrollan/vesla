@@ -106,6 +106,23 @@
             transform: translateY(0);
         }
 
+        .btn-secondary {
+            background: #4a4a4a;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 50px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 10px;
+        }
+
+        .btn-secondary:hover {
+            background: #5a5a5a;
+        }
+
         /* Формы */
         .form-screen {
             display: none;
@@ -181,12 +198,53 @@
             animation: fadeIn 0.5s ease-out;
         }
 
-        .user-info {
-            background: #3a3a3a;
-            padding: 25px;
+        .user-card {
+            background: linear-gradient(135deg, #3a3a3a, #4a4a4a);
+            padding: 30px;
             border-radius: 20px;
-            margin-bottom: 30px;
+            margin-bottom: 20px;
             text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .user-card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg, transparent, rgba(0, 180, 216, 0.1), transparent);
+            transform: rotate(45deg);
+            animation: shimmer 3s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { transform: rotate(45deg) translateX(-100%); }
+            100% { transform: rotate(45deg) translateX(100%); }
+        }
+
+        .user-avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #00b4d8, #ff6b35);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            margin: 0 auto 20px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .user-name {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            position: relative;
+            z-index: 1;
         }
 
         .user-level {
@@ -198,17 +256,173 @@
             font-size: 14px;
             font-weight: 600;
             margin-bottom: 15px;
+            position: relative;
+            z-index: 1;
         }
 
-        .promo-code {
-            background: #4a4a4a;
+        .user-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 20px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .stat-item {
+            background: rgba(255, 255, 255, 0.1);
             padding: 15px;
             border-radius: 12px;
-            margin: 15px 0;
             text-align: center;
-            font-family: monospace;
+        }
+
+        .stat-number {
             font-size: 18px;
-            letter-spacing: 2px;
+            font-weight: 600;
+            color: #00b4d8;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #999;
+            margin-top: 5px;
+        }
+
+        .dashboard-actions {
+            display: grid;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .action-card {
+            background: #3a3a3a;
+            padding: 20px;
+            border-radius: 15px;
+            border: 2px solid #4a4a4a;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .action-card:hover {
+            border-color: #00b4d8;
+            transform: translateY(-2px);
+        }
+
+        .action-icon {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        .action-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .action-desc {
+            font-size: 14px;
+            color: #999;
+        }
+
+        /* CRM панель */
+        .crm-screen {
+            display: none;
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        .crm-header {
+            background: #3a3a3a;
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .crm-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .crm-stat-card {
+            background: #3a3a3a;
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+        }
+
+        .crm-stat-number {
+            font-size: 24px;
+            font-weight: 600;
+            color: #00b4d8;
+        }
+
+        .crm-stat-label {
+            font-size: 12px;
+            color: #999;
+            margin-top: 5px;
+        }
+
+        .orders-list {
+            background: #3a3a3a;
+            border-radius: 15px;
+            overflow: hidden;
+        }
+
+        .order-item {
+            padding: 20px;
+            border-bottom: 1px solid #4a4a4a;
+            transition: background 0.3s ease;
+        }
+
+        .order-item:hover {
+            background: #404040;
+        }
+
+        .order-item:last-child {
+            border-bottom: none;
+        }
+
+        .order-header {
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .order-id {
+            font-weight: 600;
+            color: #00b4d8;
+        }
+
+        .order-status {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .status-new {
+            background: #ff6b35;
+            color: white;
+        }
+
+        .status-confirmed {
+            background: #00b4d8;
+            color: white;
+        }
+
+        .status-delivered {
+            background: #28a745;
+            color: white;
+        }
+
+        .order-info {
+            font-size: 14px;
+            color: #ccc;
+            line-height: 1.5;
         }
 
         /* Модальные окна */
@@ -244,6 +458,70 @@
             font-size: 60px;
             margin-bottom: 20px;
             color: #ff4444;
+        }
+
+        /* Остальные стили... */
+        .file-upload {
+            position: relative;
+            display: inline-block;
+            width: 100%;
+            margin: 10px 0;
+        }
+
+        .file-upload input[type="file"] {
+            position: absolute;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+
+        .file-upload-label {
+            display: block;
+            padding: 15px;
+            background: #3a3a3a;
+            border: 2px dashed #4a4a4a;
+            border-radius: 12px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .file-upload-label:hover {
+            border-color: #00b4d8;
+        }
+
+        .warning-message {
+            background: #ff4444;
+            color: white;
+            padding: 15px;
+            border-radius: 12px;
+            margin: 20px 0;
+            text-align: center;
+        }
+
+        .admin-panel {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 999;
+        }
+
+        .admin-btn {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #ff6b35, #00b4d8);
+            border: none;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        .admin-btn:hover {
+            transform: scale(1.1);
         }
 
         /* Выбор набора */
@@ -379,45 +657,6 @@
         ::-webkit-scrollbar-thumb:hover {
             background: #5a5a5a;
         }
-
-        .file-upload {
-            position: relative;
-            display: inline-block;
-            width: 100%;
-            margin: 10px 0;
-        }
-
-        .file-upload input[type="file"] {
-            position: absolute;
-            opacity: 0;
-            width: 100%;
-            height: 100%;
-            cursor: pointer;
-        }
-
-        .file-upload-label {
-            display: block;
-            padding: 15px;
-            background: #3a3a3a;
-            border: 2px dashed #4a4a4a;
-            border-radius: 12px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .file-upload-label:hover {
-            border-color: #00b4d8;
-        }
-
-        .warning-message {
-            background: #ff4444;
-            color: white;
-            padding: 15px;
-            border-radius: 12px;
-            margin: 20px 0;
-            text-align: center;
-        }
     </style>
 </head>
 <body>
@@ -429,7 +668,7 @@
             </div>
             <h1>Бартер для блогеров</h1>
             <p class="subtitle">Эксклюзивное предложение<br>для блогеров и инфлюенсеров</p>
-            <button class="btn-primary" onclick="startRegistration()">Начать</button>
+            <button class="btn-primary" onclick="checkUserAndStart()">Начать</button>
         </div>
 
         <!-- Форма регистрации -->
@@ -471,17 +710,72 @@
 
         <!-- Личный кабинет -->
         <div id="dashboardScreen" class="dashboard">
-            <div class="user-info">
-                <h2 id="userName"></h2>
+            <div class="user-card">
+                <div class="user-avatar" id="userAvatar">👤</div>
+                <div class="user-name" id="userName"></div>
                 <div id="userLevel" class="user-level"></div>
-                <div class="promo-code">
-                    Ваш промокод: <span id="promoCode"></span>
+                <div class="user-stats">
+                    <div class="stat-item">
+                        <div class="stat-number" id="followersDisplay">0</div>
+                        <div class="stat-label">Подписчики</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number" id="viewsDisplay">0</div>
+                        <div class="stat-label">Просмотры</div>
+                    </div>
                 </div>
             </div>
-            
-            <button class="btn-primary" onclick="startCollaboration()">Начать сотрудничество</button>
+
+            <div class="dashboard-actions">
+                <div class="action-card" onclick="startCollaboration()">
+                    <div class="action-icon">🎯</div>
+                    <div class="action-title">Новое сотрудничество</div>
+                    <div class="action-desc">Оформить заказ на бартер</div>
+                </div>
+                <div class="action-card" onclick="showOrderHistory()">
+                    <div class="action-icon">📋</div>
+                    <div class="action-title">История заказов</div>
+                    <div class="action-desc">Просмотреть предыдущие заказы</div>
+                </div>
+                <div class="action-card" onclick="editProfile()">
+                    <div class="action-icon">⚙️</div>
+                    <div class="action-title">Редактировать профиль</div>
+                    <div class="action-desc">Изменить данные аккаунта</div>
+                </div>
+            </div>
+
+            <button class="btn-secondary" onclick="logout()">Выйти из аккаунта</button>
         </div>
 
+        <!-- CRM панель -->
+        <div id="crmScreen" class="crm-screen">
+            <div class="crm-header">
+                <h2>🔧 Панель администратора</h2>
+                <button class="btn-back" onclick="showDashboard()">← Назад</button>
+            </div>
+
+            <div class="crm-stats">
+                <div class="crm-stat-card">
+                    <div class="crm-stat-number" id="totalUsers">0</div>
+                    <div class="crm-stat-label">Пользователи</div>
+                </div>
+                <div class="crm-stat-card">
+                    <div class="crm-stat-number" id="totalOrders">0</div>
+                    <div class="crm-stat-label">Заказы</div>
+                </div>
+                <div class="crm-stat-card">
+                    <div class="crm-stat-number" id="newOrders">0</div>
+                    <div class="crm-stat-label">Новые</div>
+                </div>
+            </div>
+
+            <div class="orders-list" id="ordersList">
+                <!-- Заказы будут загружены динамически -->
+            </div>
+        </div>
+
+        <!-- Остальные экраны... (копируем из оригинального кода) -->
+        
         <!-- Выбор набора (для микроблогеров) -->
         <div id="setSelectionScreen" class="form-screen set-selection">
             <button class="btn-back" onclick="showDashboard()">← Назад</button>
@@ -604,12 +898,12 @@
                     <li>Упомянуть бренд в сторис</li>
                     <li>Отметить наш Instagram @vesla.kz</li>
                     <li>Показывать упаковку и еду</li>
-                    <li>Озвучить промокод</li>
+                    <li>Разместить пост до указанного времени</li>
                 </ul>
                 
                 <div style="margin-top: 20px;">
                     <strong>Пример тезиса:</strong><br>
-                    <em>"Я заказала у @vesla.kz — это просто космос! Кладут больше лосося и даже промокод дали — вот он: <span id="instructionPromo"></span>"</em>
+                    <em>"Я заказала у @vesla.kz — это просто космос! Очень вкусно и качественно!"</em>
                 </div>
             </div>
 
@@ -647,6 +941,55 @@
                 <button class="btn-primary" onclick="closeRejectionModal()">Понятно</button>
             </div>
         </div>
+
+        <!-- История заказов -->
+        <div id="orderHistoryModal" class="modal">
+            <div class="modal-content" style="max-width: 400px;">
+                <h2>История заказов</h2>
+                <div id="orderHistoryList" style="max-height: 300px; overflow-y: auto; margin: 20px 0;">
+                    <!-- Заказы будут загружены динамически -->
+                </div>
+                <button class="btn-primary" onclick="closeOrderHistory()">Закрыть</button>
+            </div>
+        </div>
+
+        <!-- Редактирование профиля -->
+        <div id="editProfileModal" class="modal">
+            <div class="modal-content" style="max-width: 400px;">
+                <h2>Редактировать профиль</h2>
+                <form id="editProfileForm" style="margin: 20px 0;">
+                    <div class="form-group">
+                        <label for="editFirstName">Имя *</label>
+                        <input type="text" id="editFirstName" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="editPhone">Телефон *</label>
+                        <input type="tel" id="editPhone" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="editInstagram">Instagram *</label>
+                        <input type="text" id="editInstagram" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="editFollowers">Подписчики *</label>
+                        <input type="number" id="editFollowers" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="editViews">Просмотры *</label>
+                        <input type="number" id="editViews" required>
+                    </div>
+                </form>
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn-primary" onclick="saveProfile()" style="flex: 1;">Сохранить</button>
+                    <button class="btn-secondary" onclick="closeEditProfile()" style="flex: 1;">Отмена</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Кнопка админ панели (видна только админам) -->
+    <div class="admin-panel" id="adminPanel" style="display: none;">
+        <button class="admin-btn" onclick="showCRM()" title="Админ панель">⚙️</button>
     </div>
 
     <script>
@@ -660,28 +1003,64 @@
             registration: {},
             order: {},
             level: '',
-            promoCode: ''
+            orders: []
         };
 
         let selectedSet = '';
         let selectedDate = '';
         let selectedTime = '';
 
+        // Системные данные (имитация базы данных)
+        let systemData = {
+            users: {},
+            orders: [],
+            admins: [1345815453, 987654321] // ID админов
+        };
+
+        // Проверка является ли пользователь админом
+        function isAdmin() {
+            const user = tg.initDataUnsafe?.user;
+            return user && systemData.admins.includes(user.id);
+        }
+
+        // Получение уникального ID пользователя
+        function getUserId() {
+            const user = tg.initDataUnsafe?.user;
+            return user ? user.id : 'demo_user';
+        }
+
+        // Сохранение данных в localStorage
+        function saveData() {
+            const userId = getUserId();
+            localStorage.setItem('userData_' + userId, JSON.stringify(userData));
+            localStorage.setItem('systemData', JSON.stringify(systemData));
+        }
+
+        // Загрузка данных из localStorage
+        function loadData() {
+            const userId = getUserId();
+            const savedUserData = localStorage.getItem('userData_' + userId);
+            const savedSystemData = localStorage.getItem('systemData');
+            
+            if (savedUserData) {
+                userData = JSON.parse(savedUserData);
+            }
+            
+            if (savedSystemData) {
+                systemData = JSON.parse(savedSystemData);
+            }
+        }
+
         // Автозаполнение данных из Telegram
         function initTelegramData() {
             const user = tg.initDataUnsafe?.user;
             if (user) {
                 document.getElementById('firstName').value = user.first_name || '';
-                // Telegram не предоставляет номер телефона через WebApp API
-                // Поэтому пользователь должен ввести его вручную
+                
+                // Генерируем аватар из первой буквы имени
+                const avatar = user.first_name ? user.first_name.charAt(0).toUpperCase() : '👤';
+                document.getElementById('userAvatar').textContent = avatar;
             }
-        }
-
-        // Генерация промокода
-        function generatePromoCode(name, level) {
-            const prefix = level === 'micro' ? 'MICRO' : 'MACRO';
-            const randomNum = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
-            return `${prefix}${randomNum}`;
         }
 
         // Определение уровня блогера
@@ -710,6 +1089,17 @@
         function showDashboard() {
             hideAllScreens();
             document.getElementById('dashboardScreen').style.display = 'block';
+            updateDashboard();
+        }
+
+        function showCRM() {
+            if (!isAdmin()) {
+                showError('Доступ запрещен', 'У вас нет прав администратора');
+                return;
+            }
+            hideAllScreens();
+            document.getElementById('crmScreen').style.display = 'block';
+            updateCRMData();
         }
 
         function showSetSelection() {
@@ -742,22 +1132,86 @@
             
             hideAllScreens();
             document.getElementById('instructionsScreen').style.display = 'block';
-            document.getElementById('instructionPromo').textContent = userData.promoCode;
         }
 
         function hideAllScreens() {
-            const screens = ['welcomeScreen', 'registrationScreen', 'dashboardScreen', 'setSelectionScreen', 'dateTimeScreen', 'addressScreen', 'instructionsScreen'];
+            const screens = ['welcomeScreen', 'registrationScreen', 'dashboardScreen', 'setSelectionScreen', 'dateTimeScreen', 'addressScreen', 'instructionsScreen', 'crmScreen'];
             screens.forEach(screen => {
                 document.getElementById(screen).style.display = 'none';
             });
         }
 
-        // Начать регистрацию
-        function startRegistration() {
+        // Обновление dashboard
+        function updateDashboard() {
+            if (userData.registration.firstName) {
+                document.getElementById('userName').textContent = userData.registration.firstName;
+                document.getElementById('followersDisplay').textContent = userData.registration.followersCount?.toLocaleString() || '0';
+                document.getElementById('viewsDisplay').textContent = userData.registration.avgViews?.toLocaleString() || '0';
+                
+                const levelData = determineBloggerLevel(userData.registration.followersCount || 0);
+                document.getElementById('userLevel').textContent = levelData.text;
+            }
+        }
+
+        // Обновление CRM данных
+        function updateCRMData() {
+            document.getElementById('totalUsers').textContent = Object.keys(systemData.users).length;
+            document.getElementById('totalOrders').textContent = systemData.orders.length;
+            document.getElementById('newOrders').textContent = systemData.orders.filter(order => order.status === 'new').length;
+            
+            const ordersList = document.getElementById('ordersList');
+            ordersList.innerHTML = '';
+            
+            if (systemData.orders.length === 0) {
+                ordersList.innerHTML = '<div style="padding: 40px; text-align: center; color: #999;">Пока нет заказов</div>';
+                return;
+            }
+            
+            systemData.orders.slice(-10).reverse().forEach(order => {
+                const orderElement = document.createElement('div');
+                orderElement.className = 'order-item';
+                orderElement.innerHTML = `
+                    <div class="order-header">
+                        <span class="order-id">#${order.id}</span>
+                        <span class="order-status status-${order.status}">${getStatusText(order.status)}</span>
+                    </div>
+                    <div class="order-info">
+                        <strong>${order.userName}</strong> (${order.userLevel})<br>
+                        ${order.phone} | ${order.instagram}<br>
+                        ${order.city}, ${order.street}<br>
+                        <small>${order.date}</small>
+                    </div>
+                `;
+                ordersList.appendChild(orderElement);
+            });
+        }
+
+        function getStatusText(status) {
+            const statusMap = {
+                'new': 'Новый',
+                'confirmed': 'Подтвержден',
+                'delivered': 'Доставлен'
+            };
+            return statusMap[status] || 'Неизвестно';
+        }
+
+        // Проверка пользователя и автовход
+        function checkUserAndStart() {
+            const userId = getUserId();
+            const savedData = localStorage.getItem('userData_' + userId);
+            
+            if (savedData) {
+                userData = JSON.parse(savedData);
+                if (userData.registration && userData.registration.firstName) {
+                    showDashboard();
+                    return;
+                }
+            }
+            
             showRegistration();
         }
 
-        // Отправка регистрации
+        // Регистрация
         function submitRegistration() {
             const firstName = document.getElementById('firstName').value.trim();
             const phone = document.getElementById('phone').value.trim();
@@ -790,13 +1244,13 @@
             };
             
             userData.level = bloggerData.level;
-            userData.promoCode = generatePromoCode(firstName, bloggerData.level);
+            userData.orders = [];
 
-            // Отображение в личном кабинете
-            document.getElementById('userName').textContent = firstName;
-            document.getElementById('userLevel').textContent = bloggerData.text;
-            document.getElementById('promoCode').textContent = userData.promoCode;
+            // Сохранение в системные данные
+            const userId = getUserId();
+            systemData.users[userId] = userData;
 
+            saveData();
             showDashboard();
         }
 
@@ -807,6 +1261,93 @@
             } else {
                 showAddressForm();
             }
+        }
+
+        // История заказов
+        function showOrderHistory() {
+            const historyList = document.getElementById('orderHistoryList');
+            historyList.innerHTML = '';
+            
+            if (!userData.orders || userData.orders.length === 0) {
+                historyList.innerHTML = '<div style="text-align: center; padding: 20px; color: #999;">Пока нет заказов</div>';
+            } else {
+                userData.orders.forEach(order => {
+                    const orderDiv = document.createElement('div');
+                    orderDiv.style.cssText = 'padding: 15px; border: 1px solid #4a4a4a; border-radius: 10px; margin-bottom: 10px;';
+                    orderDiv.innerHTML = `
+                        <div style="font-weight: 600; color: #00b4d8;">#${order.id}</div>
+                        <div style="font-size: 14px; color: #ccc; margin-top: 5px;">
+                            ${order.set || 'Макроблогер'}<br>
+                            ${order.date}<br>
+                            <span style="color: ${order.status === 'delivered' ? '#28a745' : '#ff6b35'};">${getStatusText(order.status)}</span>
+                        </div>
+                    `;
+                    historyList.appendChild(orderDiv);
+                });
+            }
+            
+            document.getElementById('orderHistoryModal').style.display = 'flex';
+        }
+
+        function closeOrderHistory() {
+            document.getElementById('orderHistoryModal').style.display = 'none';
+        }
+
+        // Редактирование профиля
+        function editProfile() {
+            // Заполнение формы текущими данными
+            document.getElementById('editFirstName').value = userData.registration.firstName || '';
+            document.getElementById('editPhone').value = userData.registration.phone || '';
+            document.getElementById('editInstagram').value = userData.registration.instagramLogin || '';
+            document.getElementById('editFollowers').value = userData.registration.followersCount || '';
+            document.getElementById('editViews').value = userData.registration.avgViews || '';
+            
+            document.getElementById('editProfileModal').style.display = 'flex';
+        }
+
+        function saveProfile() {
+            const firstName = document.getElementById('editFirstName').value.trim();
+            const phone = document.getElementById('editPhone').value.trim();
+            const instagramLogin = document.getElementById('editInstagram').value.trim();
+            const followersCount = parseInt(document.getElementById('editFollowers').value);
+            const avgViews = parseInt(document.getElementById('editViews').value);
+
+            if (!firstName || !phone || !instagramLogin || !followersCount || !avgViews) {
+                showError('Ошибка валидации', 'Пожалуйста, заполните все поля');
+                return;
+            }
+
+            userData.registration = {
+                firstName,
+                phone,
+                instagramLogin,
+                followersCount,
+                avgViews
+            };
+
+            userData.level = determineBloggerLevel(followersCount).level;
+
+            // Обновление в системных данных
+            const userId = getUserId();
+            systemData.users[userId] = userData;
+
+            saveData();
+            updateDashboard();
+            closeEditProfile();
+            
+            showSuccessMessage('Профиль обновлен!');
+        }
+
+        function closeEditProfile() {
+            document.getElementById('editProfileModal').style.display = 'none';
+        }
+
+        // Выход из аккаунта
+        function logout() {
+            const userId = getUserId();
+            localStorage.removeItem('userData_' + userId);
+            userData = { registration: {}, order: {}, level: '', orders: [] };
+            showWelcomeScreen();
         }
 
         // Выбор набора
@@ -825,7 +1366,7 @@
             const dateInput = document.getElementById('deliveryDate');
             const today = new Date();
             const maxDate = new Date();
-            maxDate.setDate(today.getDate() + 14); // 2 недели вперед
+            maxDate.setDate(today.getDate() + 14);
             
             dateInput.min = today.toISOString().split('T')[0];
             dateInput.max = maxDate.toISOString().split('T')[0];
@@ -842,10 +1383,9 @@
 
             let timeSlots = [];
             
-            // Чт-Вс: 10:00–18:00, Пн-Ср: 10:00–20:00
-            if (dayOfWeek >= 1 && dayOfWeek <= 3) { // Пн-Ср
+            if (dayOfWeek >= 1 && dayOfWeek <= 3) {
                 timeSlots = ['10:00', '12:00', '14:00', '16:00', '18:00', '20:00'];
-            } else if (dayOfWeek >= 4 || dayOfWeek === 0) { // Чт-Вс
+            } else if (dayOfWeek >= 4 || dayOfWeek === 0) {
                 timeSlots = ['10:00', '12:00', '14:00', '16:00', '18:00'];
             }
 
@@ -860,8 +1400,7 @@
 
         // Выбор временного слота
         function selectTimeSlot(element, time) {
-            // Проверка доступности слота (симуляция)
-            if (Math.random() < 0.1) { // 10% шанс что слот занят
+            if (Math.random() < 0.1) {
                 showError('Слот недоступен', 'К сожалению, на выбранное время уже забронировано. Пожалуйста, выберите другое.');
                 return;
             }
@@ -886,7 +1425,6 @@
                 return false;
             }
 
-            // Проверка скриншота для макроблогеров
             if ((userData.level === 'macro-a' || userData.level === 'macro-b') && 
                 !document.getElementById('orderScreenshot').files.length) {
                 showError('Ошибка валидации', 'Пожалуйста, загрузите скриншот заказа');
@@ -898,34 +1436,45 @@
 
         // Отправка заказа
         async function submitOrder() {
-            // Собираем данные заказа
-            const orderData = {
-                registration: userData.registration,
-                level: userData.level,
-                promoCode: userData.promoCode,
+            const orderId = Date.now();
+            
+            // Создание заказа
+            const newOrder = {
+                id: orderId,
+                userId: getUserId(),
+                userName: userData.registration.firstName,
+                userLevel: determineBloggerLevel(userData.registration.followersCount).text,
+                phone: userData.registration.phone,
+                instagram: userData.registration.instagramLogin,
                 set: selectedSet,
-                date: selectedDate,
+                date: selectedDate || new Date().toISOString().split('T')[0],
                 time: selectedTime,
-                address: {
-                    city: document.getElementById('city').value,
-                    street: document.getElementById('street').value.trim(),
-                    entrance: document.getElementById('entrance').value.trim(),
-                    floor: document.getElementById('floor').value.trim(),
-                    recipientPhone: document.getElementById('recipientPhone').value.trim(),
-                    comment: document.getElementById('comment').value.trim()
-                }
+                city: document.getElementById('city').value,
+                street: document.getElementById('street').value.trim(),
+                entrance: document.getElementById('entrance').value.trim(),
+                floor: document.getElementById('floor').value.trim(),
+                recipientPhone: document.getElementById('recipientPhone').value.trim(),
+                comment: document.getElementById('comment').value.trim(),
+                status: 'new',
+                createdAt: new Date().toISOString()
             };
+
+            // Добавление в пользовательские заказы
+            userData.orders = userData.orders || [];
+            userData.orders.push(newOrder);
+
+            // Добавление в системные заказы
+            systemData.orders.push(newOrder);
 
             // Формируем сообщение для Telegram
             let message = `🆕 *Новая заявка на бартер*\n\n`;
             message += `👤 *Блогер:*\n`;
-            message += `Имя: ${orderData.registration.firstName}\n`;
-            message += `Телефон: ${orderData.registration.phone}\n`;
-            message += `Instagram: ${orderData.registration.instagramLogin}\n`;
-            message += `Подписчики: ${orderData.registration.followersCount}\n`;
-            message += `Средние просмотры: ${orderData.registration.avgViews}\n`;
-            message += `Уровень: ${document.getElementById('userLevel').textContent}\n`;
-            message += `Промокод: ${orderData.promoCode}\n\n`;
+            message += `Имя: ${userData.registration.firstName}\n`;
+            message += `Телефон: ${userData.registration.phone}\n`;
+            message += `Instagram: ${userData.registration.instagramLogin}\n`;
+            message += `Подписчики: ${userData.registration.followersCount}\n`;
+            message += `Средние просмотры: ${userData.registration.avgViews}\n`;
+            message += `Уровень: ${determineBloggerLevel(userData.registration.followersCount).text}\n\n`;
 
             if (userData.level === 'micro') {
                 message += `🍱 *Заказ:*\n`;
@@ -940,12 +1489,13 @@
             }
 
             message += `📍 *Доставка:*\n`;
-            message += `Город: ${orderData.address.city}\n`;
-            message += `Адрес: ${orderData.address.street}\n`;
-            if (orderData.address.entrance) message += `Подъезд: ${orderData.address.entrance}\n`;
-            if (orderData.address.floor) message += `Этаж: ${orderData.address.floor}\n`;
-            message += `Телефон получателя: ${orderData.address.recipientPhone}\n`;
-            if (orderData.address.comment) message += `Комментарий: ${orderData.address.comment}\n`;
+            message += `Город: ${newOrder.city}\n`;
+            message += `Адрес: ${newOrder.street}\n`;
+            if (newOrder.entrance) message += `Подъезд: ${newOrder.entrance}\n`;
+            if (newOrder.floor) message += `Этаж: ${newOrder.floor}\n`;
+            message += `Телефон получателя: ${newOrder.recipientPhone}\n`;
+            if (newOrder.comment) message += `Комментарий: ${newOrder.comment}\n`;
+            message += `\n📋 *ID заказа:* ${orderId}`;
 
             // Отправка в Telegram
             const botToken = '8227812944:AAFy8ydOkUeCj3Qkjg7_Xsq6zyQpcUyMShY';
@@ -965,6 +1515,7 @@
                 });
 
                 if (response.ok) {
+                    saveData();
                     showSuccessModal();
                 } else {
                     showError('Ошибка', 'Произошла ошибка при отправке заявки. Попробуйте позже.');
@@ -978,6 +1529,12 @@
         // Модальные окна
         function showSuccessModal() {
             document.getElementById('successModal').style.display = 'flex';
+        }
+
+        function showSuccessMessage(message) {
+            document.getElementById('errorTitle').textContent = 'Успешно!';
+            document.getElementById('errorMessage').textContent = message;
+            document.getElementById('errorModal').style.display = 'flex';
         }
 
         function showError(title, message) {
@@ -1045,8 +1602,16 @@
 
         // Инициализация при загрузке
         document.addEventListener('DOMContentLoaded', function() {
+            loadData();
+            
             setupPhoneMask('phone');
             setupPhoneMask('recipientPhone');
+            setupPhoneMask('editPhone');
+            
+            // Показ кнопки админ панели для админов
+            if (isAdmin()) {
+                document.getElementById('adminPanel').style.display = 'block';
+            }
             
             // Предотвращение отправки форм по Enter
             document.querySelectorAll('form').forEach(form => {
@@ -1068,38 +1633,10 @@
             });
         });
 
-        // Проверка существующего пользователя (симуляция)
-        function checkExistingUser() {
-            // В реальном приложении здесь была бы проверка в базе данных
-            // По Telegram ID пользователя
-            const user = tg.initDataUnsafe?.user;
-            if (user && localStorage.getItem('userData_' + user.id)) {
-                const savedData = JSON.parse(localStorage.getItem('userData_' + user.id));
-                userData = savedData;
-                
-                document.getElementById('userName').textContent = userData.registration.firstName;
-                document.getElementById('userLevel').textContent = determineBloggerLevel(userData.registration.followersCount).text;
-                document.getElementById('promoCode').textContent = userData.promoCode;
-                
-                showDashboard();
-                return true;
-            }
-            return false;
-        }
-
-        // Сохранение данных пользователя
-        function saveUserData() {
-            const user = tg.initDataUnsafe?.user;
-            if (user) {
-                localStorage.setItem('userData_' + user.id, JSON.stringify(userData));
-            }
-        }
-
         // Инициализация приложения
         window.onload = function() {
-            if (!checkExistingUser()) {
-                showWelcomeScreen();
-            }
+            loadData();
+            checkUserAndStart();
         };
     </script>
 </body>
