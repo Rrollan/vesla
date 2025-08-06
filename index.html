@@ -668,7 +668,46 @@
             </div>
             <h1>Бартер для блогеров</h1>
             <p class="subtitle">Эксклюзивное предложение<br>для блогеров и инфлюенсеров</p>
-            <button class="btn-primary" onclick="checkUserAndStart()">Начать</button>
+            <div class="welcome-buttons">
+                <button class="btn-primary" onclick="showRegistration()">Регистрация</button>
+                <button class="btn-secondary" onclick="showLogin()">Вход в аккаунт</button>
+            </div>
+            <div class="auto-login-info" id="autoLoginInfo" style="display: none;">
+                <p style="color: #999; font-size: 14px; margin-top: 20px;">
+                    🔄 Выполняется автоматический вход по Telegram...
+                </p>
+            </div>
+        </div>
+
+        <!-- Экран входа -->
+        <div id="loginScreen" class="form-screen">
+            <div class="form-header">
+                <h2>Вход в аккаунт</h2>
+                <p class="subtitle">Введите данные для входа</p>
+            </div>
+
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="loginPhone">Номер телефона *</label>
+                    <input type="tel" id="loginPhone" required placeholder="+7 (___) ___-__-__">
+                </div>
+
+                <div class="form-group">
+                    <label for="loginInstagram">Логин Instagram *</label>
+                    <input type="text" id="loginInstagram" required placeholder="@username">
+                </div>
+
+                <button type="button" class="btn-primary" onclick="submitLogin()">Войти</button>
+                <button type="button" class="btn-secondary" onclick="showWelcomeScreen()">← Назад</button>
+            </form>
+
+            <div class="login-help" style="margin-top: 30px; padding: 20px; background: #3a3a3a; border-radius: 12px;">
+                <h4 style="color: #00b4d8; margin-bottom: 10px;">💡 Подсказка</h4>
+                <p style="color: #ccc; font-size: 14px; line-height: 1.5;">
+                    Если вы запускаете приложение из Telegram, система попытается автоматически найти ваш аккаунт. 
+                    Если автовход не сработал, введите телефон и Instagram, которые использовали при регистрации.
+                </p>
+            </div>
         </div>
 
         <!-- Форма регистрации -->
