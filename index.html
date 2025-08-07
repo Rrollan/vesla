@@ -123,6 +123,21 @@
             background: #5a5a5a;
         }
 
+        .btn-small {
+            padding: 10px 20px;
+            font-size: 14px;
+            margin: 5px;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c82333;
+        }
+
         /* Формы */
         .form-screen {
             display: none;
@@ -157,6 +172,7 @@
         input[type="email"],
         input[type="number"],
         input[type="date"],
+        input[type="password"],
         select,
         textarea {
             width: 100%;
@@ -175,6 +191,17 @@
             outline: none;
             border-color: #00b4d8;
             background: #404040;
+        }
+
+        .input-error {
+            border-color: #dc3545 !important;
+        }
+
+        .error-message {
+            color: #dc3545;
+            font-size: 12px;
+            margin-top: 5px;
+            display: none;
         }
 
         .btn-back {
@@ -340,9 +367,46 @@
             text-align: center;
         }
 
+        .crm-tabs {
+            display: flex;
+            background: #3a3a3a;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+
+        .crm-tab {
+            flex: 1;
+            padding: 15px;
+            background: transparent;
+            border: none;
+            color: #999;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .crm-tab.active {
+            background: #00b4d8;
+            color: white;
+        }
+
+        .crm-tab:hover {
+            color: white;
+        }
+
+        .crm-content {
+            display: none;
+        }
+
+        .crm-content.active {
+            display: block;
+        }
+
         .crm-stats {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
             gap: 15px;
             margin-bottom: 30px;
         }
@@ -426,6 +490,62 @@
             line-height: 1.5;
         }
 
+        /* Блокировки времени */
+        .blocked-slots {
+            margin-bottom: 20px;
+        }
+
+        .blocked-slot {
+            background: #3a3a3a;
+            border: 1px solid #4a4a4a;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .blocked-slot-info {
+            flex: 1;
+        }
+
+        .blocked-slot-city {
+            font-weight: 600;
+            color: #00b4d8;
+        }
+
+        .blocked-slot-time {
+            color: #ccc;
+            font-size: 14px;
+        }
+
+        /* Управление пользователями */
+        .user-item {
+            background: #3a3a3a;
+            border: 1px solid #4a4a4a;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+        }
+
+        .user-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .user-name-phone {
+            font-weight: 600;
+            color: #00b4d8;
+        }
+
+        .user-controls {
+            display: flex;
+            gap: 10px;
+        }
+
         /* Модальные окна */
         .modal {
             display: none;
@@ -448,11 +568,14 @@
             max-width: 350px;
             width: 90%;
             animation: fadeIn 0.3s ease-out;
+            max-height: 80vh;
+            overflow-y: auto;
         }
 
         .success-icon {
             font-size: 60px;
             margin-bottom: 20px;
+            color: #28a745;
         }
 
         .error-icon {
@@ -596,6 +719,7 @@
         .time-slot.disabled {
             opacity: 0.5;
             cursor: not-allowed;
+            background: #555;
         }
 
         /* Инструкции */
@@ -644,6 +768,31 @@
             border-left: 4px solid #00b4d8;
         }
 
+        /* Контакты администратора */
+        .admin-contact {
+            background: #3a3a3a;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .contact-link {
+            display: inline-block;
+            background: #00b4d8;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 25px;
+            text-decoration: none;
+            margin: 10px;
+            transition: all 0.3s ease;
+        }
+
+        .contact-link:hover {
+            background: #0099b8;
+            transform: translateY(-2px);
+        }
+
         /* Адаптивность */
         @media (max-width: 380px) {
             .container {
@@ -676,6 +825,30 @@
 
         ::-webkit-scrollbar-thumb:hover {
             background: #5a5a5a;
+        }
+
+        /* Дополнительные стили для форм */
+        .form-row {
+            display: flex;
+            gap: 15px;
+        }
+
+        .form-row .form-group {
+            flex: 1;
+        }
+
+        .search-input {
+            background: #3a3a3a;
+            border: 1px solid #4a4a4a;
+            border-radius: 8px;
+            padding: 10px;
+            color: #fff;
+            margin-bottom: 15px;
+        }
+
+        .search-input:focus {
+            border-color: #00b4d8;
+            outline: none;
         }
     </style>
 </head>
@@ -715,6 +888,11 @@
                     <input type="text" id="loginInstagram" required placeholder="@username">
                 </div>
 
+                <div class="form-group">
+                    <label for="loginPassword">Пароль *</label>
+                    <input type="password" id="loginPassword" required placeholder="Введите пароль">
+                </div>
+
                 <button type="button" class="btn-primary" onclick="submitLogin()">Войти</button>
                 <button type="button" class="btn-secondary" onclick="showWelcomeScreen()">← Назад</button>
             </form>
@@ -723,7 +901,7 @@
                 <h4 style="color: #00b4d8; margin-bottom: 10px;">💡 Автоматический вход</h4>
                 <p style="color: #ccc; font-size: 14px; line-height: 1.5;">
                     Если вы открыли приложение через Telegram бот, система попытается найти ваш аккаунт автоматически. 
-                    Если это не сработало, введите телефон и Instagram из вашей регистрации.
+                    Если это не сработало, введите телефон, Instagram и пароль из вашей регистрации.
                 </p>
             </div>
         </div>
@@ -751,13 +929,21 @@
                 </div>
 
                 <div class="form-group">
+                    <label for="password">Пароль *</label>
+                    <input type="password" id="password" required placeholder="Придумайте пароль (минимум 6 символов)">
+                    <div class="error-message" id="passwordError">Пароль должен содержать минимум 6 символов</div>
+                </div>
+
+                <div class="form-group">
                     <label for="followersCount">Количество подписчиков *</label>
-                    <input type="number" id="followersCount" required placeholder="Например: 5000">
+                    <input type="number" id="followersCount" required placeholder="Например: 5000" min="1" max="10000000">
+                    <div class="error-message" id="followersError">Введите реальное количество подписчиков (от 1 до 10,000,000)</div>
                 </div>
 
                 <div class="form-group">
                     <label for="avgViews">Среднее количество просмотров сторис *</label>
-                    <input type="number" id="avgViews" required placeholder="Например: 500">
+                    <input type="number" id="avgViews" required placeholder="Например: 500" min="1" max="10000000">
+                    <div class="error-message" id="viewsError">Введите реальное количество просмотров (от 1 до 10,000,000)</div>
                 </div>
 
                 <button type="button" class="btn-primary" onclick="submitRegistration()">Зарегистрироваться</button>
@@ -798,6 +984,11 @@
                     <div class="action-title">Редактировать профиль</div>
                     <div class="action-desc">Изменить данные аккаунта</div>
                 </div>
+                <div class="action-card" onclick="contactAdmin()">
+                    <div class="action-icon">📞</div>
+                    <div class="action-title">Связаться с администратором</div>
+                    <div class="action-desc">Задать вопрос или получить помощь</div>
+                </div>
             </div>
 
             <button class="btn-secondary" onclick="logout()">Выйти из аккаунта</button>
@@ -809,23 +1000,69 @@
                 <button class="btn-back" onclick="showDashboard()">← Назад</button>
             </div>
 
-            <div class="crm-stats">
-                <div class="crm-stat-card">
-                    <div class="crm-stat-number" id="totalUsers">0</div>
-                    <div class="crm-stat-label">Пользователи</div>
+            <div class="crm-tabs">
+                <button class="crm-tab active" onclick="showCrmTab('overview')">Обзор</button>
+                <button class="crm-tab" onclick="showCrmTab('orders')">Заказы</button>
+                <button class="crm-tab" onclick="showCrmTab('users')">Пользователи</button>
+                <button class="crm-tab" onclick="showCrmTab('blocks')">Блокировки</button>
+                <button class="crm-tab" onclick="showCrmTab('admins')">Админы</button>
+            </div>
+
+            <!-- Вкладка обзор -->
+            <div id="crmOverview" class="crm-content active">
+                <div class="crm-stats">
+                    <div class="crm-stat-card">
+                        <div class="crm-stat-number" id="totalUsers">0</div>
+                        <div class="crm-stat-label">Пользователи</div>
+                    </div>
+                    <div class="crm-stat-card">
+                        <div class="crm-stat-number" id="totalOrders">0</div>
+                        <div class="crm-stat-label">Заказы</div>
+                    </div>
+                    <div class="crm-stat-card">
+                        <div class="crm-stat-number" id="newOrders">0</div>
+                        <div class="crm-stat-label">Новые</div>
+                    </div>
+                    <div class="crm-stat-card">
+                        <div class="crm-stat-number" id="blockedSlots">0</div>
+                        <div class="crm-stat-label">Блокировки</div>
+                    </div>
                 </div>
-                <div class="crm-stat-card">
-                    <div class="crm-stat-number" id="totalOrders">0</div>
-                    <div class="crm-stat-label">Заказы</div>
-                </div>
-                <div class="crm-stat-card">
-                    <div class="crm-stat-number" id="newOrders">0</div>
-                    <div class="crm-stat-label">Новые</div>
+
+                <div class="admin-contact">
+                    <h3>Контакты для пользователей</h3>
+                    <a href="https://t.me/vesla_support" class="contact-link" target="_blank">💬 Telegram поддержка</a>
+                    <a href="mailto:support@vesla.kz" class="contact-link">📧 Email поддержка</a>
                 </div>
             </div>
 
-            <div class="orders-list" id="ordersList">
+            <!-- Вкладка заказы -->
+            <div id="crmOrders" class="crm-content">
+                <div class="search-input">
+                    <input type="text" id="orderSearch" placeholder="Поиск по имени, телефону или Instagram..." onkeyup="filterOrders()">
                 </div>
+                <div class="orders-list" id="ordersList"></div>
+            </div>
+
+            <!-- Вкладка пользователи -->
+            <div id="crmUsers" class="crm-content">
+                <div class="search-input">
+                    <input type="text" id="userSearch" placeholder="Поиск пользователей..." onkeyup="filterUsers()">
+                </div>
+                <div id="usersList"></div>
+            </div>
+
+            <!-- Вкладка блокировки -->
+            <div id="crmBlocks" class="crm-content">
+                <button class="btn-primary" onclick="showAddBlockModal()" style="margin-bottom: 20px;">+ Добавить блокировку</button>
+                <div class="blocked-slots" id="blockedSlotsList"></div>
+            </div>
+
+            <!-- Вкладка админы -->
+            <div id="crmAdmins" class="crm-content">
+                <button class="btn-primary" onclick="showAddAdminModal()" style="margin-bottom: 20px;">+ Добавить администратора</button>
+                <div id="adminsList"></div>
+            </div>
         </div>
 
         <div id="setSelectionScreen" class="form-screen set-selection">
@@ -961,6 +1198,7 @@
             <button type="button" class="btn-primary" onclick="submitOrder()">Оформить заказ</button>
         </div>
 
+        <!-- Модальные окна -->
         <div id="successModal" class="modal">
             <div class="modal-content">
                 <div class="success-icon">✅</div>
@@ -991,8 +1229,7 @@
         <div id="orderHistoryModal" class="modal">
             <div class="modal-content" style="max-width: 400px;">
                 <h2>История заказов</h2>
-                <div id="orderHistoryList" style="max-height: 300px; overflow-y: auto; margin: 20px 0;">
-                    </div>
+                <div id="orderHistoryList" style="max-height: 300px; overflow-y: auto; margin: 20px 0;"></div>
                 <button class="btn-primary" onclick="closeOrderHistory()">Закрыть</button>
             </div>
         </div>
@@ -1015,17 +1252,88 @@
                     </div>
                     <div class="form-group">
                         <label for="editFollowers">Подписчики *</label>
-                        <input type="number" id="editFollowers" required>
+                        <input type="number" id="editFollowers" required min="1" max="10000000">
+                        <div class="error-message" id="editFollowersError">Введите реальное количество подписчиков (от 1 до 10,000,000)</div>
                     </div>
                     <div class="form-group">
                         <label for="editViews">Просмотры *</label>
-                        <input type="number" id="editViews" required>
+                        <input type="number" id="editViews" required min="1" max="10000000">
+                        <div class="error-message" id="editViewsError">Введите реальное количество просмотров (от 1 до 10,000,000)</div>
+                    </div>
+                    <div class="form-group">
+                        <label for="editPassword">Новый пароль (оставьте пустым, если не меняете)</label>
+                        <input type="password" id="editPassword" placeholder="Новый пароль">
                     </div>
                 </form>
                 <div style="display: flex; gap: 10px;">
                     <button class="btn-primary" onclick="saveProfile()" style="flex: 1;">Сохранить</button>
                     <button class="btn-secondary" onclick="closeEditProfile()" style="flex: 1;">Отмена</button>
                 </div>
+            </div>
+        </div>
+
+        <div id="addBlockModal" class="modal">
+            <div class="modal-content" style="max-width: 400px;">
+                <h2>Добавить блокировку</h2>
+                <form id="addBlockForm" style="margin: 20px 0;">
+                    <div class="form-group">
+                        <label for="blockCity">Город *</label>
+                        <select id="blockCity" required>
+                            <option value="">Выберите город</option>
+                            <option value="Павлодар">Павлодар</option>
+                            <option value="Петропавловск">Петропавловск</option>
+                            <option value="Кокшетау">Кокшетау</option>
+                            <option value="Костанай">Костанай</option>
+                            <option value="Усть-Каменогорск">Усть-Каменогорск</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="blockDate">Дата *</label>
+                        <input type="date" id="blockDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="blockTime">Время *</label>
+                        <input type="time" id="blockTime" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="blockReason">Причина</label>
+                        <input type="text" id="blockReason" placeholder="Причина блокировки">
+                    </div>
+                </form>
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn-primary" onclick="addBlock()" style="flex: 1;">Добавить</button>
+                    <button class="btn-secondary" onclick="closeAddBlockModal()" style="flex: 1;">Отмена</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="addAdminModal" class="modal">
+            <div class="modal-content" style="max-width: 400px;">
+                <h2>Добавить администратора</h2>
+                <form id="addAdminForm" style="margin: 20px 0;">
+                    <div class="form-group">
+                        <label for="adminTelegramId">Telegram ID *</label>
+                        <input type="number" id="adminTelegramId" required placeholder="123456789">
+                    </div>
+                    <div class="form-group">
+                        <label for="adminName">Имя</label>
+                        <input type="text" id="adminName" placeholder="Имя администратора">
+                    </div>
+                </form>
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn-primary" onclick="addAdmin()" style="flex: 1;">Добавить</button>
+                    <button class="btn-secondary" onclick="closeAddAdminModal()" style="flex: 1;">Отмена</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="contactModal" class="modal">
+            <div class="modal-content">
+                <h2>Связаться с администратором</h2>
+                <p class="subtitle">Выберите удобный способ связи</p>
+                <a href="https://t.me/vesla_support" class="contact-link" target="_blank">💬 Telegram поддержка</a>
+                <a href="mailto:support@vesla.kz" class="contact-link">📧 Email поддержка</a>
+                <button class="btn-secondary" onclick="closeContactModal()">Закрыть</button>
             </div>
         </div>
     </div>
@@ -1078,9 +1386,12 @@
         let systemData = {
             users: {},
             orders: [],
-            admins: [1345815453, 987654321], // ID админов
-            usersByPhone: {}, // Индекс пользователей по телефону
-            usersByInstagram: {} // Индекс пользователей по Instagram
+            admins: [
+                { id: 1345815453, name: 'Главный админ', addedAt: new Date().toISOString() }
+            ],
+            usersByPhone: {},
+            usersByInstagram: {},
+            blockedSlots: []
         };
 
         // Константы для хранения данных
@@ -1089,18 +1400,41 @@
             USER_DATA_PREFIX: 'blogger_user_'
         };
 
+        // Функция хеширования пароля (простая для демонстрации)
+        function hashPassword(password) {
+            // В реальном приложении используйте более надежное хеширование
+            let hash = 0;
+            for (let i = 0; i < password.length; i++) {
+                const char = password.charCodeAt(i);
+                hash = ((hash << 5) - hash) + char;
+                hash = hash & hash;
+            }
+            return hash.toString();
+        }
+
+        // Валидация пароля
+        function validatePassword(password) {
+            return password && password.length >= 6;
+        }
+
+        // Валидация числовых полей
+        function validateNumber(value, min = 1, max = 10000000) {
+            const num = parseInt(value);
+            return !isNaN(num) && num >= min && num <= max;
+        }
+
         // Получение уникального ID пользователя
         function getUserId() {
             if (telegramUser) {
                 return 'tg_' + telegramUser.id;
             }
-            // Fallback для тестирования без Telegram
             return 'demo_user_' + Math.random().toString(36).substr(2, 9);
         }
 
         // Проверка является ли пользователь админом
         function isAdmin() {
-            return telegramUser && systemData.admins.includes(telegramUser.id);
+            if (!telegramUser) return false;
+            return systemData.admins.some(admin => admin.id === telegramUser.id);
         }
 
         // Сохранение данных
@@ -1108,11 +1442,9 @@
             try {
                 const userId = getUserId();
                 
-                // Сохраняем пользовательские данные
                 const userDataKey = STORAGE_KEYS.USER_DATA_PREFIX + userId;
                 localStorage.setItem(userDataKey, JSON.stringify(userData));
                 
-                // Обновляем системные данные
                 systemData.users[userId] = {
                     ...userData,
                     userId: userId,
@@ -1120,7 +1452,6 @@
                     lastActivity: new Date().toISOString()
                 };
                 
-                // Обновляем индексы
                 if (userData.registration.phone) {
                     systemData.usersByPhone[userData.registration.phone] = userId;
                 }
@@ -1128,7 +1459,6 @@
                     systemData.usersByInstagram[userData.registration.instagramLogin.toLowerCase()] = userId;
                 }
                 
-                // Сохраняем системные данные
                 localStorage.setItem(STORAGE_KEYS.SYSTEM_DATA, JSON.stringify(systemData));
                 
                 console.log('Data saved successfully');
@@ -1140,14 +1470,17 @@
         // Загрузка данных
         function loadData() {
             try {
-                // Загружаем системные данные
                 const savedSystemData = localStorage.getItem(STORAGE_KEYS.SYSTEM_DATA);
                 if (savedSystemData) {
-                    systemData = { ...systemData, ...JSON.parse(savedSystemData) };
+                    const parsed = JSON.parse(savedSystemData);
+                    systemData = { ...systemData, ...parsed };
+                    // Ensure admins is always an array
+                    if (!Array.isArray(systemData.admins)) {
+                        systemData.admins = [{ id: 1345815453, name: 'Главный админ', addedAt: new Date().toISOString() }];
+                    }
                     console.log('System data loaded:', Object.keys(systemData.users).length, 'users');
                 }
                 
-                // Загружаем данные пользователя
                 const userId = getUserId();
                 const userDataKey = STORAGE_KEYS.USER_DATA_PREFIX + userId;
                 const savedUserData = localStorage.getItem(userDataKey);
@@ -1176,17 +1509,19 @@
             return null;
         }
 
-        // Поиск пользователя по телефону и Instagram
-        function findUserByCredentials(phone, instagram) {
+        // Поиск пользователя по телефону, Instagram и паролю
+        function findUserByCredentials(phone, instagram, password) {
             const phoneUserId = systemData.usersByPhone[phone];
             const instagramUserId = systemData.usersByInstagram[instagram.toLowerCase()];
             
-            // Пользователь должен совпадать и по телефону, и по Instagram
             if (phoneUserId && instagramUserId && phoneUserId === instagramUserId) {
-                return {
-                    userId: phoneUserId,
-                    userData: systemData.users[phoneUserId]
-                };
+                const user = systemData.users[phoneUserId];
+                if (user && user.registration.password === hashPassword(password)) {
+                    return {
+                        userId: phoneUserId,
+                        userData: user
+                    };
+                }
             }
             
             return null;
@@ -1213,14 +1548,12 @@
             
             console.log('Attempting Telegram auto-login for user:', telegramUser.id);
             
-            // Ищем пользователя по Telegram ID
             const existingUser = findUserByTelegramId(telegramUser.id);
             
             if (existingUser) {
                 console.log('Found existing user:', existingUser.userId);
                 userData = existingUser.userData;
                 
-                // Обновляем последнюю активность
                 userData.lastActivity = new Date().toISOString();
                 saveData();
                 
@@ -1239,7 +1572,6 @@
                     firstNameField.value = telegramUser.first_name;
                 }
                 
-                // Генерируем аватар
                 const avatar = telegramUser.first_name ? telegramUser.first_name.charAt(0).toUpperCase() : '👤';
                 const avatarEl = document.getElementById('userAvatar');
                 if (avatarEl) {
@@ -1259,6 +1591,15 @@
             } else {
                 return { level: 'macro-b', text: 'Макроблогер тип B' };
             }
+        }
+
+        // Проверка блокировки слота
+        function isSlotBlocked(city, date, time) {
+            return systemData.blockedSlots.some(block => 
+                block.city === city && 
+                block.date === date && 
+                block.time === time
+            );
         }
 
         // Функции показа экранов
@@ -1306,25 +1647,61 @@
             updateCRMData();
         }
 
+        // Управление вкладками CRM
+        function showCrmTab(tabName) {
+            // Скрываем все содержимое вкладок
+            document.querySelectorAll('.crm-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            
+            // Убираем активный класс со всех вкладок
+            document.querySelectorAll('.crm-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Показываем нужную вкладку и содержимое
+            document.getElementById('crm' + tabName.charAt(0).toUpperCase() + tabName.slice(1)).classList.add('active');
+            event.target.classList.add('active');
+            
+            // Обновляем данные для конкретной вкладки
+            switch(tabName) {
+                case 'overview':
+                    updateCRMStats();
+                    break;
+                case 'orders':
+                    updateOrdersList();
+                    break;
+                case 'users':
+                    updateUsersList();
+                    break;
+                case 'blocks':
+                    updateBlockedSlotsList();
+                    break;
+                case 'admins':
+                    updateAdminsList();
+                    break;
+            }
+        }
+
         // Вход пользователя
         function submitLogin() {
             const phone = document.getElementById('loginPhone').value.trim();
             const instagram = document.getElementById('loginInstagram').value.trim();
+            const password = document.getElementById('loginPassword').value.trim();
             
-            if (!phone || !instagram) {
+            if (!phone || !instagram || !password) {
                 showError('Ошибка валидации', 'Пожалуйста, заполните все поля');
                 return;
             }
             
             console.log('Attempting manual login for:', phone, instagram);
             
-            const existingUser = findUserByCredentials(phone, instagram);
+            const existingUser = findUserByCredentials(phone, instagram, password);
             
             if (existingUser) {
                 console.log('User found, logging in:', existingUser.userId);
                 userData = existingUser.userData;
                 
-                // Если есть Telegram пользователь, связываем аккаунты
                 if (telegramUser && !userData.telegramId) {
                     userData.telegramId = telegramUser.id;
                     console.log('Linked Telegram account to existing user');
@@ -1334,8 +1711,47 @@
                 saveData();
                 showDashboard();
             } else {
-                showError('Пользователь не найден', 'Проверьте правильность введенных данных или пройдите регистрацию');
+                showError('Неверные данные', 'Проверьте правильность введенных данных или пройдите регистрацию');
             }
+        }
+
+        // Валидация формы регистрации
+        function validateRegistrationForm() {
+            const firstName = document.getElementById('firstName').value.trim();
+            const phone = document.getElementById('phone').value.trim();
+            const instagramLogin = document.getElementById('instagramLogin').value.trim();
+            const password = document.getElementById('password').value.trim();
+            const followersCount = parseInt(document.getElementById('followersCount').value);
+            const avgViews = parseInt(document.getElementById('avgViews').value);
+
+            let isValid = true;
+
+            // Сброс ошибок
+            document.querySelectorAll('.input-error').forEach(el => el.classList.remove('input-error'));
+            document.querySelectorAll('.error-message').forEach(el => el.style.display = 'none');
+
+            // Валидация пароля
+            if (!validatePassword(password)) {
+                document.getElementById('password').classList.add('input-error');
+                document.getElementById('passwordError').style.display = 'block';
+                isValid = false;
+            }
+
+            // Валидация подписчиков
+            if (!validateNumber(followersCount, 1, 10000000)) {
+                document.getElementById('followersCount').classList.add('input-error');
+                document.getElementById('followersError').style.display = 'block';
+                isValid = false;
+            }
+
+            // Валидация просмотров
+            if (!validateNumber(avgViews, 1, 10000000)) {
+                document.getElementById('avgViews').classList.add('input-error');
+                document.getElementById('viewsError').style.display = 'block';
+                isValid = false;
+            }
+
+            return isValid;
         }
 
         // Регистрация пользователя
@@ -1343,12 +1759,17 @@
             const firstName = document.getElementById('firstName').value.trim();
             const phone = document.getElementById('phone').value.trim();
             const instagramLogin = document.getElementById('instagramLogin').value.trim();
+            const password = document.getElementById('password').value.trim();
             const followersCount = parseInt(document.getElementById('followersCount').value);
             const avgViews = parseInt(document.getElementById('avgViews').value);
 
             // Валидация
-            if (!firstName || !phone || !instagramLogin || !followersCount || !avgViews) {
+            if (!firstName || !phone || !instagramLogin || !password || !followersCount || !avgViews) {
                 showError('Ошибка валидации', 'Пожалуйста, заполните все обязательные поля');
+                return;
+            }
+
+            if (!validateRegistrationForm()) {
                 return;
             }
 
@@ -1385,7 +1806,8 @@
                     phone,
                     instagramLogin,
                     followersCount,
-                    avgViews
+                    avgViews,
+                    password: hashPassword(password)
                 },
                 level: bloggerData.level,
                 orders: [],
@@ -1420,10 +1842,25 @@
 
         // Обновление CRM данных
         function updateCRMData() {
-            document.getElementById('totalUsers').textContent = Object.keys(systemData.users).length;
+            updateCRMStats();
+            updateOrdersList();
+        }
+
+        // Обновление статистики CRM
+        function updateCRMStats() {
+            const realUserCount = Object.keys(systemData.users).filter(userId => 
+                systemData.users[userId].registration && 
+                systemData.users[userId].registration.firstName
+            ).length;
+            
+            document.getElementById('totalUsers').textContent = realUserCount;
             document.getElementById('totalOrders').textContent = systemData.orders.length;
             document.getElementById('newOrders').textContent = systemData.orders.filter(order => order.status === 'new').length;
-            
+            document.getElementById('blockedSlots').textContent = systemData.blockedSlots.length;
+        }
+
+        // Обновление списка заказов
+        function updateOrdersList() {
             const ordersList = document.getElementById('ordersList');
             ordersList.innerHTML = '';
             
@@ -1432,7 +1869,9 @@
                 return;
             }
             
-            systemData.orders.slice(-10).reverse().forEach(order => {
+            const sortedOrders = [...systemData.orders].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+            
+            sortedOrders.forEach(order => {
                 const orderElement = document.createElement('div');
                 orderElement.className = 'order-item';
                 orderElement.innerHTML = `
@@ -1444,11 +1883,216 @@
                         <strong>${order.userName}</strong> (${order.userLevel})<br>
                         ${order.phone} | ${order.instagram}<br>
                         ${order.city}, ${order.street}<br>
+                        ${order.set ? order.set : 'Заказ макроблогера'}<br>
                         <small>${order.date || new Date(order.createdAt).toLocaleDateString()}</small>
                     </div>
                 `;
                 ordersList.appendChild(orderElement);
             });
+        }
+
+        // Обновление списка пользователей
+        function updateUsersList() {
+            const usersList = document.getElementById('usersList');
+            usersList.innerHTML = '';
+            
+            const realUsers = Object.values(systemData.users).filter(user => 
+                user.registration && user.registration.firstName
+            );
+            
+            if (realUsers.length === 0) {
+                usersList.innerHTML = '<div style="padding: 40px; text-align: center; color: #999;">Пока нет пользователей</div>';
+                return;
+            }
+            
+            realUsers.forEach(user => {
+                const userElement = document.createElement('div');
+                userElement.className = 'user-item';
+                userElement.innerHTML = `
+                    <div class="user-header">
+                        <div class="user-name-phone">
+                            ${user.registration.firstName} (${user.registration.phone})
+                        </div>
+                        <div class="user-controls">
+                            <button class="btn-secondary btn-small" onclick="viewUser('${user.userId}')">Просмотр</button>
+                        </div>
+                    </div>
+                    <div style="font-size: 14px; color: #ccc;">
+                        Instagram: ${user.registration.instagramLogin}<br>
+                        Подписчики: ${user.registration.followersCount?.toLocaleString()}<br>
+                        Просмотры: ${user.registration.avgViews?.toLocaleString()}<br>
+                        Заказов: ${user.orders ? user.orders.length : 0}
+                    </div>
+                `;
+                usersList.appendChild(userElement);
+            });
+        }
+
+        // Обновление списка блокировок
+        function updateBlockedSlotsList() {
+            const blockedSlotsList = document.getElementById('blockedSlotsList');
+            blockedSlotsList.innerHTML = '';
+            
+            if (systemData.blockedSlots.length === 0) {
+                blockedSlotsList.innerHTML = '<div style="padding: 40px; text-align: center; color: #999;">Нет активных блокировок</div>';
+                return;
+            }
+            
+            systemData.blockedSlots.forEach((block, index) => {
+                const blockElement = document.createElement('div');
+                blockElement.className = 'blocked-slot';
+                blockElement.innerHTML = `
+                    <div class="blocked-slot-info">
+                        <div class="blocked-slot-city">${block.city}</div>
+                        <div class="blocked-slot-time">${block.date} в ${block.time}</div>
+                        ${block.reason ? `<div style="font-size: 12px; color: #999;">${block.reason}</div>` : ''}
+                    </div>
+                    <button class="btn-danger btn-small" onclick="removeBlock(${index})">Удалить</button>
+                `;
+                blockedSlotsList.appendChild(blockElement);
+            });
+        }
+
+        // Обновление списка администраторов
+        function updateAdminsList() {
+            const adminsList = document.getElementById('adminsList');
+            adminsList.innerHTML = '';
+            
+            systemData.admins.forEach((admin, index) => {
+                const adminElement = document.createElement('div');
+                adminElement.className = 'user-item';
+                adminElement.innerHTML = `
+                    <div class="user-header">
+                        <div class="user-name-phone">
+                            ${admin.name || 'Админ'} (ID: ${admin.id})
+                        </div>
+                        <div class="user-controls">
+                            ${admin.id !== 1345815453 ? `<button class="btn-danger btn-small" onclick="removeAdmin(${index})">Удалить</button>` : '<span style="color: #999; font-size: 12px;">Главный админ</span>'}
+                        </div>
+                    </div>
+                    <div style="font-size: 14px; color: #ccc;">
+                        Добавлен: ${new Date(admin.addedAt).toLocaleDateString()}
+                    </div>
+                `;
+                adminsList.appendChild(adminElement);
+            });
+        }
+
+        // Фильтрация заказов
+        function filterOrders() {
+            const searchTerm = document.getElementById('orderSearch').value.toLowerCase();
+            const orderItems = document.querySelectorAll('#ordersList .order-item');
+            
+            orderItems.forEach(item => {
+                const text = item.textContent.toLowerCase();
+                item.style.display = text.includes(searchTerm) ? 'block' : 'none';
+            });
+        }
+
+        // Фильтрация пользователей
+        function filterUsers() {
+            const searchTerm = document.getElementById('userSearch').value.toLowerCase();
+            const userItems = document.querySelectorAll('#usersList .user-item');
+            
+            userItems.forEach(item => {
+                const text = item.textContent.toLowerCase();
+                item.style.display = text.includes(searchTerm) ? 'block' : 'none';
+            });
+        }
+
+        // Добавление блокировки
+        function addBlock() {
+            const city = document.getElementById('blockCity').value;
+            const date = document.getElementById('blockDate').value;
+            const time = document.getElementById('blockTime').value;
+            const reason = document.getElementById('blockReason').value.trim();
+            
+            if (!city || !date || !time) {
+                showError('Ошибка валидации', 'Пожалуйста, заполните все обязательные поля');
+                return;
+            }
+            
+            const newBlock = {
+                city,
+                date,
+                time,
+                reason,
+                addedAt: new Date().toISOString(),
+                addedBy: telegramUser ? telegramUser.id : 'unknown'
+            };
+            
+            systemData.blockedSlots.push(newBlock);
+            saveSystemData();
+            
+            closeAddBlockModal();
+            updateBlockedSlotsList();
+            showSuccessMessage('Блокировка добавлена!');
+        }
+
+        // Удаление блокировки
+        function removeBlock(index) {
+            if (confirm('Удалить эту блокировку?')) {
+                systemData.blockedSlots.splice(index, 1);
+                saveSystemData();
+                updateBlockedSlotsList();
+                showSuccessMessage('Блокировка удалена!');
+            }
+        }
+
+        // Добавление администратора
+        function addAdmin() {
+            const telegramId = parseInt(document.getElementById('adminTelegramId').value);
+            const name = document.getElementById('adminName').value.trim() || 'Администратор';
+            
+            if (!telegramId || isNaN(telegramId)) {
+                showError('Ошибка валидации', 'Введите корректный Telegram ID');
+                return;
+            }
+            
+            if (systemData.admins.some(admin => admin.id === telegramId)) {
+                showError('Ошибка', 'Этот пользователь уже является администратором');
+                return;
+            }
+            
+            const newAdmin = {
+                id: telegramId,
+                name,
+                addedAt: new Date().toISOString(),
+                addedBy: telegramUser ? telegramUser.id : 'unknown'
+            };
+            
+            systemData.admins.push(newAdmin);
+            saveSystemData();
+            
+            closeAddAdminModal();
+            updateAdminsList();
+            showSuccessMessage('Администратор добавлен!');
+        }
+
+        // Удаление администратора
+        function removeAdmin(index) {
+            const admin = systemData.admins[index];
+            if (admin.id === 1345815453) {
+                showError('Ошибка', 'Нельзя удалить главного администратора');
+                return;
+            }
+            
+            if (confirm(`Удалить администратора ${admin.name}?`)) {
+                systemData.admins.splice(index, 1);
+                saveSystemData();
+                updateAdminsList();
+                showSuccessMessage('Администратор удален!');
+            }
+        }
+
+        // Сохранение только системных данных
+        function saveSystemData() {
+            try {
+                localStorage.setItem(STORAGE_KEYS.SYSTEM_DATA, JSON.stringify(systemData));
+                console.log('System data saved successfully');
+            } catch (error) {
+                console.error('Error saving system data:', error);
+            }
         }
 
         function getStatusText(status) {
@@ -1464,45 +2108,34 @@
         function initializeApp() {
             console.log('Initializing app...');
             
-            // Инициализируем Telegram
             initTelegram();
-            
-            // Загружаем данные
             loadData();
             
-            // Показываем админ панель если нужно
             if (isAdmin()) {
                 document.getElementById('adminPanel').style.display = 'block';
             }
             
-            // Пытаемся выполнить автовход через Telegram
             if (attemptTelegramAutoLogin()) {
                 console.log('Auto-login successful');
                 showDashboard();
                 return;
             }
             
-            // Проверяем есть ли сохраненные данные пользователя
             if (userData.registration && userData.registration.firstName) {
                 console.log('Found existing user data');
                 showDashboard();
                 return;
             }
             
-            // Показываем приветственный экран
             console.log('Showing welcome screen');
             showWelcomeScreen();
         }
 
-        // Остальные функции приложения...
-        
+        // Остальные функции приложения
         function startCollaboration() {
-            // Микроблогеры сначала выбирают набор
             if (userData.level === 'micro') {
                 showSetSelection();
-            } 
-            // Все остальные (включая макроблогеров) сразу выбирают дату и время
-            else {
+            } else {
                 showDateTimeSelection();
             }
         }
@@ -1518,12 +2151,9 @@
             setupDateInput();
             
             const backButton = document.getElementById('backFromDateTime');
-            // Микроблогеры возвращаются к выбору набора
             if (userData.level === 'micro') {
                 backButton.onclick = showSetSelection;
-            } 
-            // Макроблогеры возвращаются в личный кабинет
-            else {
+            } else {
                 backButton.onclick = showDashboard;
             }
         }
@@ -1532,14 +2162,12 @@
             hideAllScreens();
             document.getElementById('addressScreen').style.display = 'block';
             
-            // Показать поле скриншота только для макроблогеров
             if (userData.level === 'macro-a' || userData.level === 'macro-b') {
                 document.getElementById('orderScreenshotGroup').style.display = 'block';
             } else {
                 document.getElementById('orderScreenshotGroup').style.display = 'none';
             }
             
-            // Кнопка "Назад" всегда ведет к экрану выбора даты и времени
             document.getElementById('backFromAddress').onclick = () => showDateTimeSelection();
         }
 
@@ -1587,16 +2215,30 @@
                 timeSlots = ['10:00', '12:00', '14:00', '16:00', '18:00'];
             }
 
+            const selectedCity = document.getElementById('city').value;
+
             timeSlots.forEach(time => {
                 const slot = document.createElement('div');
                 slot.className = 'time-slot';
                 slot.textContent = time;
-                slot.onclick = () => selectTimeSlot(slot, time);
+                
+                // Проверяем блокировку слота
+                if (selectedCity && isSlotBlocked(selectedCity, selectedDateValue, time)) {
+                    slot.classList.add('disabled');
+                    slot.title = 'Время недоступно';
+                } else {
+                    slot.onclick = () => selectTimeSlot(slot, time);
+                }
+                
                 timeSlotsContainer.appendChild(slot);
             });
         }
 
         function selectTimeSlot(element, time) {
+            if (element.classList.contains('disabled')) {
+                return;
+            }
+            
             if (Math.random() < 0.1) {
                 showError('Слот недоступен', 'К сожалению, на выбранное время уже забронировано. Пожалуйста, выберите другое.');
                 return;
@@ -1653,14 +2295,10 @@
                 createdAt: new Date().toISOString()
             };
 
-            // Добавление в пользовательские заказы
             userData.orders = userData.orders || [];
             userData.orders.push(newOrder);
-
-            // Добавление в системные заказы
             systemData.orders.push(newOrder);
 
-            // Формируем сообщение для Telegram
             let message = `🆕 *Новая заявка на бартер*\n\n`;
             message += `👤 *Блогер:*\n`;
             message += `Имя: \`${userData.registration.firstName}\`\n`;
@@ -1693,7 +2331,6 @@
             if (newOrder.comment) message += `Комментарий: ${newOrder.comment}\n`;
             message += `\n📋 *ID заказа:* \`${orderId}\``;
 
-            // Отправка в Telegram
             const botToken = '8227812944:AAFy8ydOkUeCj3Qkjg7_Xsq6zyQpcUyMShY';
             const chatId = '1345815453';
 
@@ -1704,7 +2341,6 @@
                 let response;
 
                 if (isMacro && screenshotFile) {
-                    // Макроблогер со скриншотом: отправляем фото с подписью
                     const formData = new FormData();
                     formData.append('chat_id', chatId);
                     formData.append('photo', screenshotFile, screenshotFile.name);
@@ -1713,11 +2349,9 @@
                     
                     response = await fetch(`https://api.telegram.org/bot${botToken}/sendPhoto`, {
                         method: 'POST',
-                        body: formData // Для FormData заголовок Content-Type устанавливается браузером автоматически
+                        body: formData
                     });
-
                 } else {
-                    // Микроблогер или макро без скриншота: отправляем текстовое сообщение
                     response = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
                         method: 'POST',
                         headers: {
@@ -1782,6 +2416,7 @@
             document.getElementById('editInstagram').value = userData.registration.instagramLogin || '';
             document.getElementById('editFollowers').value = userData.registration.followersCount || '';
             document.getElementById('editViews').value = userData.registration.avgViews || '';
+            document.getElementById('editPassword').value = '';
             
             document.getElementById('editProfileModal').style.display = 'flex';
         }
@@ -1792,9 +2427,34 @@
             const instagramLogin = document.getElementById('editInstagram').value.trim();
             const followersCount = parseInt(document.getElementById('editFollowers').value);
             const avgViews = parseInt(document.getElementById('editViews').value);
+            const newPassword = document.getElementById('editPassword').value.trim();
 
             if (!firstName || !phone || !instagramLogin || !followersCount || !avgViews) {
                 showError('Ошибка валидации', 'Пожалуйста, заполните все поля');
+                return;
+            }
+
+            // Сброс ошибок
+            document.querySelectorAll('#editProfileModal .input-error').forEach(el => el.classList.remove('input-error'));
+            document.querySelectorAll('#editProfileModal .error-message').forEach(el => el.style.display = 'none');
+
+            let isValid = true;
+
+            // Валидация подписчиков
+            if (!validateNumber(followersCount, 1, 10000000)) {
+                document.getElementById('editFollowers').classList.add('input-error');
+                document.getElementById('editFollowersError').style.display = 'block';
+                isValid = false;
+            }
+
+            // Валидация просмотров
+            if (!validateNumber(avgViews, 1, 10000000)) {
+                document.getElementById('editViews').classList.add('input-error');
+                document.getElementById('editViewsError').style.display = 'block';
+                isValid = false;
+            }
+
+            if (!isValid) {
                 return;
             }
 
@@ -1803,11 +2463,9 @@
             const oldInstagram = userData.registration.instagramLogin;
             
             if (phone !== oldPhone || instagramLogin !== oldInstagram) {
-                // Проверяем на конфликты с другими пользователями
                 const duplicateCheck = checkForDuplicateRegistration(phone, instagramLogin);
                 const userId = getUserId();
                 
-                // Исключаем текущего пользователя из проверки
                 if (duplicateCheck.phoneExists && systemData.usersByPhone[phone] !== userId) {
                     showError('Ошибка', 'Телефон уже используется другим пользователем');
                     return;
@@ -1823,13 +2481,16 @@
                 delete systemData.usersByInstagram[oldInstagram.toLowerCase()];
             }
 
-            userData.registration = {
-                firstName,
-                phone,
-                instagramLogin,
-                followersCount,
-                avgViews
-            };
+            userData.registration.firstName = firstName;
+            userData.registration.phone = phone;
+            userData.registration.instagramLogin = instagramLogin;
+            userData.registration.followersCount = followersCount;
+            userData.registration.avgViews = avgViews;
+
+            // Обновляем пароль если введен новый
+            if (newPassword && validatePassword(newPassword)) {
+                userData.registration.password = hashPassword(newPassword);
+            }
 
             userData.level = determineBloggerLevel(followersCount).level;
             userData.lastActivity = new Date().toISOString();
@@ -1838,11 +2499,64 @@
             updateDashboard();
             closeEditProfile();
             
-            showSuccessMessage('Профиль обновлен!');
+            showSuccessMessage('Профиль успешно обновлен!');
         }
 
         function closeEditProfile() {
             document.getElementById('editProfileModal').style.display = 'none';
+        }
+
+        // Связь с администратором
+        function contactAdmin() {
+            document.getElementById('contactModal').style.display = 'flex';
+        }
+
+        function closeContactModal() {
+            document.getElementById('contactModal').style.display = 'none';
+        }
+
+        // Модальные окна блокировок
+        function showAddBlockModal() {
+            document.getElementById('addBlockModal').style.display = 'flex';
+            
+            // Устанавливаем минимальную дату (сегодня)
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('blockDate').min = today;
+        }
+
+        function closeAddBlockModal() {
+            document.getElementById('addBlockModal').style.display = 'none';
+            document.getElementById('addBlockForm').reset();
+        }
+
+        // Модальные окна администраторов
+        function showAddAdminModal() {
+            document.getElementById('addAdminModal').style.display = 'flex';
+        }
+
+        function closeAddAdminModal() {
+            document.getElementById('addAdminModal').style.display = 'none';
+            document.getElementById('addAdminForm').reset();
+        }
+
+        // Просмотр пользователя
+        function viewUser(userId) {
+            const user = systemData.users[userId];
+            if (!user) return;
+            
+            const userInfo = `
+                Имя: ${user.registration.firstName}
+                Телефон: ${user.registration.phone}
+                Instagram: ${user.registration.instagramLogin}
+                Подписчики: ${user.registration.followersCount?.toLocaleString()}
+                Просмотры: ${user.registration.avgViews?.toLocaleString()}
+                Уровень: ${determineBloggerLevel(user.registration.followersCount).text}
+                Заказов: ${user.orders ? user.orders.length : 0}
+                Регистрация: ${new Date(user.registrationDate).toLocaleDateString()}
+                Последняя активность: ${new Date(user.lastActivity).toLocaleDateString()}
+            `;
+            
+            showError('Информация о пользователе', userInfo);
         }
 
         // Выход из аккаунта
@@ -1862,12 +2576,16 @@
         function showSuccessMessage(message) {
             document.getElementById('errorTitle').textContent = 'Успешно!';
             document.getElementById('errorMessage').textContent = message;
+            document.querySelector('#errorModal .error-icon').textContent = '✅';
+            document.querySelector('#errorModal .error-icon').style.color = '#28a745';
             document.getElementById('errorModal').style.display = 'flex';
         }
 
         function showError(title, message) {
             document.getElementById('errorTitle').textContent = title;
             document.getElementById('errorMessage').textContent = message;
+            document.querySelector('#errorModal .error-icon').textContent = '❌';
+            document.querySelector('#errorModal .error-icon').style.color = '#ff4444';
             document.getElementById('errorModal').style.display = 'flex';
         }
 
@@ -1931,6 +2649,52 @@
             });
         }
 
+        // Валидация числовых полей в реальном времени
+        function setupNumberValidation() {
+            const numberInputs = [
+                { id: 'followersCount', errorId: 'followersError' },
+                { id: 'avgViews', errorId: 'viewsError' },
+                { id: 'editFollowers', errorId: 'editFollowersError' },
+                { id: 'editViews', errorId: 'editViewsError' }
+            ];
+
+            numberInputs.forEach(({ id, errorId }) => {
+                const input = document.getElementById(id);
+                const error = document.getElementById(errorId);
+                
+                if (input && error) {
+                    input.addEventListener('input', function() {
+                        const value = parseInt(this.value);
+                        if (!validateNumber(value, 1, 10000000)) {
+                            this.classList.add('input-error');
+                            error.style.display = 'block';
+                        } else {
+                            this.classList.remove('input-error');
+                            error.style.display = 'none';
+                        }
+                    });
+                }
+            });
+        }
+
+        // Валидация пароля в реальном времени
+        function setupPasswordValidation() {
+            const passwordInput = document.getElementById('password');
+            const passwordError = document.getElementById('passwordError');
+            
+            if (passwordInput && passwordError) {
+                passwordInput.addEventListener('input', function() {
+                    if (!validatePassword(this.value)) {
+                        this.classList.add('input-error');
+                        passwordError.style.display = 'block';
+                    } else {
+                        this.classList.remove('input-error');
+                        passwordError.style.display = 'none';
+                    }
+                });
+            }
+        }
+
         // Инициализация при загрузке DOM
         document.addEventListener('DOMContentLoaded', function() {
             console.log('DOM loaded, setting up...');
@@ -1940,6 +2704,10 @@
             setupPhoneMask('loginPhone');
             setupPhoneMask('recipientPhone');
             setupPhoneMask('editPhone');
+            
+            // Настройка валидации
+            setupNumberValidation();
+            setupPasswordValidation();
             
             // Предотвращение отправки форм по Enter
             document.querySelectorAll('form').forEach(form => {
@@ -1970,7 +2738,6 @@
         // Инициализация при полной загрузке страницы
         window.addEventListener('load', function() {
             console.log('Window loaded');
-            // Дополнительная инициализация если нужно
         });
     </script>
 </body>
