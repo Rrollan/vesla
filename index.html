@@ -873,7 +873,6 @@
             <div class="welcome-buttons">
                 <button class="btn-primary" onclick="showRegistration()">Регистрация</button>
                 <button class="btn-secondary" onclick="showLogin()">Ручной вход</button>
-                 <button class="btn-danger" onclick="forceResetApp()" style="margin-top: 10px;">Полный сброс</button>
             </div>
             <div class="auto-login-info" id="autoLoginInfo" style="display: none;">
                 <div class="loading-indicator">
@@ -1384,14 +1383,6 @@
 
     <script>
 
-        function forceResetApp() {
-            const confirmation = confirm('Вы уверены, что хотите полностью сбросить состояние приложения? Это удалит все сохраненные данные.');
-            if (confirmation) {
-                localStorage.clear();
-                alert('Сброс выполнен! Приложение будет перезагружено.');
-                window.location.reload();
-            }
-        }
         // Инициализация Telegram WebApp
         let tg;
         let telegramUser = null;
