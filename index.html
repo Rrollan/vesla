@@ -793,6 +793,16 @@
             transform: translateY(-2px);
         }
 
+        /* Миграция данных */
+        .migration-info {
+            background: #ff6b35;
+            color: white;
+            padding: 15px;
+            border-radius: 12px;
+            margin: 20px 0;
+            text-align: center;
+        }
+
         /* Адаптивность */
         @media (max-width: 380px) {
             .container {
@@ -951,6 +961,35 @@
             </form>
         </div>
 
+        <!-- Экран миграции пароля -->
+        <div id="migrationScreen" class="form-screen">
+            <div class="form-header">
+                <h2>Установка пароля</h2>
+                <p class="subtitle">Для вашего старого аккаунта нужно установить пароль</p>
+            </div>
+
+            <div class="migration-info">
+                <p>Мы нашли ваш аккаунт, но у него нет пароля. Пожалуйста, установите новый пароль для безопасности.</p>
+            </div>
+
+            <form id="migrationForm">
+                <div class="form-group">
+                    <label for="migrationPassword">Новый пароль *</label>
+                    <input type="password" id="migrationPassword" required placeholder="Придумайте пароль (минимум 6 символов)">
+                    <div class="error-message" id="migrationPasswordError">Пароль должен содержать минимум 6 символов</div>
+                </div>
+
+                <div class="form-group">
+                    <label for="migrationPasswordConfirm">Повторите пароль *</label>
+                    <input type="password" id="migrationPasswordConfirm" required placeholder="Повторите пароль">
+                    <div class="error-message" id="migrationPasswordConfirmError">Пароли не совпадают</div>
+                </div>
+
+                <button type="button" class="btn-primary" onclick="submitMigration()">Установить пароль</button>
+                <button type="button" class="btn-secondary" onclick="showWelcomeScreen()">← Назад</button>
+            </form>
+        </div>
+
         <div id="dashboardScreen" class="dashboard">
             <div class="user-card">
                 <div class="user-avatar" id="userAvatar">👤</div>
@@ -1031,8 +1070,8 @@
 
                 <div class="admin-contact">
                     <h3>Контакты для пользователей</h3>
-                    <a href="https://t.me/vesla_support" class="contact-link" target="_blank">💬 Telegram поддержка</a>
-                    <a href="mailto:support@vesla.kz" class="contact-link">📧 Email поддержка</a>
+                    <a href="https://t.me/AdamRogozhin" class="contact-link" target="_blank">💬 Telegram поддержка</a>
+                    <a href="mailto:adamrogozhin@gmail.com" class="contact-link">📧 Email поддержка</a>
                 </div>
             </div>
 
@@ -1331,8 +1370,8 @@
             <div class="modal-content">
                 <h2>Связаться с администратором</h2>
                 <p class="subtitle">Выберите удобный способ связи</p>
-                <a href="https://t.me/vesla_support" class="contact-link" target="_blank">💬 Telegram поддержка</a>
-                <a href="mailto:support@vesla.kz" class="contact-link">📧 Email поддержка</a>
+                <a href="https://t.me/AdamRogozhin" class="contact-link" target="_blank">💬 Telegram поддержка</a>
+                <a href="mailto:adamrogozhin@gmail.com" class="contact-link">📧 Email поддержка</a>
                 <button class="btn-secondary" onclick="closeContactModal()">Закрыть</button>
             </div>
         </div>
@@ -1381,6 +1420,7 @@
         let selectedSet = '';
         let selectedDate = '';
         let selectedTime = '';
+        let migrationUser = null; // Для хранения данных пользователя при миграции
 
         // Системные данные
         let systemData = {
@@ -1435,6 +1475,72 @@
         function isAdmin() {
             if (!telegramUser) return false;
             return systemData.admins.some(admin => admin.id === telegramUser.id);
+        }
+
+        // Миграция старых аккаунтов
+        function migrateOldAccount(userInfo) {
+            // Проверяем, есть ли пароль
+            if (!userInfo.userData.registration.password) {
+                migrationUser = userInfo;
+                return true; // Требуется миграция
+            }
+            return false; // Миграция не требуется
+        }
+
+        // Экран миграции пароля
+        function showMigrationScreen() {
+            hideAllScreens();
+            document.getElementById('migrationScreen').style.display = 'block';
+        }
+
+        // Обработка миграции пароля
+        function submitMigration() {
+            const password = document.getElementById('migrationPassword').value.trim();
+            const passwordConfirm = document.getElementById('migrationPasswordConfirm').value.trim();
+
+            // Сброс ошибок
+            document.querySelectorAll('#migrationScreen .input-error').forEach(el => el.classList.remove('input-error'));
+            document.querySelectorAll('#migrationScreen .error-message').forEach(el => el.style.display = 'none');
+
+            let isValid = true;
+
+            // Валидация пароля
+            if (!validatePassword(password)) {
+                document.getElementById('migrationPassword').classList.add('input-error');
+                document.getElementById('migrationPasswordError').style.display = 'block';
+                isValid = false;
+            }
+
+            // Проверка совпадения паролей
+            if (password !== passwordConfirm) {
+                document.getElementById('migrationPasswordConfirm').classList.add('input-error');
+                document.getElementById('migrationPasswordConfirmError').style.display = 'block';
+                isValid = false;
+            }
+
+            if (!isValid) {
+                return;
+            }
+
+            // Устанавливаем пароль для старого аккаунта
+            if (migrationUser) {
+                migrationUser.userData.registration.password = hashPassword(password);
+                migrationUser.userData.lastActivity = new Date().toISOString();
+                
+                // Привязываем Telegram ID если доступен
+                if (telegramUser && !migrationUser.userData.telegramId) {
+                    migrationUser.userData.telegramId = telegramUser.id;
+                }
+
+                userData = migrationUser.userData;
+                
+                // Обновляем системные данные
+                systemData.users[migrationUser.userId] = userData;
+                saveData();
+                
+                migrationUser = null;
+                showDashboard();
+            }
         }
 
         // Сохранение данных
@@ -1509,6 +1615,24 @@
             return null;
         }
 
+        // Поиск пользователя по телефону и Instagram (для миграции старых аккаунтов)
+        function findUserByPhoneAndInstagram(phone, instagram) {
+            const phoneUserId = systemData.usersByPhone[phone];
+            const instagramUserId = systemData.usersByInstagram[instagram.toLowerCase()];
+            
+            if (phoneUserId && instagramUserId && phoneUserId === instagramUserId) {
+                const user = systemData.users[phoneUserId];
+                if (user) {
+                    return {
+                        userId: phoneUserId,
+                        userData: user
+                    };
+                }
+            }
+            
+            return null;
+        }
+
         // Поиск пользователя по телефону, Instagram и паролю
         function findUserByCredentials(phone, instagram, password) {
             const phoneUserId = systemData.usersByPhone[phone];
@@ -1552,8 +1676,15 @@
             
             if (existingUser) {
                 console.log('Found existing user:', existingUser.userId);
-                userData = existingUser.userData;
                 
+                // Проверяем, требуется ли миграция пароля
+                if (migrateOldAccount(existingUser)) {
+                    console.log('Account needs password migration');
+                    showMigrationScreen();
+                    return false; // Не завершаем автовход, показываем экран миграции
+                }
+                
+                userData = existingUser.userData;
                 userData.lastActivity = new Date().toISOString();
                 saveData();
                 
@@ -1605,8 +1736,9 @@
         // Функции показа экранов
         function hideAllScreens() {
             const screens = [
-                'welcomeScreen', 'registrationScreen', 'loginScreen', 'dashboardScreen', 
-                'setSelectionScreen', 'dateTimeScreen', 'addressScreen', 'instructionsScreen', 'crmScreen'
+                'welcomeScreen', 'registrationScreen', 'loginScreen', 'migrationScreen',
+                'dashboardScreen', 'setSelectionScreen', 'dateTimeScreen', 'addressScreen', 
+                'instructionsScreen', 'crmScreen'
             ];
             screens.forEach(screen => {
                 const element = document.getElementById(screen);
@@ -1635,6 +1767,13 @@
             hideAllScreens();
             document.getElementById('dashboardScreen').style.display = 'block';
             updateDashboard();
+            
+            // Показываем админ панель если пользователь админ
+            if (isAdmin()) {
+                document.getElementById('adminPanel').style.display = 'block';
+            } else {
+                document.getElementById('adminPanel').style.display = 'none';
+            }
         }
 
         function showCRM() {
@@ -1696,6 +1835,16 @@
             
             console.log('Attempting manual login for:', phone, instagram);
             
+            // Сначала проверяем есть ли пользователь с такими данными без пароля (старый аккаунт)
+            const oldUser = findUserByPhoneAndInstagram(phone, instagram);
+            if (oldUser && !oldUser.userData.registration.password) {
+                // Найден старый аккаунт без пароля - переводим на миграцию
+                migrationUser = oldUser;
+                showMigrationScreen();
+                return;
+            }
+            
+            // Стандартная проверка с паролем
             const existingUser = findUserByCredentials(phone, instagram, password);
             
             if (existingUser) {
@@ -1908,10 +2057,13 @@
             realUsers.forEach(user => {
                 const userElement = document.createElement('div');
                 userElement.className = 'user-item';
+                const hasPassword = user.registration.password ? '🔒' : '⚠️';
+                const passwordStatus = user.registration.password ? 'Есть пароль' : 'Нет пароля';
+                
                 userElement.innerHTML = `
                     <div class="user-header">
                         <div class="user-name-phone">
-                            ${user.registration.firstName} (${user.registration.phone})
+                            ${hasPassword} ${user.registration.firstName} (${user.registration.phone})
                         </div>
                         <div class="user-controls">
                             <button class="btn-secondary btn-small" onclick="viewUser('${user.userId}')">Просмотр</button>
@@ -1921,7 +2073,7 @@
                         Instagram: ${user.registration.instagramLogin}<br>
                         Подписчики: ${user.registration.followersCount?.toLocaleString()}<br>
                         Просмотры: ${user.registration.avgViews?.toLocaleString()}<br>
-                        Заказов: ${user.orders ? user.orders.length : 0}
+                        ${passwordStatus} | Заказов: ${user.orders ? user.orders.length : 0}
                     </div>
                 `;
                 usersList.appendChild(userElement);
@@ -2544,6 +2696,8 @@
             const user = systemData.users[userId];
             if (!user) return;
             
+            const passwordStatus = user.registration.password ? 'Есть' : 'Нет пароля (требуется миграция)';
+            
             const userInfo = `
                 Имя: ${user.registration.firstName}
                 Телефон: ${user.registration.phone}
@@ -2551,6 +2705,7 @@
                 Подписчики: ${user.registration.followersCount?.toLocaleString()}
                 Просмотры: ${user.registration.avgViews?.toLocaleString()}
                 Уровень: ${determineBloggerLevel(user.registration.followersCount).text}
+                Пароль: ${passwordStatus}
                 Заказов: ${user.orders ? user.orders.length : 0}
                 Регистрация: ${new Date(user.registrationDate).toLocaleDateString()}
                 Последняя активность: ${new Date(user.lastActivity).toLocaleDateString()}
@@ -2679,17 +2834,38 @@
 
         // Валидация пароля в реальном времени
         function setupPasswordValidation() {
-            const passwordInput = document.getElementById('password');
-            const passwordError = document.getElementById('passwordError');
+            const passwordInputs = ['password', 'migrationPassword'];
             
-            if (passwordInput && passwordError) {
-                passwordInput.addEventListener('input', function() {
-                    if (!validatePassword(this.value)) {
+            passwordInputs.forEach(inputId => {
+                const passwordInput = document.getElementById(inputId);
+                const passwordError = document.getElementById(inputId + 'Error');
+                
+                if (passwordInput && passwordError) {
+                    passwordInput.addEventListener('input', function() {
+                        if (!validatePassword(this.value)) {
+                            this.classList.add('input-error');
+                            passwordError.style.display = 'block';
+                        } else {
+                            this.classList.remove('input-error');
+                            passwordError.style.display = 'none';
+                        }
+                    });
+                }
+            });
+
+            // Специальная валидация для подтверждения пароля при миграции
+            const confirmInput = document.getElementById('migrationPasswordConfirm');
+            const confirmError = document.getElementById('migrationPasswordConfirmError');
+            const passwordInput = document.getElementById('migrationPassword');
+            
+            if (confirmInput && confirmError && passwordInput) {
+                confirmInput.addEventListener('input', function() {
+                    if (this.value !== passwordInput.value) {
                         this.classList.add('input-error');
-                        passwordError.style.display = 'block';
+                        confirmError.style.display = 'block';
                     } else {
                         this.classList.remove('input-error');
-                        passwordError.style.display = 'none';
+                        confirmError.style.display = 'none';
                     }
                 });
             }
