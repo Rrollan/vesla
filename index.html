@@ -961,7 +961,6 @@
             </form>
         </div>
 
-        <!-- Экран миграции пароля -->
         <div id="migrationScreen" class="form-screen">
             <div class="form-header">
                 <h2>Установка пароля</h2>
@@ -1047,7 +1046,6 @@
                 <button class="crm-tab" onclick="showCrmTab('admins')">Админы</button>
             </div>
 
-            <!-- Вкладка обзор -->
             <div id="crmOverview" class="crm-content active">
                 <div class="crm-stats">
                     <div class="crm-stat-card">
@@ -1075,7 +1073,6 @@
                 </div>
             </div>
 
-            <!-- Вкладка заказы -->
             <div id="crmOrders" class="crm-content">
                 <div class="search-input">
                     <input type="text" id="orderSearch" placeholder="Поиск по имени, телефону или Instagram..." onkeyup="filterOrders()">
@@ -1083,7 +1080,6 @@
                 <div class="orders-list" id="ordersList"></div>
             </div>
 
-            <!-- Вкладка пользователи -->
             <div id="crmUsers" class="crm-content">
                 <div class="search-input">
                     <input type="text" id="userSearch" placeholder="Поиск пользователей..." onkeyup="filterUsers()">
@@ -1091,13 +1087,11 @@
                 <div id="usersList"></div>
             </div>
 
-            <!-- Вкладка блокировки -->
             <div id="crmBlocks" class="crm-content">
                 <button class="btn-primary" onclick="showAddBlockModal()" style="margin-bottom: 20px;">+ Добавить блокировку</button>
                 <div class="blocked-slots" id="blockedSlotsList"></div>
             </div>
 
-            <!-- Вкладка админы -->
             <div id="crmAdmins" class="crm-content">
                 <button class="btn-primary" onclick="showAddAdminModal()" style="margin-bottom: 20px;">+ Добавить администратора</button>
                 <div id="adminsList"></div>
@@ -1126,27 +1120,7 @@
                 <div class="set-description">40 роллов: Ассорти из лучших роллов недели + бонусные маки (8шт)</div>
             </div>
 
-            <button type="button" id="nextFromSet" class="btn-primary" onclick="showDateTimeSelection()" disabled>Далее</button>
-        </div>
-
-        <div id="dateTimeScreen" class="form-screen datetime-selection">
-            <button class="btn-back" id="backFromDateTime">← Назад</button>
-            
-            <div class="form-header">
-                <h2>Дата и время доставки</h2>
-            </div>
-
-            <div class="form-group">
-                <label for="deliveryDate">Выберите дату</label>
-                <input type="date" id="deliveryDate" required onchange="updateTimeSlots()">
-            </div>
-
-            <div class="form-group">
-                <label>Выберите время</label>
-                <div class="time-slots" id="timeSlots"></div>
-            </div>
-
-            <button type="button" id="nextFromDateTime" class="btn-primary" onclick="showAddressForm()" disabled>Далее</button>
+            <button type="button" id="nextFromSet" class="btn-primary" onclick="showAddressForm()" disabled>Далее</button>
         </div>
 
         <div id="addressScreen" class="form-screen">
@@ -1159,7 +1133,7 @@
             <form id="addressForm">
                 <div class="form-group">
                     <label for="city">Город *</label>
-                    <select id="city" required>
+                    <select id="city" required onchange="handleCityChange()">
                         <option value="">Выберите город</option>
                         <option value="Павлодар">Павлодар</option>
                         <option value="Петропавловск">Петропавловск</option>
@@ -1204,12 +1178,32 @@
                     <textarea id="comment" rows="3" placeholder="Особые пожелания или комментарии"></textarea>
                 </div>
 
-                <button type="button" class="btn-primary" onclick="showInstructions()">Далее</button>
+                <button type="button" class="btn-primary" onclick="submitAddressAndShowDateTime()">Далее</button>
             </form>
         </div>
 
+        <div id="dateTimeScreen" class="form-screen datetime-selection">
+            <button class="btn-back" id="backFromDateTime">← Назад</button>
+            
+            <div class="form-header">
+                <h2>Дата и время доставки</h2>
+            </div>
+
+            <div class="form-group">
+                <label for="deliveryDate">Выберите дату</label>
+                <input type="date" id="deliveryDate" required onchange="updateTimeSlots()">
+            </div>
+
+            <div class="form-group">
+                <label>Выберите время</label>
+                <div class="time-slots" id="timeSlots"></div>
+            </div>
+
+            <button type="button" id="nextFromDateTime" class="btn-primary" onclick="submitDateTimeAndShowInstructions()" disabled>Далее</button>
+        </div>
+
         <div id="instructionsScreen" class="form-screen">
-            <button class="btn-back" onclick="showAddressForm()">← Назад</button>
+            <button class="btn-back" onclick="showDateTimeSelection()">← Назад</button>
             
             <div class="form-header">
                 <h2>Инструкция для сторис</h2>
@@ -1237,7 +1231,6 @@
             <button type="button" class="btn-primary" onclick="submitOrder()">Оформить заказ</button>
         </div>
 
-        <!-- Модальные окна -->
         <div id="successModal" class="modal">
             <div class="modal-content">
                 <div class="success-icon">✅</div>
@@ -2289,26 +2282,13 @@
             if (userData.level === 'micro') {
                 showSetSelection();
             } else {
-                showDateTimeSelection();
+                showAddressForm();
             }
         }
 
         function showSetSelection() {
             hideAllScreens();
             document.getElementById('setSelectionScreen').style.display = 'block';
-        }
-
-        function showDateTimeSelection() {
-            hideAllScreens();
-            document.getElementById('dateTimeScreen').style.display = 'block';
-            setupDateInput();
-            
-            const backButton = document.getElementById('backFromDateTime');
-            if (userData.level === 'micro') {
-                backButton.onclick = showSetSelection;
-            } else {
-                backButton.onclick = showDashboard;
-            }
         }
 
         function showAddressForm() {
@@ -2320,15 +2300,53 @@
             } else {
                 document.getElementById('orderScreenshotGroup').style.display = 'none';
             }
+
+            const backButton = document.getElementById('backFromAddress');
+            if (userData.level === 'micro') {
+                backButton.onclick = showSetSelection;
+            } else {
+                backButton.onclick = showDashboard;
+            }
+        }
+        
+        function submitAddressAndShowDateTime() {
+            if (!validateAddressForm()) return;
+            showDateTimeSelection();
+        }
+
+        function showDateTimeSelection() {
+            hideAllScreens();
+            document.getElementById('dateTimeScreen').style.display = 'block';
+            setupDateInput();
+
+            document.getElementById('backFromDateTime').onclick = showAddressForm;
             
-            document.getElementById('backFromAddress').onclick = () => showDateTimeSelection();
+            // Если дата уже выбрана, обновить слоты времени (полезно при возврате назад)
+            if (document.getElementById('deliveryDate').value) {
+                updateTimeSlots();
+            }
+        }
+        
+        function submitDateTimeAndShowInstructions() {
+            if (!selectedDate || !selectedTime) {
+                showError('Ошибка валидации', 'Пожалуйста, выберите дату и время доставки');
+                return;
+            }
+            showInstructions();
         }
 
         function showInstructions() {
-            if (!validateAddressForm()) return;
-            
             hideAllScreens();
             document.getElementById('instructionsScreen').style.display = 'block';
+        }
+        
+        function handleCityChange() {
+            // Сбросить выбор даты и времени при смене города, чтобы избежать неверных блокировок
+            document.getElementById('deliveryDate').value = '';
+            document.getElementById('timeSlots').innerHTML = '';
+            document.getElementById('nextFromDateTime').disabled = true;
+            selectedDate = '';
+            selectedTime = '';
         }
 
         function selectSet(element, setId) {
@@ -2353,6 +2371,9 @@
 
         function updateTimeSlots() {
             const selectedDateValue = document.getElementById('deliveryDate').value;
+            selectedTime = ''; // Сброс времени при смене даты
+            document.getElementById('nextFromDateTime').disabled = true;
+
             if (!selectedDateValue) return;
 
             selectedDate = selectedDateValue;
