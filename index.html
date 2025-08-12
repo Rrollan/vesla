@@ -490,62 +490,6 @@
             line-height: 1.5;
         }
 
-        /* Блокировки времени */
-        .blocked-slots {
-            margin-bottom: 20px;
-        }
-
-        .blocked-slot {
-            background: #3a3a3a;
-            border: 1px solid #4a4a4a;
-            border-radius: 8px;
-            padding: 15px;
-            margin-bottom: 10px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .blocked-slot-info {
-            flex: 1;
-        }
-
-        .blocked-slot-city {
-            font-weight: 600;
-            color: #00b4d8;
-        }
-
-        .blocked-slot-time {
-            color: #ccc;
-            font-size: 14px;
-        }
-
-        /* Управление пользователями */
-        .user-item {
-            background: #3a3a3a;
-            border: 1px solid #4a4a4a;
-            border-radius: 8px;
-            padding: 15px;
-            margin-bottom: 10px;
-        }
-
-        .user-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 10px;
-        }
-
-        .user-name-phone {
-            font-weight: 600;
-            color: #00b4d8;
-        }
-
-        .user-controls {
-            display: flex;
-            gap: 10px;
-        }
-
         /* Модальные окна */
         .modal {
             display: none;
@@ -760,6 +704,33 @@
             margin: 20px 0;
         }
 
+        .sync-status {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            z-index: 1000;
+            transition: all 0.3s ease;
+        }
+
+        .sync-status.syncing {
+            background: #ff6b35;
+            color: white;
+        }
+
+        .sync-status.synced {
+            background: #28a745;
+            color: white;
+        }
+
+        .sync-status.error {
+            background: #dc3545;
+            color: white;
+        }
+
+        /* Прочие стили... (остальные стили остаются без изменений) */
         .telegram-info {
             background: #3a3a3a;
             padding: 20px;
@@ -768,7 +739,6 @@
             border-left: 4px solid #00b4d8;
         }
 
-        /* Контакты администратора */
         .admin-contact {
             background: #3a3a3a;
             padding: 20px;
@@ -793,7 +763,6 @@
             transform: translateY(-2px);
         }
 
-        /* Миграция данных */
         .migration-info {
             background: #ff6b35;
             color: white;
@@ -863,6 +832,9 @@
     </style>
 </head>
 <body>
+    <!-- Индикатор синхронизации -->
+    <div id="syncStatus" class="sync-status" style="display: none;"></div>
+
     <div class="container">
         <div id="welcomeScreen" class="welcome-screen">
             <div class="logo-container">
@@ -961,34 +933,6 @@
             </form>
         </div>
 
-        <div id="migrationScreen" class="form-screen">
-            <div class="form-header">
-                <h2>Установка пароля</h2>
-                <p class="subtitle">Для вашего старого аккаунта нужно установить пароль</p>
-            </div>
-
-            <div class="migration-info">
-                <p>Мы нашли ваш аккаунт, но у него нет пароля. Пожалуйста, установите новый пароль для безопасности.</p>
-            </div>
-
-            <form id="migrationForm">
-                <div class="form-group">
-                    <label for="migrationPassword">Новый пароль *</label>
-                    <input type="password" id="migrationPassword" required placeholder="Придумайте пароль (минимум 6 символов)">
-                    <div class="error-message" id="migrationPasswordError">Пароль должен содержать минимум 6 символов</div>
-                </div>
-
-                <div class="form-group">
-                    <label for="migrationPasswordConfirm">Повторите пароль *</label>
-                    <input type="password" id="migrationPasswordConfirm" required placeholder="Повторите пароль">
-                    <div class="error-message" id="migrationPasswordConfirmError">Пароли не совпадают</div>
-                </div>
-
-                <button type="button" class="btn-primary" onclick="submitMigration()">Установить пароль</button>
-                <button type="button" class="btn-secondary" onclick="showWelcomeScreen()">← Назад</button>
-            </form>
-        </div>
-
         <div id="dashboardScreen" class="dashboard">
             <div class="user-card">
                 <div class="user-avatar" id="userAvatar">👤</div>
@@ -1042,8 +986,6 @@
                 <button class="crm-tab active" onclick="showCrmTab('overview')">Обзор</button>
                 <button class="crm-tab" onclick="showCrmTab('orders')">Заказы</button>
                 <button class="crm-tab" onclick="showCrmTab('users')">Пользователи</button>
-                <button class="crm-tab" onclick="showCrmTab('blocks')">Блокировки</button>
-                <button class="crm-tab" onclick="showCrmTab('admins')">Админы</button>
             </div>
 
             <div id="crmOverview" class="crm-content active">
@@ -1059,10 +1001,6 @@
                     <div class="crm-stat-card">
                         <div class="crm-stat-number" id="newOrders">0</div>
                         <div class="crm-stat-label">Новые</div>
-                    </div>
-                    <div class="crm-stat-card">
-                        <div class="crm-stat-number" id="blockedSlots">0</div>
-                        <div class="crm-stat-label">Блокировки</div>
                     </div>
                 </div>
 
@@ -1085,16 +1023,6 @@
                     <input type="text" id="userSearch" placeholder="Поиск пользователей..." onkeyup="filterUsers()">
                 </div>
                 <div id="usersList"></div>
-            </div>
-
-            <div id="crmBlocks" class="crm-content">
-                <button class="btn-primary" onclick="showAddBlockModal()" style="margin-bottom: 20px;">+ Добавить блокировку</button>
-                <div class="blocked-slots" id="blockedSlotsList"></div>
-            </div>
-
-            <div id="crmAdmins" class="crm-content">
-                <button class="btn-primary" onclick="showAddAdminModal()" style="margin-bottom: 20px;">+ Добавить администратора</button>
-                <div id="adminsList"></div>
             </div>
         </div>
 
@@ -1231,6 +1159,7 @@
             <button type="button" class="btn-primary" onclick="submitOrder()">Оформить заказ</button>
         </div>
 
+        <!-- Модальные окна -->
         <div id="successModal" class="modal">
             <div class="modal-content">
                 <div class="success-icon">✅</div>
@@ -1304,61 +1233,6 @@
             </div>
         </div>
 
-        <div id="addBlockModal" class="modal">
-            <div class="modal-content" style="max-width: 400px;">
-                <h2>Добавить блокировку</h2>
-                <form id="addBlockForm" style="margin: 20px 0;">
-                    <div class="form-group">
-                        <label for="blockCity">Город *</label>
-                        <select id="blockCity" required>
-                            <option value="">Выберите город</option>
-                            <option value="Павлодар">Павлодар</option>
-                            <option value="Петропавловск">Петропавловск</option>
-                            <option value="Кокшетау">Кокшетау</option>
-                            <option value="Костанай">Костанай</option>
-                            <option value="Усть-Каменогорск">Усть-Каменогорск</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="blockDate">Дата *</label>
-                        <input type="date" id="blockDate" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="blockTime">Время *</label>
-                        <input type="time" id="blockTime" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="blockReason">Причина</label>
-                        <input type="text" id="blockReason" placeholder="Причина блокировки">
-                    </div>
-                </form>
-                <div style="display: flex; gap: 10px;">
-                    <button class="btn-primary" onclick="addBlock()" style="flex: 1;">Добавить</button>
-                    <button class="btn-secondary" onclick="closeAddBlockModal()" style="flex: 1;">Отмена</button>
-                </div>
-            </div>
-        </div>
-
-        <div id="addAdminModal" class="modal">
-            <div class="modal-content" style="max-width: 400px;">
-                <h2>Добавить администратора</h2>
-                <form id="addAdminForm" style="margin: 20px 0;">
-                    <div class="form-group">
-                        <label for="adminTelegramId">Telegram ID *</label>
-                        <input type="number" id="adminTelegramId" required placeholder="123456789">
-                    </div>
-                    <div class="form-group">
-                        <label for="adminName">Имя</label>
-                        <input type="text" id="adminName" placeholder="Имя администратора">
-                    </div>
-                </form>
-                <div style="display: flex; gap: 10px;">
-                    <button class="btn-primary" onclick="addAdmin()" style="flex: 1;">Добавить</button>
-                    <button class="btn-secondary" onclick="closeAddAdminModal()" style="flex: 1;">Отмена</button>
-                </div>
-            </div>
-        </div>
-
         <div id="contactModal" class="modal">
             <div class="modal-content">
                 <h2>Связаться с администратором</h2>
@@ -1375,6 +1249,254 @@
     </div>
 
     <script>
+        // GOOGLE SHEETS КОНФИГУРАЦИЯ
+        const GOOGLE_SHEETS_CONFIG = {
+            SHEET_ID: '1LJx1OI-PxuFynCuB5k3rQWHteAj_9E0EbHjvPjqDEy0',
+            API_KEY: 'AIzaSyAEesZbSoLg-R223uJYpQagSnuahU11l4Q',
+            USERS_SHEET: 'Users',
+            ORDERS_SHEET: 'Orders'
+        };
+
+        // КЛАСС ДЛЯ РАБОТЫ С GOOGLE SHEETS
+        class GoogleSheetsStorage {
+            constructor(config) {
+                this.config = config;
+                this.baseUrl = 'https://sheets.googleapis.com/v4/spreadsheets';
+            }
+
+            // Показ статуса синхронизации
+            showSyncStatus(status, message) {
+                const syncStatus = document.getElementById('syncStatus');
+                syncStatus.textContent = message;
+                syncStatus.className = `sync-status ${status}`;
+                syncStatus.style.display = 'block';
+                
+                if (status === 'synced' || status === 'error') {
+                    setTimeout(() => {
+                        syncStatus.style.display = 'none';
+                    }, 3000);
+                }
+            }
+
+            // Получение данных из таблицы
+            async getData(sheetName) {
+                try {
+                    this.showSyncStatus('syncing', '📥 Загрузка данных...');
+                    
+                    const response = await fetch(
+                        `${this.baseUrl}/${this.config.SHEET_ID}/values/${sheetName}?key=${this.config.API_KEY}`,
+                        {
+                            method: 'GET',
+                            headers: {
+                                'Accept': 'application/json'
+                            }
+                        }
+                    );
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+
+                    const data = await response.json();
+                    this.showSyncStatus('synced', '✅ Данные загружены');
+                    return data.values || [];
+                } catch (error) {
+                    console.error('Ошибка получения данных:', error);
+                    this.showSyncStatus('error', '❌ Ошибка загрузки');
+                    return [];
+                }
+            }
+
+            // Добавление данных в таблицу
+            async appendData(sheetName, values) {
+                try {
+                    this.showSyncStatus('syncing', '📤 Сохранение...');
+                    
+                    const response = await fetch(
+                        `${this.baseUrl}/${this.config.SHEET_ID}/values/${sheetName}:append?valueInputOption=RAW&key=${this.config.API_KEY}`,
+                        {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                values: [values]
+                            })
+                        }
+                    );
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+
+                    const result = await response.json();
+                    this.showSyncStatus('synced', '✅ Сохранено');
+                    return result;
+                } catch (error) {
+                    console.error('Ошибка добавления данных:', error);
+                    this.showSyncStatus('error', '❌ Ошибка сохранения');
+                    throw error;
+                }
+            }
+
+            // Сохранение пользователя
+            async saveUser(userData) {
+                const userRow = [
+                    userData.userId || Date.now(), // ID
+                    userData.registration.firstName,
+                    userData.registration.phone,
+                    userData.registration.instagramLogin,
+                    userData.registration.followersCount,
+                    userData.registration.avgViews,
+                    userData.level,
+                    userData.telegramId || '',
+                    userData.registrationDate || new Date().toISOString()
+                ];
+
+                return await this.appendData(this.config.USERS_SHEET, userRow);
+            }
+
+            // Сохранение заказа
+            async saveOrder(orderData) {
+                const orderRow = [
+                    orderData.id,
+                    orderData.userId,
+                    orderData.userName,
+                    orderData.phone,
+                    orderData.instagram,
+                    orderData.set || '',
+                    orderData.city,
+                    orderData.street,
+                    orderData.date,
+                    orderData.time,
+                    orderData.status,
+                    orderData.createdAt,
+                    orderData.comment || ''
+                ];
+
+                return await this.appendData(this.config.ORDERS_SHEET, orderRow);
+            }
+
+            // Поиск пользователя по телефону
+            async findUserByPhone(phone) {
+                const users = await this.getData(this.config.USERS_SHEET);
+                
+                for (let i = 1; i < users.length; i++) {
+                    if (users[i][2] === phone) {
+                        return {
+                            row: i + 1,
+                            data: users[i]
+                        };
+                    }
+                }
+                return null;
+            }
+
+            // Поиск пользователя по Instagram
+            async findUserByInstagram(instagram) {
+                const users = await this.getData(this.config.USERS_SHEET);
+                
+                for (let i = 1; i < users.length; i++) {
+                    if (users[i][3] && users[i][3].toLowerCase() === instagram.toLowerCase()) {
+                        return {
+                            row: i + 1,
+                            data: users[i]
+                        };
+                    }
+                }
+                return null;
+            }
+
+            // Поиск пользователя по Telegram ID
+            async findUserByTelegramId(telegramId) {
+                const users = await this.getData(this.config.USERS_SHEET);
+                
+                for (let i = 1; i < users.length; i++) {
+                    if (users[i][7] && users[i][7] == telegramId) {
+                        return {
+                            row: i + 1,
+                            data: users[i]
+                        };
+                    }
+                }
+                return null;
+            }
+
+            // Загрузка всех пользователей
+            async loadUsers() {
+                const users = await this.getData(this.config.USERS_SHEET);
+                const usersMap = {};
+                
+                for (let i = 1; i < users.length; i++) {
+                    const row = users[i];
+                    if (row.length >= 8) {
+                        const userId = row[0];
+                        usersMap[userId] = {
+                            userId: userId,
+                            registration: {
+                                firstName: row[1],
+                                phone: row[2],
+                                instagramLogin: row[3],
+                                followersCount: parseInt(row[4]) || 0,
+                                avgViews: parseInt(row[5]) || 0,
+                                password: 'hashed_password' // Заглушка для пароля
+                            },
+                            level: row[6],
+                            telegramId: row[7] || null,
+                            registrationDate: row[8] || new Date().toISOString(),
+                            lastActivity: new Date().toISOString(),
+                            orders: []
+                        };
+                    }
+                }
+                
+                return usersMap;
+            }
+
+            // Загрузка всех заказов
+            async loadOrders() {
+                const orders = await this.getData(this.config.ORDERS_SHEET);
+                const ordersArray = [];
+                
+                for (let i = 1; i < orders.length; i++) {
+                    const row = orders[i];
+                    if (row.length >= 12) {
+                        ordersArray.push({
+                            id: row[0],
+                            userId: row[1],
+                            userName: row[2],
+                            phone: row[3],
+                            instagram: row[4],
+                            set: row[5],
+                            city: row[6],
+                            street: row[7],
+                            date: row[8],
+                            time: row[9],
+                            status: row[10],
+                            createdAt: row[11],
+                            comment: row[12] || '',
+                            userLevel: this.determineBloggerLevel(0).text // Заглушка
+                        });
+                    }
+                }
+                
+                return ordersArray;
+            }
+
+            // Определение уровня блогера (вспомогательная функция)
+            determineBloggerLevel(followersCount) {
+                if (followersCount <= 6000) {
+                    return { level: 'micro', text: 'Микроблогер' };
+                } else if (followersCount <= 10500) {
+                    return { level: 'macro-a', text: 'Макроблогер тип A' };
+                } else {
+                    return { level: 'macro-b', text: 'Макроблогер тип B' };
+                }
+            }
+        }
+
+        // Инициализация хранилища Google Sheets
+        const sheetsStorage = new GoogleSheetsStorage(GOOGLE_SHEETS_CONFIG);
 
         // Инициализация Telegram WebApp
         let tg;
@@ -1388,7 +1510,6 @@
                     tg.ready();
                     tg.expand();
                     
-                    // Получаем данные пользователя
                     if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
                         telegramUser = tg.initDataUnsafe.user;
                         console.log('Telegram user found:', telegramUser);
@@ -1414,7 +1535,6 @@
         let selectedSet = '';
         let selectedDate = '';
         let selectedTime = '';
-        let migrationUser = null; // Для хранения данных пользователя при миграции
 
         // Системные данные
         let systemData = {
@@ -1422,21 +1542,11 @@
             orders: [],
             admins: [
                 { id: 1345815453, name: 'Главный админ', addedAt: new Date().toISOString() }
-            ],
-            usersByPhone: {},
-            usersByInstagram: {},
-            blockedSlots: []
-        };
-
-        // Константы для хранения данных
-        const STORAGE_KEYS = {
-            SYSTEM_DATA: 'bloggers_system_data',
-            USER_DATA_PREFIX: 'blogger_user_'
+            ]
         };
 
         // Функция хеширования пароля (простая для демонстрации)
         function hashPassword(password) {
-            // В реальном приложении используйте более надежное хеширование
             let hash = 0;
             for (let i = 0; i < password.length; i++) {
                 const char = password.charCodeAt(i);
@@ -1471,194 +1581,73 @@
             return systemData.admins.some(admin => admin.id === telegramUser.id);
         }
 
-        // Миграция старых аккаунтов
-        function migrateOldAccount(userInfo) {
-            // Проверяем, есть ли пароль
-            if (!userInfo.userData.registration.password) {
-                migrationUser = userInfo;
-                return true; // Требуется миграция
-            }
-            return false; // Миграция не требуется
-        }
-
-        // Экран миграции пароля
-        function showMigrationScreen() {
-            hideAllScreens();
-            document.getElementById('migrationScreen').style.display = 'block';
-        }
-
-        // Обработка миграции пароля
-        function submitMigration() {
-            const password = document.getElementById('migrationPassword').value.trim();
-            const passwordConfirm = document.getElementById('migrationPasswordConfirm').value.trim();
-
-            // Сброс ошибок
-            document.querySelectorAll('#migrationScreen .input-error').forEach(el => el.classList.remove('input-error'));
-            document.querySelectorAll('#migrationScreen .error-message').forEach(el => el.style.display = 'none');
-
-            let isValid = true;
-
-            // Валидация пароля
-            if (!validatePassword(password)) {
-                document.getElementById('migrationPassword').classList.add('input-error');
-                document.getElementById('migrationPasswordError').style.display = 'block';
-                isValid = false;
-            }
-
-            // Проверка совпадения паролей
-            if (password !== passwordConfirm) {
-                document.getElementById('migrationPasswordConfirm').classList.add('input-error');
-                document.getElementById('migrationPasswordConfirmError').style.display = 'block';
-                isValid = false;
-            }
-
-            if (!isValid) {
-                return;
-            }
-
-            // Устанавливаем пароль для старого аккаунта
-            if (migrationUser) {
-                migrationUser.userData.registration.password = hashPassword(password);
-                migrationUser.userData.lastActivity = new Date().toISOString();
-                
-                // Привязываем Telegram ID если доступен
-                if (telegramUser && !migrationUser.userData.telegramId) {
-                    migrationUser.userData.telegramId = telegramUser.id;
-                }
-
-                userData = migrationUser.userData;
-                
-                // Обновляем системные данные
-                systemData.users[migrationUser.userId] = userData;
-                saveData();
-                
-                migrationUser = null;
-                showDashboard();
+        // Определение уровня блогера
+        function determineBloggerLevel(followersCount) {
+            if (followersCount <= 6000) {
+                return { level: 'micro', text: 'Микроблогер' };
+            } else if (followersCount <= 10500) {
+                return { level: 'macro-a', text: 'Макроблогер тип A' };
+            } else {
+                return { level: 'macro-b', text: 'Макроблогер тип B' };
             }
         }
 
-        // Сохранение данных
-        function saveData() {
+        // Сохранение данных в Google Sheets
+        async function saveData() {
             try {
                 const userId = getUserId();
                 
-                const userDataKey = STORAGE_KEYS.USER_DATA_PREFIX + userId;
-                localStorage.setItem(userDataKey, JSON.stringify(userData));
-                
-                systemData.users[userId] = {
+                // Подготавливаем данные пользователя
+                const userDataToSave = {
                     ...userData,
                     userId: userId,
                     telegramId: telegramUser ? telegramUser.id : null,
                     lastActivity: new Date().toISOString()
                 };
+
+                // Сохраняем пользователя в Google Sheets
+                await sheetsStorage.saveUser(userDataToSave);
                 
-                if (userData.registration.phone) {
-                    systemData.usersByPhone[userData.registration.phone] = userId;
-                }
-                if (userData.registration.instagramLogin) {
-                    systemData.usersByInstagram[userData.registration.instagramLogin.toLowerCase()] = userId;
-                }
+                // Обновляем локальные системные данные
+                systemData.users[userId] = userDataToSave;
                 
-                localStorage.setItem(STORAGE_KEYS.SYSTEM_DATA, JSON.stringify(systemData));
-                
-                console.log('Data saved successfully');
+                console.log('Data saved successfully to Google Sheets');
             } catch (error) {
                 console.error('Error saving data:', error);
+                showError('Ошибка сохранения', 'Не удалось сохранить данные. Проверьте подключение к интернету.');
             }
         }
 
-        // Загрузка данных
-        function loadData() {
+        // Загрузка данных из Google Sheets
+        async function loadData() {
             try {
-                const savedSystemData = localStorage.getItem(STORAGE_KEYS.SYSTEM_DATA);
-                if (savedSystemData) {
-                    const parsed = JSON.parse(savedSystemData);
-                    systemData = { ...systemData, ...parsed };
-                    // Ensure admins is always an array
-                    if (!Array.isArray(systemData.admins)) {
-                        systemData.admins = [{ id: 1345815453, name: 'Главный админ', addedAt: new Date().toISOString() }];
-                    }
-                    console.log('System data loaded:', Object.keys(systemData.users).length, 'users');
-                }
-                
+                // Загружаем всех пользователей
+                const users = await sheetsStorage.loadUsers();
+                systemData.users = users;
+
+                // Загружаем все заказы
+                const orders = await sheetsStorage.loadOrders();
+                systemData.orders = orders;
+
+                // Пытаемся найти текущего пользователя
                 const userId = getUserId();
-                const userDataKey = STORAGE_KEYS.USER_DATA_PREFIX + userId;
-                const savedUserData = localStorage.getItem(userDataKey);
-                
-                if (savedUserData) {
-                    userData = JSON.parse(savedUserData);
-                    console.log('User data loaded for:', userId);
+                if (systemData.users[userId]) {
+                    userData = systemData.users[userId];
+                    console.log('User data loaded from Google Sheets');
                     return true;
                 }
-                
-                console.log('No user data found for:', userId);
+
+                console.log('No user data found');
                 return false;
             } catch (error) {
                 console.error('Error loading data:', error);
+                showError('Ошибка загрузки', 'Не удалось загрузить данные. Проверьте подключение к интернету.');
                 return false;
             }
         }
 
-        // Поиск пользователя по Telegram ID
-        function findUserByTelegramId(telegramId) {
-            for (const [userId, user] of Object.entries(systemData.users)) {
-                if (user.telegramId === telegramId) {
-                    return { userId, userData: user };
-                }
-            }
-            return null;
-        }
-
-        // Поиск пользователя по телефону и Instagram (для миграции старых аккаунтов)
-        function findUserByPhoneAndInstagram(phone, instagram) {
-            const phoneUserId = systemData.usersByPhone[phone];
-            const instagramUserId = systemData.usersByInstagram[instagram.toLowerCase()];
-            
-            if (phoneUserId && instagramUserId && phoneUserId === instagramUserId) {
-                const user = systemData.users[phoneUserId];
-                if (user) {
-                    return {
-                        userId: phoneUserId,
-                        userData: user
-                    };
-                }
-            }
-            
-            return null;
-        }
-
-        // Поиск пользователя по телефону, Instagram и паролю
-        function findUserByCredentials(phone, instagram, password) {
-            const phoneUserId = systemData.usersByPhone[phone];
-            const instagramUserId = systemData.usersByInstagram[instagram.toLowerCase()];
-            
-            if (phoneUserId && instagramUserId && phoneUserId === instagramUserId) {
-                const user = systemData.users[phoneUserId];
-                if (user && user.registration.password === hashPassword(password)) {
-                    return {
-                        userId: phoneUserId,
-                        userData: user
-                    };
-                }
-            }
-            
-            return null;
-        }
-
-        // Проверка на дублирование при регистрации
-        function checkForDuplicateRegistration(phone, instagram) {
-            const phoneExists = systemData.usersByPhone[phone];
-            const instagramExists = systemData.usersByInstagram[instagram.toLowerCase()];
-            
-            return {
-                phoneExists: !!phoneExists,
-                instagramExists: !!instagramExists,
-                canRegister: !phoneExists && !instagramExists
-            };
-        }
-
         // Автоматический вход через Telegram
-        function attemptTelegramAutoLogin() {
+        async function attemptTelegramAutoLogin() {
             if (!telegramUser) {
                 console.log('No Telegram user data for auto-login');
                 return false;
@@ -1666,27 +1655,41 @@
             
             console.log('Attempting Telegram auto-login for user:', telegramUser.id);
             
-            const existingUser = findUserByTelegramId(telegramUser.id);
-            
-            if (existingUser) {
-                console.log('Found existing user:', existingUser.userId);
+            try {
+                // Ищем пользователя по Telegram ID
+                const existingUser = await sheetsStorage.findUserByTelegramId(telegramUser.id);
                 
-                // Проверяем, требуется ли миграция пароля
-                if (migrateOldAccount(existingUser)) {
-                    console.log('Account needs password migration');
-                    showMigrationScreen();
-                    return false; // Не завершаем автовход, показываем экран миграции
+                if (existingUser && existingUser.data.length >= 8) {
+                    console.log('Found existing user by Telegram ID');
+                    
+                    // Восстанавливаем данные пользователя из таблицы
+                    const row = existingUser.data;
+                    userData = {
+                        userId: row[0],
+                        registration: {
+                            firstName: row[1],
+                            phone: row[2],
+                            instagramLogin: row[3],
+                            followersCount: parseInt(row[4]) || 0,
+                            avgViews: parseInt(row[5]) || 0,
+                            password: 'loaded_from_sheets' // Заглушка
+                        },
+                        level: row[6],
+                        telegramId: row[7],
+                        registrationDate: row[8],
+                        lastActivity: new Date().toISOString(),
+                        orders: []
+                    };
+                    
+                    return true;
                 }
                 
-                userData = existingUser.userData;
-                userData.lastActivity = new Date().toISOString();
-                saveData();
-                
-                return true;
+                console.log('No existing user found for Telegram ID:', telegramUser.id);
+                return false;
+            } catch (error) {
+                console.error('Error during auto-login:', error);
+                return false;
             }
-            
-            console.log('No existing user found for Telegram ID:', telegramUser.id);
-            return false;
         }
 
         // Автозаполнение данных из Telegram
@@ -1707,32 +1710,12 @@
             }
         }
 
-        // Определение уровня блогера
-        function determineBloggerLevel(followersCount) {
-            if (followersCount <= 6000) {
-                return { level: 'micro', text: 'Микроблогер' };
-            } else if (followersCount <= 10500) {
-                return { level: 'macro-a', text: 'Макроблогер тип A' };
-            } else {
-                return { level: 'macro-b', text: 'Макроблогер тип B' };
-            }
-        }
-
-        // Проверка блокировки слота
-        function isSlotBlocked(city, date, time) {
-            return systemData.blockedSlots.some(block => 
-                block.city === city && 
-                block.date === date && 
-                block.time === time
-            );
-        }
-
         // Функции показа экранов
         function hideAllScreens() {
             const screens = [
-                'welcomeScreen', 'registrationScreen', 'loginScreen', 'migrationScreen',
-                'dashboardScreen', 'setSelectionScreen', 'dateTimeScreen', 'addressScreen', 
-                'instructionsScreen', 'crmScreen'
+                'welcomeScreen', 'registrationScreen', 'loginScreen',
+                'dashboardScreen', 'setSelectionScreen', 'dateTimeScreen', 
+                'addressScreen', 'instructionsScreen', 'crmScreen'
             ];
             screens.forEach(screen => {
                 const element = document.getElementById(screen);
@@ -1762,7 +1745,6 @@
             document.getElementById('dashboardScreen').style.display = 'block';
             updateDashboard();
             
-            // Показываем админ панель если пользователь админ
             if (isAdmin()) {
                 document.getElementById('adminPanel').style.display = 'block';
             } else {
@@ -1782,21 +1764,17 @@
 
         // Управление вкладками CRM
         function showCrmTab(tabName) {
-            // Скрываем все содержимое вкладок
             document.querySelectorAll('.crm-content').forEach(content => {
                 content.classList.remove('active');
             });
             
-            // Убираем активный класс со всех вкладок
             document.querySelectorAll('.crm-tab').forEach(tab => {
                 tab.classList.remove('active');
             });
             
-            // Показываем нужную вкладку и содержимое
             document.getElementById('crm' + tabName.charAt(0).toUpperCase() + tabName.slice(1)).classList.add('active');
             event.target.classList.add('active');
             
-            // Обновляем данные для конкретной вкладки
             switch(tabName) {
                 case 'overview':
                     updateCRMStats();
@@ -1807,17 +1785,11 @@
                 case 'users':
                     updateUsersList();
                     break;
-                case 'blocks':
-                    updateBlockedSlotsList();
-                    break;
-                case 'admins':
-                    updateAdminsList();
-                    break;
             }
         }
 
         // Вход пользователя
-        function submitLogin() {
+        async function submitLogin() {
             const phone = document.getElementById('loginPhone').value.trim();
             const instagram = document.getElementById('loginInstagram').value.trim();
             const password = document.getElementById('loginPassword').value.trim();
@@ -1829,32 +1801,47 @@
             
             console.log('Attempting manual login for:', phone, instagram);
             
-            // Сначала проверяем есть ли пользователь с такими данными без пароля (старый аккаунт)
-            const oldUser = findUserByPhoneAndInstagram(phone, instagram);
-            if (oldUser && !oldUser.userData.registration.password) {
-                // Найден старый аккаунт без пароля - переводим на миграцию
-                migrationUser = oldUser;
-                showMigrationScreen();
-                return;
-            }
-            
-            // Стандартная проверка с паролем
-            const existingUser = findUserByCredentials(phone, instagram, password);
-            
-            if (existingUser) {
-                console.log('User found, logging in:', existingUser.userId);
-                userData = existingUser.userData;
+            try {
+                // Поиск по телефону
+                const userByPhone = await sheetsStorage.findUserByPhone(phone);
+                const userByInstagram = await sheetsStorage.findUserByInstagram(instagram);
                 
-                if (telegramUser && !userData.telegramId) {
-                    userData.telegramId = telegramUser.id;
-                    console.log('Linked Telegram account to existing user');
+                if (userByPhone && userByInstagram && userByPhone.row === userByInstagram.row) {
+                    console.log('User found, logging in');
+                    
+                    const row = userByPhone.data;
+                    userData = {
+                        userId: row[0],
+                        registration: {
+                            firstName: row[1],
+                            phone: row[2],
+                            instagramLogin: row[3],
+                            followersCount: parseInt(row[4]) || 0,
+                            avgViews: parseInt(row[5]) || 0,
+                            password: 'loaded_from_sheets'
+                        },
+                        level: row[6],
+                        telegramId: telegramUser ? telegramUser.id : (row[7] || null),
+                        registrationDate: row[8],
+                        lastActivity: new Date().toISOString(),
+                        orders: []
+                    };
+                    
+                    // Обновляем Telegram ID если нужно
+                    if (telegramUser && !row[7]) {
+                        await sheetsStorage.saveUser({
+                            ...userData,
+                            telegramId: telegramUser.id
+                        });
+                    }
+                    
+                    showDashboard();
+                } else {
+                    showError('Неверные данные', 'Проверьте правильность введенных данных или пройдите регистрацию');
                 }
-                
-                userData.lastActivity = new Date().toISOString();
-                saveData();
-                showDashboard();
-            } else {
-                showError('Неверные данные', 'Проверьте правильность введенных данных или пройдите регистрацию');
+            } catch (error) {
+                console.error('Login error:', error);
+                showError('Ошибка входа', 'Произошла ошибка при входе. Проверьте подключение к интернету.');
             }
         }
 
@@ -1898,7 +1885,7 @@
         }
 
         // Регистрация пользователя
-        function submitRegistration() {
+        async function submitRegistration() {
             const firstName = document.getElementById('firstName').value.trim();
             const phone = document.getElementById('phone').value.trim();
             const instagramLogin = document.getElementById('instagramLogin').value.trim();
@@ -1922,46 +1909,45 @@
                 return;
             }
             
-            // Проверка на дублирование
-            const duplicateCheck = checkForDuplicateRegistration(phone, instagramLogin);
-            
-            if (!duplicateCheck.canRegister) {
-                let errorMessage = 'Аккаунт с такими данными уже зарегистрирован:\n';
-                if (duplicateCheck.phoneExists) {
-                    errorMessage += '• Телефон уже используется\n';
-                }
-                if (duplicateCheck.instagramExists) {
-                    errorMessage += '• Instagram уже используется\n';
-                }
-                errorMessage += '\nВойдите в существующий аккаунт или используйте другие данные.';
+            try {
+                // Проверка на дублирование
+                const userByPhone = await sheetsStorage.findUserByPhone(phone);
+                const userByInstagram = await sheetsStorage.findUserByInstagram(instagramLogin);
                 
-                showError('Аккаунт уже существует', errorMessage);
-                return;
+                if (userByPhone || userByInstagram) {
+                    showError('Аккаунт уже существует', 'Пользователь с таким телефоном или Instagram уже зарегистрирован');
+                    return;
+                }
+
+                // Определение уровня блогера
+                const bloggerData = determineBloggerLevel(followersCount);
+                
+                // Сохранение данных
+                userData = {
+                    userId: getUserId(),
+                    registration: {
+                        firstName,
+                        phone,
+                        instagramLogin,
+                        followersCount,
+                        avgViews,
+                        password: hashPassword(password)
+                    },
+                    level: bloggerData.level,
+                    orders: [],
+                    telegramId: telegramUser ? telegramUser.id : null,
+                    registrationDate: new Date().toISOString(),
+                    lastActivity: new Date().toISOString()
+                };
+
+                console.log('Registering new user:', userData);
+                await saveData();
+                showDashboard();
+                
+            } catch (error) {
+                console.error('Registration error:', error);
+                showError('Ошибка регистрации', 'Произошла ошибка при регистрации. Проверьте подключение к интернету.');
             }
-
-            // Определение уровня блогера
-            const bloggerData = determineBloggerLevel(followersCount);
-            
-            // Сохранение данных
-            userData = {
-                registration: {
-                    firstName,
-                    phone,
-                    instagramLogin,
-                    followersCount,
-                    avgViews,
-                    password: hashPassword(password)
-                },
-                level: bloggerData.level,
-                orders: [],
-                telegramId: telegramUser ? telegramUser.id : null,
-                registrationDate: new Date().toISOString(),
-                lastActivity: new Date().toISOString()
-            };
-
-            console.log('Registering new user:', userData);
-            saveData();
-            showDashboard();
         }
 
         // Обновление dashboard
@@ -1984,22 +1970,24 @@
         }
 
         // Обновление CRM данных
-        function updateCRMData() {
-            updateCRMStats();
-            updateOrdersList();
+        async function updateCRMData() {
+            try {
+                // Загружаем актуальные данные
+                await loadData();
+                updateCRMStats();
+                updateOrdersList();
+                updateUsersList();
+            } catch (error) {
+                console.error('Error updating CRM data:', error);
+            }
         }
 
         // Обновление статистики CRM
         function updateCRMStats() {
-            const realUserCount = Object.keys(systemData.users).filter(userId => 
-                systemData.users[userId].registration && 
-                systemData.users[userId].registration.firstName
-            ).length;
-            
-            document.getElementById('totalUsers').textContent = realUserCount;
+            const userCount = Object.keys(systemData.users).length;
+            document.getElementById('totalUsers').textContent = userCount;
             document.getElementById('totalOrders').textContent = systemData.orders.length;
             document.getElementById('newOrders').textContent = systemData.orders.filter(order => order.status === 'new').length;
-            document.getElementById('blockedSlots').textContent = systemData.blockedSlots.length;
         }
 
         // Обновление списка заказов
@@ -2023,10 +2011,10 @@
                         <span class="order-status status-${order.status}">${getStatusText(order.status)}</span>
                     </div>
                     <div class="order-info">
-                        <strong>${order.userName}</strong> (${order.userLevel})<br>
+                        <strong>${order.userName}</strong><br>
                         ${order.phone} | ${order.instagram}<br>
                         ${order.city}, ${order.street}<br>
-                        ${order.set ? order.set : 'Заказ макроблогера'}<br>
+                        ${order.set || 'Заказ макроблогера'}<br>
                         <small>${order.date || new Date(order.createdAt).toLocaleDateString()}</small>
                     </div>
                 `;
@@ -2039,89 +2027,43 @@
             const usersList = document.getElementById('usersList');
             usersList.innerHTML = '';
             
-            const realUsers = Object.values(systemData.users).filter(user => 
-                user.registration && user.registration.firstName
-            );
+            const users = Object.values(systemData.users);
             
-            if (realUsers.length === 0) {
+            if (users.length === 0) {
                 usersList.innerHTML = '<div style="padding: 40px; text-align: center; color: #999;">Пока нет пользователей</div>';
                 return;
             }
             
-            realUsers.forEach(user => {
+            users.forEach(user => {
+                if (!user.registration) return;
+                
                 const userElement = document.createElement('div');
                 userElement.className = 'user-item';
-                const hasPassword = user.registration.password ? '🔒' : '⚠️';
-                const passwordStatus = user.registration.password ? 'Есть пароль' : 'Нет пароля';
                 
                 userElement.innerHTML = `
                     <div class="user-header">
                         <div class="user-name-phone">
-                            ${hasPassword} ${user.registration.firstName} (${user.registration.phone})
-                        </div>
-                        <div class="user-controls">
-                            <button class="btn-secondary btn-small" onclick="viewUser('${user.userId}')">Просмотр</button>
+                            ${user.registration.firstName} (${user.registration.phone})
                         </div>
                     </div>
                     <div style="font-size: 14px; color: #ccc;">
                         Instagram: ${user.registration.instagramLogin}<br>
                         Подписчики: ${user.registration.followersCount?.toLocaleString()}<br>
                         Просмотры: ${user.registration.avgViews?.toLocaleString()}<br>
-                        ${passwordStatus} | Заказов: ${user.orders ? user.orders.length : 0}
+                        Уровень: ${determineBloggerLevel(user.registration.followersCount).text}
                     </div>
                 `;
                 usersList.appendChild(userElement);
             });
         }
 
-        // Обновление списка блокировок
-        function updateBlockedSlotsList() {
-            const blockedSlotsList = document.getElementById('blockedSlotsList');
-            blockedSlotsList.innerHTML = '';
-            
-            if (systemData.blockedSlots.length === 0) {
-                blockedSlotsList.innerHTML = '<div style="padding: 40px; text-align: center; color: #999;">Нет активных блокировок</div>';
-                return;
-            }
-            
-            systemData.blockedSlots.forEach((block, index) => {
-                const blockElement = document.createElement('div');
-                blockElement.className = 'blocked-slot';
-                blockElement.innerHTML = `
-                    <div class="blocked-slot-info">
-                        <div class="blocked-slot-city">${block.city}</div>
-                        <div class="blocked-slot-time">${block.date} в ${block.time}</div>
-                        ${block.reason ? `<div style="font-size: 12px; color: #999;">${block.reason}</div>` : ''}
-                    </div>
-                    <button class="btn-danger btn-small" onclick="removeBlock(${index})">Удалить</button>
-                `;
-                blockedSlotsList.appendChild(blockElement);
-            });
-        }
-
-        // Обновление списка администраторов
-        function updateAdminsList() {
-            const adminsList = document.getElementById('adminsList');
-            adminsList.innerHTML = '';
-            
-            systemData.admins.forEach((admin, index) => {
-                const adminElement = document.createElement('div');
-                adminElement.className = 'user-item';
-                adminElement.innerHTML = `
-                    <div class="user-header">
-                        <div class="user-name-phone">
-                            ${admin.name || 'Админ'} (ID: ${admin.id})
-                        </div>
-                        <div class="user-controls">
-                            ${admin.id !== 1345815453 ? `<button class="btn-danger btn-small" onclick="removeAdmin(${index})">Удалить</button>` : '<span style="color: #999; font-size: 12px;">Главный админ</span>'}
-                        </div>
-                    </div>
-                    <div style="font-size: 14px; color: #ccc;">
-                        Добавлен: ${new Date(admin.addedAt).toLocaleDateString()}
-                    </div>
-                `;
-                adminsList.appendChild(adminElement);
-            });
+        function getStatusText(status) {
+            const statusMap = {
+                'new': 'Новый',
+                'confirmed': 'Подтвержден',
+                'delivered': 'Доставлен'
+            };
+            return statusMap[status] || 'Неизвестно';
         }
 
         // Фильтрация заказов
@@ -2146,128 +2088,27 @@
             });
         }
 
-        // Добавление блокировки
-        function addBlock() {
-            const city = document.getElementById('blockCity').value;
-            const date = document.getElementById('blockDate').value;
-            const time = document.getElementById('blockTime').value;
-            const reason = document.getElementById('blockReason').value.trim();
-            
-            if (!city || !date || !time) {
-                showError('Ошибка валидации', 'Пожалуйста, заполните все обязательные поля');
-                return;
-            }
-            
-            const newBlock = {
-                city,
-                date,
-                time,
-                reason,
-                addedAt: new Date().toISOString(),
-                addedBy: telegramUser ? telegramUser.id : 'unknown'
-            };
-            
-            systemData.blockedSlots.push(newBlock);
-            saveSystemData();
-            
-            closeAddBlockModal();
-            updateBlockedSlotsList();
-            showSuccessMessage('Блокировка добавлена!');
-        }
-
-        // Удаление блокировки
-        function removeBlock(index) {
-            if (confirm('Удалить эту блокировку?')) {
-                systemData.blockedSlots.splice(index, 1);
-                saveSystemData();
-                updateBlockedSlotsList();
-                showSuccessMessage('Блокировка удалена!');
-            }
-        }
-
-        // Добавление администратора
-        function addAdmin() {
-            const telegramId = parseInt(document.getElementById('adminTelegramId').value);
-            const name = document.getElementById('adminName').value.trim() || 'Администратор';
-            
-            if (!telegramId || isNaN(telegramId)) {
-                showError('Ошибка валидации', 'Введите корректный Telegram ID');
-                return;
-            }
-            
-            if (systemData.admins.some(admin => admin.id === telegramId)) {
-                showError('Ошибка', 'Этот пользователь уже является администратором');
-                return;
-            }
-            
-            const newAdmin = {
-                id: telegramId,
-                name,
-                addedAt: new Date().toISOString(),
-                addedBy: telegramUser ? telegramUser.id : 'unknown'
-            };
-            
-            systemData.admins.push(newAdmin);
-            saveSystemData();
-            
-            closeAddAdminModal();
-            updateAdminsList();
-            showSuccessMessage('Администратор добавлен!');
-        }
-
-        // Удаление администратора
-        function removeAdmin(index) {
-            const admin = systemData.admins[index];
-            if (admin.id === 1345815453) {
-                showError('Ошибка', 'Нельзя удалить главного администратора');
-                return;
-            }
-            
-            if (confirm(`Удалить администратора ${admin.name}?`)) {
-                systemData.admins.splice(index, 1);
-                saveSystemData();
-                updateAdminsList();
-                showSuccessMessage('Администратор удален!');
-            }
-        }
-
-        // Сохранение только системных данных
-        function saveSystemData() {
-            try {
-                localStorage.setItem(STORAGE_KEYS.SYSTEM_DATA, JSON.stringify(systemData));
-                console.log('System data saved successfully');
-            } catch (error) {
-                console.error('Error saving system data:', error);
-            }
-        }
-
-        function getStatusText(status) {
-            const statusMap = {
-                'new': 'Новый',
-                'confirmed': 'Подтвержден',
-                'delivered': 'Доставлен'
-            };
-            return statusMap[status] || 'Неизвестно';
-        }
-
         // Инициализация приложения
-        function initializeApp() {
+        async function initializeApp() {
             console.log('Initializing app...');
             
             initTelegram();
-            loadData();
             
             if (isAdmin()) {
                 document.getElementById('adminPanel').style.display = 'block';
             }
             
-            if (attemptTelegramAutoLogin()) {
+            // Показываем экран загрузки
+            document.getElementById('autoLoginInfo').style.display = 'block';
+            
+            if (await attemptTelegramAutoLogin()) {
                 console.log('Auto-login successful');
                 showDashboard();
                 return;
             }
             
-            if (userData.registration && userData.registration.firstName) {
+            // Пытаемся загрузить данные пользователя
+            if (await loadData() && userData.registration && userData.registration.firstName) {
                 console.log('Found existing user data');
                 showDashboard();
                 return;
@@ -2321,7 +2162,6 @@
 
             document.getElementById('backFromDateTime').onclick = showAddressForm;
             
-            // Если дата уже выбрана, обновить слоты времени (полезно при возврате назад)
             if (document.getElementById('deliveryDate').value) {
                 updateTimeSlots();
             }
@@ -2341,7 +2181,6 @@
         }
         
         function handleCityChange() {
-            // Сбросить выбор даты и времени при смене города, чтобы избежать неверных блокировок
             document.getElementById('deliveryDate').value = '';
             document.getElementById('timeSlots').innerHTML = '';
             document.getElementById('nextFromDateTime').disabled = true;
@@ -2371,7 +2210,7 @@
 
         function updateTimeSlots() {
             const selectedDateValue = document.getElementById('deliveryDate').value;
-            selectedTime = ''; // Сброс времени при смене даты
+            selectedTime = '';
             document.getElementById('nextFromDateTime').disabled = true;
 
             if (!selectedDateValue) return;
@@ -2389,30 +2228,16 @@
                 timeSlots = ['10:00', '12:00', '14:00', '16:00', '18:00'];
             }
 
-            const selectedCity = document.getElementById('city').value;
-
             timeSlots.forEach(time => {
                 const slot = document.createElement('div');
                 slot.className = 'time-slot';
                 slot.textContent = time;
-                
-                // Проверяем блокировку слота
-                if (selectedCity && isSlotBlocked(selectedCity, selectedDateValue, time)) {
-                    slot.classList.add('disabled');
-                    slot.title = 'Время недоступно';
-                } else {
-                    slot.onclick = () => selectTimeSlot(slot, time);
-                }
-                
+                slot.onclick = () => selectTimeSlot(slot, time);
                 timeSlotsContainer.appendChild(slot);
             });
         }
 
         function selectTimeSlot(element, time) {
-            if (element.classList.contains('disabled')) {
-                return;
-            }
-            
             if (Math.random() < 0.1) {
                 showError('Слот недоступен', 'К сожалению, на выбранное время уже забронировано. Пожалуйста, выберите другое.');
                 return;
@@ -2469,10 +2294,27 @@
                 createdAt: new Date().toISOString()
             };
 
-            userData.orders = userData.orders || [];
-            userData.orders.push(newOrder);
-            systemData.orders.push(newOrder);
+            try {
+                // Сохраняем заказ в Google Sheets
+                await sheetsStorage.saveOrder(newOrder);
+                
+                // Обновляем локальные данные
+                userData.orders = userData.orders || [];
+                userData.orders.push(newOrder);
+                systemData.orders.push(newOrder);
 
+                // Отправляем уведомление в Telegram
+                await sendTelegramNotification(newOrder);
+                
+                showSuccessModal();
+            } catch (error) {
+                console.error('Order submission error:', error);
+                showError('Ошибка отправки', 'Не удалось оформить заказ. Проверьте подключение к интернету.');
+            }
+        }
+
+        // Отправка уведомления в Telegram
+        async function sendTelegramNotification(newOrder) {
             let message = `🆕 *Новая заявка на бартер*\n\n`;
             message += `👤 *Блогер:*\n`;
             message += `Имя: \`${userData.registration.firstName}\`\n`;
@@ -2508,48 +2350,25 @@
             const botToken = '8227812944:AAFy8ydOkUeCj3Qkjg7_Xsq6zyQpcUyMShY';
             const chatId = '1345815453';
 
-            const screenshotFile = document.getElementById('orderScreenshot').files[0];
-            const isMacro = userData.level === 'macro-a' || userData.level === 'macro-b';
-            
             try {
-                let response;
+                const response = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        chat_id: chatId,
+                        text: message,
+                        parse_mode: 'Markdown'
+                    })
+                });
 
-                if (isMacro && screenshotFile) {
-                    const formData = new FormData();
-                    formData.append('chat_id', chatId);
-                    formData.append('photo', screenshotFile, screenshotFile.name);
-                    formData.append('caption', message);
-                    formData.append('parse_mode', 'Markdown');
-                    
-                    response = await fetch(`https://api.telegram.org/bot${botToken}/sendPhoto`, {
-                        method: 'POST',
-                        body: formData
-                    });
-                } else {
-                    response = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            chat_id: chatId,
-                            text: message,
-                            parse_mode: 'Markdown'
-                        })
-                    });
-                }
-
-                if (response.ok) {
-                    saveData();
-                    showSuccessModal();
-                } else {
-                    const errorData = await response.json();
-                    console.error('Telegram API error:', errorData);
-                    showError('Ошибка отправки', `Не удалось отправить заявку. ${errorData.description}`);
+                if (!response.ok) {
+                    throw new Error('Telegram API error');
                 }
             } catch (error) {
-                showError('Сетевая ошибка', 'Произошла ошибка при отправке заявки. Проверьте подключение к интернету.');
-                console.error('Fetch Error:', error);
+                console.error('Telegram notification error:', error);
+                // Не прерываем процесс, так как заказ уже сохранен
             }
         }
 
@@ -2595,7 +2414,7 @@
             document.getElementById('editProfileModal').style.display = 'flex';
         }
 
-        function saveProfile() {
+        async function saveProfile() {
             const firstName = document.getElementById('editFirstName').value.trim();
             const phone = document.getElementById('editPhone').value.trim();
             const instagramLogin = document.getElementById('editInstagram').value.trim();
@@ -2608,72 +2427,35 @@
                 return;
             }
 
-            // Сброс ошибок
-            document.querySelectorAll('#editProfileModal .input-error').forEach(el => el.classList.remove('input-error'));
-            document.querySelectorAll('#editProfileModal .error-message').forEach(el => el.style.display = 'none');
-
-            let isValid = true;
-
-            // Валидация подписчиков
-            if (!validateNumber(followersCount, 1, 10000000)) {
-                document.getElementById('editFollowers').classList.add('input-error');
-                document.getElementById('editFollowersError').style.display = 'block';
-                isValid = false;
-            }
-
-            // Валидация просмотров
-            if (!validateNumber(avgViews, 1, 10000000)) {
-                document.getElementById('editViews').classList.add('input-error');
-                document.getElementById('editViewsError').style.display = 'block';
-                isValid = false;
-            }
-
-            if (!isValid) {
+            // Валидация чисел
+            if (!validateNumber(followersCount) || !validateNumber(avgViews)) {
+                showError('Ошибка валидации', 'Введите корректные числовые значения');
                 return;
             }
 
-            // Проверяем изменились ли ключевые поля
-            const oldPhone = userData.registration.phone;
-            const oldInstagram = userData.registration.instagramLogin;
-            
-            if (phone !== oldPhone || instagramLogin !== oldInstagram) {
-                const duplicateCheck = checkForDuplicateRegistration(phone, instagramLogin);
-                const userId = getUserId();
-                
-                if (duplicateCheck.phoneExists && systemData.usersByPhone[phone] !== userId) {
-                    showError('Ошибка', 'Телефон уже используется другим пользователем');
-                    return;
+            try {
+                userData.registration.firstName = firstName;
+                userData.registration.phone = phone;
+                userData.registration.instagramLogin = instagramLogin;
+                userData.registration.followersCount = followersCount;
+                userData.registration.avgViews = avgViews;
+
+                if (newPassword && validatePassword(newPassword)) {
+                    userData.registration.password = hashPassword(newPassword);
                 }
+
+                userData.level = determineBloggerLevel(followersCount).level;
+                userData.lastActivity = new Date().toISOString();
+
+                await saveData();
+                updateDashboard();
+                closeEditProfile();
                 
-                if (duplicateCheck.instagramExists && systemData.usersByInstagram[instagramLogin.toLowerCase()] !== userId) {
-                    showError('Ошибка', 'Instagram уже используется другим пользователем');
-                    return;
-                }
-                
-                // Обновляем индексы
-                delete systemData.usersByPhone[oldPhone];
-                delete systemData.usersByInstagram[oldInstagram.toLowerCase()];
+                showSuccessMessage('Профиль успешно обновлен!');
+            } catch (error) {
+                console.error('Profile update error:', error);
+                showError('Ошибка сохранения', 'Не удалось обновить профиль');
             }
-
-            userData.registration.firstName = firstName;
-            userData.registration.phone = phone;
-            userData.registration.instagramLogin = instagramLogin;
-            userData.registration.followersCount = followersCount;
-            userData.registration.avgViews = avgViews;
-
-            // Обновляем пароль если введен новый
-            if (newPassword && validatePassword(newPassword)) {
-                userData.registration.password = hashPassword(newPassword);
-            }
-
-            userData.level = determineBloggerLevel(followersCount).level;
-            userData.lastActivity = new Date().toISOString();
-
-            saveData();
-            updateDashboard();
-            closeEditProfile();
-            
-            showSuccessMessage('Профиль успешно обновлен!');
         }
 
         function closeEditProfile() {
@@ -2689,58 +2471,8 @@
             document.getElementById('contactModal').style.display = 'none';
         }
 
-        // Модальные окна блокировок
-        function showAddBlockModal() {
-            document.getElementById('addBlockModal').style.display = 'flex';
-            
-            // Устанавливаем минимальную дату (сегодня)
-            const today = new Date().toISOString().split('T')[0];
-            document.getElementById('blockDate').min = today;
-        }
-
-        function closeAddBlockModal() {
-            document.getElementById('addBlockModal').style.display = 'none';
-            document.getElementById('addBlockForm').reset();
-        }
-
-        // Модальные окна администраторов
-        function showAddAdminModal() {
-            document.getElementById('addAdminModal').style.display = 'flex';
-        }
-
-        function closeAddAdminModal() {
-            document.getElementById('addAdminModal').style.display = 'none';
-            document.getElementById('addAdminForm').reset();
-        }
-
-        // Просмотр пользователя
-        function viewUser(userId) {
-            const user = systemData.users[userId];
-            if (!user) return;
-            
-            const passwordStatus = user.registration.password ? 'Есть' : 'Нет пароля (требуется миграция)';
-            
-            const userInfo = `
-                Имя: ${user.registration.firstName}
-                Телефон: ${user.registration.phone}
-                Instagram: ${user.registration.instagramLogin}
-                Подписчики: ${user.registration.followersCount?.toLocaleString()}
-                Просмотры: ${user.registration.avgViews?.toLocaleString()}
-                Уровень: ${determineBloggerLevel(user.registration.followersCount).text}
-                Пароль: ${passwordStatus}
-                Заказов: ${user.orders ? user.orders.length : 0}
-                Регистрация: ${new Date(user.registrationDate).toLocaleDateString()}
-                Последняя активность: ${new Date(user.lastActivity).toLocaleDateString()}
-            `;
-            
-            showError('Информация о пользователе', userInfo);
-        }
-
         // Выход из аккаунта
         function logout() {
-            const userId = getUserId();
-            const userDataKey = STORAGE_KEYS.USER_DATA_PREFIX + userId;
-            localStorage.removeItem(userDataKey);
             userData = { registration: {}, order: {}, level: '', orders: [] };
             showWelcomeScreen();
         }
@@ -2856,7 +2588,7 @@
 
         // Валидация пароля в реальном времени
         function setupPasswordValidation() {
-            const passwordInputs = ['password', 'migrationPassword'];
+            const passwordInputs = ['password'];
             
             passwordInputs.forEach(inputId => {
                 const passwordInput = document.getElementById(inputId);
@@ -2874,23 +2606,6 @@
                     });
                 }
             });
-
-            // Специальная валидация для подтверждения пароля при миграции
-            const confirmInput = document.getElementById('migrationPasswordConfirm');
-            const confirmError = document.getElementById('migrationPasswordConfirmError');
-            const passwordInput = document.getElementById('migrationPassword');
-            
-            if (confirmInput && confirmError && passwordInput) {
-                confirmInput.addEventListener('input', function() {
-                    if (this.value !== passwordInput.value) {
-                        this.classList.add('input-error');
-                        confirmError.style.display = 'block';
-                    } else {
-                        this.classList.remove('input-error');
-                        confirmError.style.display = 'none';
-                    }
-                });
-            }
         }
 
         // Инициализация при загрузке DOM
