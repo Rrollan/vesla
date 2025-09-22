@@ -1132,7 +1132,8 @@
         </div>
 
         <div id="addressScreen" class="form-screen">
-            <button class="btn-back" id="backFromAddress" onclick="app.showSetSelection()">← Назад</button>
+            <!-- [!] ИСПРАВЛЕНО: Кнопка "Назад" теперь всегда ведет в личный кабинет для предсказуемости -->
+            <button class="btn-back" id="backFromAddress" onclick="app.showDashboard()">← В главное меню</button>
             
             <div class="form-header">
                 <h2>Адрес доставки</h2>
@@ -1463,6 +1464,8 @@
         let currentUserId = null;
         let userData = {};
         let migrationUser = null; 
+        // [!] ИСПРАВЛЕНО: Переменная для хранения данных текущего заказа
+        let currentOrderData = {};
 
         function initTelegram() {
             try {
@@ -1544,10 +1547,13 @@
 
                 if (snapshot.empty) return null;
 
-                const userDoc = snapshot.docs[0];
-                const foundUser = { userId: userDoc.id, ...userDoc.data() };
-                
-                return foundUser.registration.password === hashPassword(password) ? foundUser : null;
+                for (const doc of snapshot.docs) {
+                    const foundUser = { userId: doc.id, ...doc.data() };
+                    if (foundUser.registration.password === hashPassword(password)) {
+                        return foundUser;
+                    }
+                }
+                return null;
             } catch (error) {
                 console.error("Error finding user by credentials:", error);
                 return null;
@@ -1691,7 +1697,7 @@
                 await asyncFunction();
             } catch (error) {
                 console.error("Operation failed:", error);
-                showError("Произошла ошибка", "Пожалуйста, попробуйте еще раз.");
+                showError("Произошла ошибка", "Пожалуйста, попробуйте еще раз. " + error.message);
             } finally {
                 button.disabled = false;
                 button.innerHTML = originalText;
@@ -1708,7 +1714,7 @@
                 
                 const oldUser = await findUserByPhoneAndInstagram(phone, instagram);
                 if (oldUser) {
-                    migrateOldAccount(oldUser);
+                    migrationUser = oldUser;
                     showScreen(SCREENS.MIGRATION);
                     return;
                 }
@@ -1717,7 +1723,9 @@
                 if (existingUser) {
                     userData = existingUser;
                     currentUserId = existingUser.userId;
-                    if (telegramUser && !userData.telegramId) userData.telegramId = telegramUser.id;
+                    if (telegramUser && !userData.telegramId) {
+                        userData.telegramId = telegramUser.id;
+                    }
                     userData.lastActivity = new Date().toISOString();
                     await saveUser(currentUserId, userData);
                     showDashboard();
@@ -1791,7 +1799,7 @@
             });
         }
 
-        // [!] РЕАЛИЗОВАНО: Обновление данных на главной панели
+        // [!] УЛУЧШЕНО: Обновление данных на главной панели
         function updateDashboard() {
             if (!userData.registration) return;
             const { firstName, followersCount, avgViews } = userData.registration;
@@ -1807,10 +1815,11 @@
         // --- CRM Функции ---
         async function updateCRMData() {
             updateCRMStats();
-            updateOrdersList();
-            updateUsersList();
-            updateBlockedSlotsList();
-            updateAdminsList();
+            // Загружаем активную вкладку
+            const activeTab = document.querySelector('.crm-tab.active');
+            if (activeTab) {
+                activeTab.click();
+            }
         }
 
         async function updateCRMStats() {
@@ -1857,10 +1866,10 @@
                             <span class="order-status status-${order.status}">${getStatusText(order.status)}</span>
                         </div>
                         <div class="order-info">
-                            <strong>${order.userName}</strong> (${order.userLevel})<br>
+                            <strong>${order.userName}</strong> (${determineBloggerLevel(order.followersCount || 0).text})<br>
                             ${order.phone} | ${order.instagram}<br>
                             ${order.city}, ${order.street}<br>
-                            ${order.set ? order.set : 'Заказ макроблогера'}<br>
+                            ${order.set ? order.set.replace('set', 'Набор ') : 'Заказ макроблогера'}<br>
                             <small>${new Date(order.createdAt).toLocaleString('ru-RU')}</small>
                         </div>`;
                     list.appendChild(el);
@@ -1880,6 +1889,7 @@
                 snapshot.forEach(doc => {
                     const user = { userId: doc.id, ...doc.data() };
                     const reg = user.registration;
+                    if (!reg) return; // Пропускаем пользователей без данных регистрации
                     const el = document.createElement('div');
                     el.className = 'user-item';
                     el.dataset.search = `${reg.firstName} ${reg.phone} ${reg.instagramLogin}`.toLowerCase();
@@ -1950,7 +1960,7 @@
             }
         }
 
-        // [!] РЕАЛИЗОВАНО: Фильтрация в CRM
+        // [!] УЛУЧШЕНО: Фильтрация в CRM
         function filter(inputId, listSelector, itemSelector) {
             const query = document.getElementById(inputId).value.toLowerCase();
             document.querySelectorAll(`${listSelector} ${itemSelector}`).forEach(item => {
@@ -2012,10 +2022,8 @@
         }
         
         // --- Логика заказа ---
-        let orderData = {};
-
         function startCollaboration() {
-            orderData = {}; // Сброс данных предыдущего заказа
+            currentOrderData = {}; // Сброс данных предыдущего заказа
             if (userData.level === 'micro') {
                 showSetSelection();
             } else {
@@ -2032,19 +2040,19 @@
         function selectSet(element, setId) {
             document.querySelectorAll('.set-item').forEach(item => item.classList.remove('selected'));
             element.classList.add('selected');
-            orderData.set = setId;
+            currentOrderData.set = setId;
             document.getElementById('nextFromSet').disabled = false;
         }
         
         function submitAddressAndShowDateTime() {
             if (!validateAddressForm()) return;
             
-            orderData.city = document.getElementById('city').value;
-            orderData.street = document.getElementById('street').value;
-            orderData.entrance = document.getElementById('entrance').value;
-            orderData.floor = document.getElementById('floor').value;
-            orderData.recipientPhone = document.getElementById('recipientPhone').value;
-            orderData.comment = document.getElementById('comment').value;
+            currentOrderData.city = document.getElementById('city').value;
+            currentOrderData.street = document.getElementById('street').value;
+            currentOrderData.entrance = document.getElementById('entrance').value;
+            currentOrderData.floor = document.getElementById('floor').value;
+            currentOrderData.recipientPhone = document.getElementById('recipientPhone').value;
+            currentOrderData.comment = document.getElementById('comment').value;
 
             showDateTimeSelection();
             setupDateInput();
@@ -2059,18 +2067,22 @@
             dateInput.min = `${yyyy}-${mm}-${dd}`;
             dateInput.value = ''; // Сбрасываем значение при открытии
             document.getElementById('timeSlots').innerHTML = '';
+            document.getElementById('nextFromDateTime').disabled = true;
         }
 
         async function updateTimeSlots() {
             const dateValue = document.getElementById('deliveryDate').value;
-            orderData.time = '';
+            currentOrderData.time = '';
             document.getElementById('nextFromDateTime').disabled = true;
 
             const timeSlotsContainer = document.getElementById('timeSlots');
             timeSlotsContainer.innerHTML = '<div class="loading-indicator">Проверка доступного времени...</div>';
 
-            if (!dateValue) return;
-            orderData.date = dateValue;
+            if (!dateValue) {
+                timeSlotsContainer.innerHTML = '';
+                return;
+            }
+            currentOrderData.date = dateValue;
             
             const timeSlots = ['12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00', '21:00'];
             const city = document.getElementById('city').value;
@@ -2094,7 +2106,7 @@
         function selectTimeSlot(element, time) {
             document.querySelectorAll('.time-slot').forEach(item => item.classList.remove('selected'));
             element.classList.add('selected');
-            orderData.time = time;
+            currentOrderData.time = time;
             document.getElementById('nextFromDateTime').disabled = false;
         }
 
@@ -2114,25 +2126,24 @@
                 const orderId = db.collection(COLLECTIONS.ORDERS).doc().id;
                 
                 const newOrder = {
-                    ...orderData,
+                    ...currentOrderData,
                     userId: currentUserId,
                     userName: userData.registration.firstName,
-                    userLevel: userData.level,
+                    followersCount: userData.registration.followersCount,
                     instagram: userData.registration.instagramLogin,
                     phone: userData.registration.phone,
                     status: 'new',
                     createdAt: new Date().toISOString()
                 };
-
+                
+                // [!] ИСПРАВЛЕНО: Безопасная инициализация массива заказов
                 userData.orders = userData.orders || [];
-                userData.orders.push({ id: orderId, date: newOrder.date, set: newOrder.set, status: newOrder.status });
+                userData.orders.push({ id: orderId, date: newOrder.date, set: newOrder.set, status: newOrder.status, createdAt: newOrder.createdAt });
                 
                 const batch = db.batch();
                 batch.set(db.collection(COLLECTIONS.ORDERS).doc(orderId), newOrder);
                 batch.update(db.collection(COLLECTIONS.USERS).doc(currentUserId), { orders: userData.orders });
                 await batch.commit();
-
-                // Здесь может быть код для отправки уведомления в Telegram через вашего бота
                 
                 showSuccessModal();
             });
@@ -2142,18 +2153,21 @@
         function showOrderHistory() {
             const list = document.getElementById('orderHistoryList');
             list.innerHTML = '';
-            if (!userData.orders || userData.orders.length === 0) {
+            // Сортируем заказы по дате
+            const sortedOrders = (userData.orders || []).sort((a, b) => new Date(b.createdAt || b.date) - new Date(a.createdAt || a.date));
+            
+            if (sortedOrders.length === 0) {
                 list.innerHTML = '<p style="color:#999;text-align:center;">У вас еще не было заказов.</p>';
             } else {
-                userData.orders.forEach(order => {
+                sortedOrders.forEach(order => {
                     const item = document.createElement('div');
                     item.className = 'order-item';
                     item.innerHTML = `
                         <div class="order-header">
-                            <span class="order-id">Заказ от ${new Date(order.date || order.createdAt).toLocaleDateString()}</span>
+                            <span class="order-id">Заказ от ${new Date(order.createdAt || order.date).toLocaleDateString()}</span>
                             <span class="order-status status-${order.status}">${getStatusText(order.status)}</span>
                         </div>
-                        <div class="order-info">${order.set || 'Заказ макроблогера'}</div>`;
+                        <div class="order-info">${order.set ? order.set.replace('set', 'Набор ') : 'Заказ макроблогера'}</div>`;
                     list.appendChild(item);
                 });
             }
@@ -2176,6 +2190,13 @@
                 const reg = userData.registration;
                 const newPhone = document.getElementById('editPhone').value.trim();
                 const newInstagram = document.getElementById('editInstagram').value.trim().toLowerCase();
+                const newFirstName = document.getElementById('editFirstName').value.trim();
+                const newFollowers = parseInt(document.getElementById('editFollowers').value);
+                const newViews = parseInt(document.getElementById('editViews').value);
+                
+                if (!newFirstName || !newPhone || !newInstagram || isNaN(newFollowers) || isNaN(newViews)) {
+                    return showError('Ошибка валидации', 'Пожалуйста, заполните все поля корректно.');
+                }
 
                 if (newPhone !== reg.phone || newInstagram !== reg.instagramLogin) {
                     const duplicateCheck = await checkForDuplicateRegistration(newPhone, newInstagram, currentUserId);
@@ -2184,15 +2205,19 @@
                     }
                 }
                 
-                reg.firstName = document.getElementById('editFirstName').value.trim();
-                reg.phone = newPhone;
-                reg.instagramLogin = newInstagram;
-                reg.followersCount = parseInt(document.getElementById('editFollowers').value);
-                reg.avgViews = parseInt(document.getElementById('editViews').value);
+                userData.registration.firstName = newFirstName;
+                userData.registration.phone = newPhone;
+                userData.registration.instagramLogin = newInstagram;
+                userData.registration.followersCount = newFollowers;
+                userData.registration.avgViews = newViews;
+                
                 const newPassword = document.getElementById('editPassword').value.trim();
                 if (validatePassword(newPassword)) {
-                    reg.password = hashPassword(newPassword);
+                    userData.registration.password = hashPassword(newPassword);
                 }
+                
+                // [!] ИСПРАВЛЕНО: Обновление уровня блогера при изменении данных
+                userData.level = determineBloggerLevel(newFollowers).level;
                 
                 await saveUser(currentUserId, userData);
                 updateDashboard();
@@ -2240,7 +2265,7 @@
         function showAddAdminModal() { document.getElementById('addAdminModal').style.display = 'flex'; }
         function closeAddAdminModal() { document.getElementById('addAdminModal').style.display = 'none'; }
         
-        // [!] РЕАЛИЗОВАНО: Маска для ввода телефона
+        // [!] ДОБАВЛЕНО: Маска для ввода телефона
         function setupPhoneMask(inputId) {
             const phoneInput = document.getElementById(inputId);
             if (!phoneInput) return;
