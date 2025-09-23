@@ -7,7 +7,6 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        /* [!] ВАШИ CSS СТИЛИ ОСТАЛИСЬ БЕЗ ИЗМЕНЕНИЙ [!] */
         * {
             margin: 0;
             padding: 0;
@@ -74,12 +73,11 @@
             justify-content: center;
         }
         
-        /* [!] СТИЛЬ ДЛЯ ВАШЕГО НОВОГО ЛОГОТИПА */
         .logo-icon img {
             width: 100%;
             height: 100%;
-            object-fit: cover; /* Масштабирует картинку, чтобы она заполнила контейнер */
-            border-radius: 30px; /* Скругляет углы картинки, как у контейнера */
+            object-fit: cover;
+            border-radius: 30px;
         }
 
 
@@ -807,7 +805,6 @@
             opacity: 0.5;
             cursor: not-allowed;
             background: #555;
-            /* [!] ИЗМЕНЕНИЕ: Скрываем заблокированные слоты */
             display: none; 
         }
 
@@ -950,37 +947,66 @@
             border-color: #00b4d8;
             outline: none;
         }
-
-        /* [!] СТИЛИ ДЛЯ НОВОЙ АНАЛИТИКИ */
-        .analytics-grid {
-            display: grid;
-            gap: 20px;
+        
+        /* Стили для нового слайдера аналитики */
+        .analytics-slider {
+            position: relative;
+            overflow: hidden;
+            width: 100%;
         }
-
+        .analytics-wrapper {
+            display: flex;
+            transition: transform 0.3s ease-in-out;
+        }
+        .analytics-slide {
+            flex: 0 0 100%;
+            width: 100%;
+            padding: 0 5px; /* Небольшой отступ по бокам */
+        }
         .chart-container {
             background: #3a3a3a;
-            padding: 20px;
+            padding: 20px 15px;
             border-radius: 15px;
+            height: 300px; /* Фиксированная высота для всех графиков */
+            display: flex;
+            flex-direction: column;
         }
-
         .chart-container h3 {
             text-align: center;
             margin-bottom: 15px;
             color: #ccc;
+            font-size: 16px;
             font-weight: 500;
+        }
+        .chart-container canvas {
+            max-height: 220px; /* Ограничиваем высоту самого графика */
+        }
+        .slider-dots {
+            text-align: center;
+            margin-top: 15px;
+        }
+        .slider-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #4a4a4a;
+            margin: 0 5px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        .slider-dot.active {
+            background: #00b4d8;
         }
 
     </style>
 </head>
 <body>
     <div class="container">
-        <!-- [!] ВСЯ ВАША HTML-РАЗМЕТКА ОСТАЛАСЬ БЕЗ ИЗМЕНЕНИЙ [!] -->
         <div id="welcomeScreen" class="welcome-screen">
             <div class="logo-container">
-                <!-- [!] ИЗМЕНЕНИЕ 6: ЗАМЕНА ЭМОДЗИ НА КАРТИНКУ -->
-                <!-- Замените "path/to/your/logo.png" на реальный путь к вашему изображению -->
                 <div class="logo-icon">
-                    <img src="path/to/your/logo.png" alt="Логотип">
+                    <img src="logo.png" alt="Логотип">
                 </div>
             </div>
             <h1>Бартер для блогеров</h1>
@@ -1190,22 +1216,30 @@
                 </div>
             </div>
             
-             <!-- [!] ИЗМЕНЕНИЕ 1: ОБНОВЛЕННЫЙ БЛОК АНАЛИТИКИ -->
             <div id="crmAnalytics" class="crm-content">
-                <div class="analytics-grid">
-                    <div class="chart-container">
-                        <h3>Динамика заказов (30 дней)</h3>
-                        <canvas id="ordersTrendChart"></canvas>
-                    </div>
-                    <div class="chart-container">
-                        <h3>Заказы по городам</h3>
-                        <canvas id="cityChart"></canvas>
-                    </div>
-                    <div class="chart-container">
-                        <h3>Уровни блогеров</h3>
-                        <canvas id="bloggerLevelChart"></canvas>
+                <div class="analytics-slider">
+                    <div class="analytics-wrapper">
+                        <div class="analytics-slide">
+                            <div class="chart-container">
+                                <h3>Динамика заказов (30 дней)</h3>
+                                <canvas id="ordersTrendChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="analytics-slide">
+                            <div class="chart-container">
+                                <h3>Заказы по городам</h3>
+                                <canvas id="cityChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="analytics-slide">
+                             <div class="chart-container">
+                                <h3>Уровни блогеров</h3>
+                                <canvas id="bloggerLevelChart"></canvas>
+                            </div>
+                        </div>
                     </div>
                 </div>
+                <div class="slider-dots" id="analyticsSliderDots"></div>
             </div>
 
             <div id="crmOrders" class="crm-content">
@@ -1466,7 +1500,6 @@
             </div>
         </div>
 
-        <!-- [!] ИЗМЕНЕНИЕ 3: ОБНОВЛЕННОЕ МОДАЛЬНОЕ ОКНО БЛОКИРОВКИ -->
         <div id="addBlockModal" class="modal">
             <div class="modal-content" style="max-width: 400px;">
                 <h2>Добавить блокировку</h2>
@@ -1578,11 +1611,12 @@ const app = (function() {
     let migrationUser = null;
     let currentOrderData = {};
     let isCurrentUserAdmin = false;
-    // [!] ИЗМЕНЕНИЕ 1: Переменные для хранения графиков
-    let cityChart, ordersTrendChart, bloggerLevelChart; 
+    let cityChart, ordersTrendChart, bloggerLevelChart;
     let currentEditingOrderId = null;
+
+    let currentSlide = 0;
+    const totalSlides = 3;
     
-    // [!] ИЗМЕНЕНИЕ 4: Функция генерации номера заказа
     function generateOrderNumber(city, date, firestoreId) {
         const cityCodes = {
             'Павлодар': 'PVL',
@@ -1838,23 +1872,17 @@ Instagram: @${orderData.instagram}
         return { level: 'macro-b', text: 'Макроблогер тип B' };
     }
 
-    // [!] ИЗМЕНЕНИЕ 3: Улучшенная функция проверки блокировки
     async function isSlotBlocked(city, date, time) {
         try {
-            // Проверка на конкретное время
             const timeBlockId = `${city}_${date}_${time}`;
             const timeBlockDoc = db.collection(COLLECTIONS.BLOCKED_SLOTS).doc(timeBlockId).get();
-
-            // Проверка на целый день
             const dayBlockId = `${city}_${date}_fullday`;
             const dayBlockDoc = db.collection(COLLECTIONS.BLOCKED_SLOTS).doc(dayBlockId).get();
-
             const [timeBlock, dayBlock] = await Promise.all([timeBlockDoc, dayBlockDoc]);
-
             return timeBlock.exists || dayBlock.exists;
         } catch (error) {
             console.error("Error checking blocked slot:", error);
-            return true; // В случае ошибки лучше считать слот заблокированным
+            return true;
         }
     }
 
@@ -1897,7 +1925,10 @@ Instagram: @${orderData.instagram}
         
         switch(tabName) {
             case 'overview': updateCRMStats(); break;
-            case 'analytics': updateAllAnalytics(); break; // [!] ИЗМЕНЕНИЕ 1: Вызов общей функции аналитики
+            case 'analytics': 
+                updateAllAnalytics(); 
+                setTimeout(() => goToSlide(0), 10);
+                break;
             case 'orders': updateOrdersList(); break;
             case 'users': updateUsersList(); break;
             case 'blocks': updateBlockedSlotsList(); break;
@@ -2086,7 +2117,49 @@ Instagram: @${orderData.instagram}
         }
     }
     
-    // [!] ИЗМЕНЕНИЕ 1: Новые функции для расширенной аналитики
+    function setupAnalyticsSlider() {
+        const wrapper = document.querySelector('.analytics-wrapper');
+        const dotsContainer = document.getElementById('analyticsSliderDots');
+        if (!wrapper || !dotsContainer) return;
+
+        dotsContainer.innerHTML = '';
+        for (let i = 0; i < totalSlides; i++) {
+            const dot = document.createElement('span');
+            dot.classList.add('slider-dot');
+            if (i === 0) dot.classList.add('active');
+            dot.onclick = () => goToSlide(i);
+            dotsContainer.appendChild(dot);
+        }
+
+        let startX = 0;
+        let endX = 0;
+
+        wrapper.addEventListener('touchstart', (e) => startX = e.touches[0].clientX, { passive: true });
+        wrapper.addEventListener('touchend', (e) => {
+            endX = e.changedTouches[0].clientX;
+            if (startX > endX + 50) {
+                goToSlide(currentSlide + 1);
+            } else if (startX < endX - 50) {
+                goToSlide(currentSlide - 1);
+            }
+        }, { passive: true });
+    }
+
+    function goToSlide(slideIndex) {
+        const wrapper = document.querySelector('.analytics-wrapper');
+        if (!wrapper) return;
+        
+        if (slideIndex >= totalSlides) slideIndex = 0;
+        if (slideIndex < 0) slideIndex = totalSlides - 1;
+
+        currentSlide = slideIndex;
+        wrapper.style.transform = `translateX(-${currentSlide * 100}%)`;
+
+        document.querySelectorAll('.slider-dot').forEach((dot, index) => {
+            dot.classList.toggle('active', index === currentSlide);
+        });
+    }
+
     async function updateAllAnalytics() {
         try {
             const [ordersSnap, usersSnap] = await Promise.all([
@@ -2094,19 +2167,10 @@ Instagram: @${orderData.instagram}
                 db.collection(COLLECTIONS.USERS).get()
             ]);
 
-            // 1. График по городам
-            const cityCounts = {};
-            ordersSnap.forEach(doc => {
-                const city = doc.data().city;
-                if (city) cityCounts[city] = (cityCounts[city] || 0) + 1;
-            });
-            renderChart('cityChart', 'bar', Object.keys(cityCounts), Object.values(cityCounts), 'Заказы по городам', cityChart);
-
-            // 2. График динамики заказов
-            const ordersByDate = {};
             const thirtyDaysAgo = new Date();
             thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
             
+            const ordersByDate = {};
             ordersSnap.forEach(doc => {
                 const createdAt = new Date(doc.data().createdAt);
                 if (createdAt >= thirtyDaysAgo) {
@@ -2118,7 +2182,13 @@ Instagram: @${orderData.instagram}
             const ordersTrendData = sortedDates.map(date => ordersByDate[date]);
             renderChart('ordersTrendChart', 'line', sortedDates, ordersTrendData, 'Динамика заказов', ordersTrendChart);
 
-            // 3. График уровней блогеров
+            const cityCounts = {};
+            ordersSnap.forEach(doc => {
+                const city = doc.data().city;
+                if (city) cityCounts[city] = (cityCounts[city] || 0) + 1;
+            });
+            renderChart('cityChart', 'bar', Object.keys(cityCounts), Object.values(cityCounts), 'Заказы по городам', cityChart);
+
             const levelCounts = { 'Микроблогер': 0, 'Макроблогер тип A': 0, 'Макроблогер тип B': 0 };
             usersSnap.forEach(doc => {
                 const levelText = determineBloggerLevel(doc.data().registration?.followersCount || 0).text;
@@ -2155,7 +2225,7 @@ Instagram: @${orderData.instagram}
             }
         };
 
-        chartInstance = new Chart(ctx, {
+        const newChartInstance = new Chart(ctx, {
             type: type,
             data: {
                 labels: labels,
@@ -2171,10 +2241,9 @@ Instagram: @${orderData.instagram}
             options: chartOptions
         });
         
-        // Сохраняем экземпляр графика
-        if (canvasId === 'cityChart') cityChart = chartInstance;
-        else if (canvasId === 'ordersTrendChart') ordersTrendChart = chartInstance;
-        else if (canvasId === 'bloggerLevelChart') bloggerLevelChart = chartInstance;
+        if (canvasId === 'cityChart') cityChart = newChartInstance;
+        else if (canvasId === 'ordersTrendChart') ordersTrendChart = newChartInstance;
+        else if (canvasId === 'bloggerLevelChart') bloggerLevelChart = newChartInstance;
     }
 
 
@@ -2197,7 +2266,6 @@ Instagram: @${orderData.instagram}
                 const order = { id: doc.id, ...doc.data() };
                 const el = document.createElement('div');
                 el.className = 'order-item';
-                // [!] ИЗМЕНЕНИЕ 4: Добавляем orderNumber в поиск
                 el.dataset.search = `${order.userName} ${order.phone} ${order.instagram} ${order.orderNumber}`.toLowerCase();
                 el.onclick = () => showOrderDetailModal(order.id);
                 el.innerHTML = `
@@ -2254,7 +2322,10 @@ Instagram: @${orderData.instagram}
                        <button class="btn-danger-icon">🗑️</button>
                     </div>`;
 
-                el.addEventListener('click', () => showUserDetailModal(user.userId));
+                el.addEventListener('click', (event) => {
+                    if (event.target.tagName.toLowerCase() === 'button') return;
+                    showUserDetailModal(user.userId)
+                });
                 
                 const deleteBtn = el.querySelector('.btn-danger-icon');
                 deleteBtn.addEventListener('click', (event) => {
@@ -2280,7 +2351,6 @@ Instagram: @${orderData.instagram}
                 const block = { id: doc.id, ...doc.data() };
                 const el = document.createElement('div');
                 el.className = 'blocked-slot';
-                // [!] ИЗМЕНЕНИЕ 3: Отображение типа блокировки
                 const timeDisplay = block.type === 'fullday' ? 'Весь день' : `в ${block.time}`;
                 el.innerHTML = `
                     <div class="blocked-slot-info">
@@ -2361,7 +2431,6 @@ Instagram: @${orderData.instagram}
     function filterUsers() { filter('userSearch', '#usersList', '.user-item'); }
     function filterAdminUsers() { filter('adminUserSearch', '#adminUsersList', '.user-item'); }
     
-    // [!] ИЗМЕНЕНИЕ 3: Обновленная функция добавления блокировки
     async function addBlock(button) {
         await withLoading(button, async () => {
             const city = document.getElementById('blockCity').value;
@@ -2496,7 +2565,6 @@ Instagram: @${orderData.instagram}
         document.getElementById('nextFromDateTime').disabled = true;
     }
 
-    // [!] ИЗМЕНЕНИЕ 2: Обновленная логика отображения слотов
     async function updateTimeSlots() {
         const dateValue = document.getElementById('deliveryDate').value;
         currentOrderData.time = '';
@@ -2522,17 +2590,14 @@ Instagram: @${orderData.instagram}
         for (const time of timeSlots) {
             const [slotHour] = time.split(':').map(Number);
             
-            // Пропускаем прошедшее время
             if (dateValue === todayStr && slotHour <= currentHour) {
                 continue;
             }
             
-            // Пропускаем заблокированное время
             if (await isSlotBlocked(city, dateValue, time)) {
                 continue;
             }
 
-            // Если все проверки пройдены, создаем и добавляем слот
             const slot = document.createElement('div');
             slot.className = 'time-slot';
             slot.textContent = time;
@@ -2579,7 +2644,6 @@ Instagram: @${orderData.instagram}
             const newOrder = {
                 ...currentOrderData,
                 id: orderId,
-                // [!] ИЗМЕНЕНИЕ 4: Добавляем сгенерированный номер заказа
                 orderNumber: generateOrderNumber(currentOrderData.city, currentOrderData.date, orderId),
                 userId: currentUserId,
                 userName: userData.registration.firstName,
@@ -2763,10 +2827,16 @@ Instagram: @${orderData.instagram}
     }
 
     async function showUserDetailModal(userId) {
+        if (!userId) {
+            console.error("User ID is missing");
+            return;
+        }
         const user = await loadUser(userId);
         if (!user) return showError('Ошибка', 'Пользователь не найден');
 
         const reg = user.registration;
+        if (!reg) return showError('Ошибка', 'У пользователя отсутствуют регистрационные данные.');
+
         const body = document.getElementById('userDetailBody');
         const ordersList = document.getElementById('userOrdersHistoryCrm');
         
@@ -2849,8 +2919,7 @@ Instagram: @${orderData.instagram}
     function closeEditProfile() { document.getElementById('editProfileModal').style.display = 'none'; }
     function contactAdmin() { document.getElementById('contactModal').style.display = 'flex'; }
     function closeContactModal() { document.getElementById('contactModal').style.display = 'none'; }
-    
-    // [!] ИЗМЕНЕНИЕ 3: Функция для переключения поля времени в блокировке
+
     function toggleBlockTime() {
         const type = document.getElementById('blockType').value;
         document.getElementById('blockTimeGroup').style.display = type === 'time' ? 'block' : 'none';
@@ -2858,7 +2927,6 @@ Instagram: @${orderData.instagram}
 
     function showAddBlockModal() { 
         document.getElementById('addBlockModal').style.display = 'flex';
-        // Сброс формы при открытии
         document.getElementById('addBlockForm').reset();
         toggleBlockTime();
     }
@@ -2900,6 +2968,8 @@ Instagram: @${orderData.instagram}
         setupPhoneMask('phone');
         setupPhoneMask('recipientPhone');
         setupPhoneMask('editPhone');
+        
+        setupAnalyticsSlider();
         
         setTimeout(initializeApp, 100);
     });
