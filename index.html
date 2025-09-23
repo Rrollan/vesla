@@ -67,7 +67,21 @@
 
         .logo-icon {
             font-size: 60px;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
+        
+        /* [!] СТИЛЬ ДЛЯ ВАШЕГО НОВОГО ЛОГОТИПА */
+        .logo-icon img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover; /* Масштабирует картинку, чтобы она заполнила контейнер */
+            border-radius: 30px; /* Скругляет углы картинки, как у контейнера */
+        }
+
 
         h1 {
             font-size: 28px;
@@ -288,15 +302,14 @@
             margin: 0 auto 20px;
             position: relative;
             z-index: 1;
-            /* [!] ДОБАВЛЕНО: Убираем внутренние отступы, чтобы картинка занимала всё место */
             padding: 0; 
-            overflow: hidden; /* Скрываем части изображения, выходящие за круг */
+            overflow: hidden; 
         }
-        /* [!] ДОБАВЛЕН НОВЫЙ СТИЛЬ ДЛЯ ИЗОБРАЖЕНИЯ ВНУТРИ АВАТАРА */
+
         .user-avatar img {
             width: 100%;
             height: 100%;
-            object-fit: cover; /* Масштабирует изображение, сохраняя пропорции, чтобы заполнить блок */
+            object-fit: cover; 
         }
 
         .user-name {
@@ -564,7 +577,7 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            cursor: pointer; /* Делаем элемент кликабельным */
+            cursor: pointer; 
             transition: background 0.3s ease;
         }
 
@@ -794,6 +807,8 @@
             opacity: 0.5;
             cursor: not-allowed;
             background: #555;
+            /* [!] ИЗМЕНЕНИЕ: Скрываем заблокированные слоты */
+            display: none; 
         }
 
         /* Инструкции */
@@ -935,6 +950,26 @@
             border-color: #00b4d8;
             outline: none;
         }
+
+        /* [!] СТИЛИ ДЛЯ НОВОЙ АНАЛИТИКИ */
+        .analytics-grid {
+            display: grid;
+            gap: 20px;
+        }
+
+        .chart-container {
+            background: #3a3a3a;
+            padding: 20px;
+            border-radius: 15px;
+        }
+
+        .chart-container h3 {
+            text-align: center;
+            margin-bottom: 15px;
+            color: #ccc;
+            font-weight: 500;
+        }
+
     </style>
 </head>
 <body>
@@ -942,7 +977,11 @@
         <!-- [!] ВСЯ ВАША HTML-РАЗМЕТКА ОСТАЛАСЬ БЕЗ ИЗМЕНЕНИЙ [!] -->
         <div id="welcomeScreen" class="welcome-screen">
             <div class="logo-container">
-                <div class="logo-icon">🍱</div>
+                <!-- [!] ИЗМЕНЕНИЕ 6: ЗАМЕНА ЭМОДЗИ НА КАРТИНКУ -->
+                <!-- Замените "path/to/your/logo.png" на реальный путь к вашему изображению -->
+                <div class="logo-icon">
+                    <img src="path/to/your/logo.png" alt="Логотип">
+                </div>
             </div>
             <h1>Бартер для блогеров</h1>
             <p class="subtitle">Эксклюзивное предложение<br>для блогеров и инфлюенсеров</p>
@@ -1081,7 +1120,6 @@
                 </div>
             </div>
 
-            <!-- [!] ИЗМЕНЕНИЕ 3: БЛОК ДЛЯ ДИНАМИЧЕСКОГО СТАТУСА -->
             <div id="statusPanel" class="action-card" style="display: none; border-color: #00b4d8; text-align: left;"></div>
 
             <div class="dashboard-actions">
@@ -1152,14 +1190,26 @@
                 </div>
             </div>
             
+             <!-- [!] ИЗМЕНЕНИЕ 1: ОБНОВЛЕННЫЙ БЛОК АНАЛИТИКИ -->
             <div id="crmAnalytics" class="crm-content">
-                <div class="crm-stat-card">
-                    <canvas id="cityChart" style="background: #3a3a3a; border-radius: 15px; padding: 10px;"></canvas>
+                <div class="analytics-grid">
+                    <div class="chart-container">
+                        <h3>Динамика заказов (30 дней)</h3>
+                        <canvas id="ordersTrendChart"></canvas>
+                    </div>
+                    <div class="chart-container">
+                        <h3>Заказы по городам</h3>
+                        <canvas id="cityChart"></canvas>
+                    </div>
+                    <div class="chart-container">
+                        <h3>Уровни блогеров</h3>
+                        <canvas id="bloggerLevelChart"></canvas>
+                    </div>
                 </div>
             </div>
 
             <div id="crmOrders" class="crm-content">
-                <input type="text" id="orderSearch" class="search-input" placeholder="Поиск по имени, телефону или Instagram..." onkeyup="app.filterOrders()">
+                <input type="text" id="orderSearch" class="search-input" placeholder="Поиск по имени, телефону, Instagram или номеру заказа..." onkeyup="app.filterOrders()">
                 <div class="orders-list" id="ordersList"></div>
             </div>
 
@@ -1205,7 +1255,6 @@
         </div>
 
         <div id="addressScreen" class="form-screen">
-            <!-- [!] ИСПРАВЛЕНО: Кнопка "Назад" теперь всегда ведет в личный кабинет для предсказуемости -->
             <button class="btn-back" id="backFromAddress" onclick="app.showDashboard()">← В главное меню</button>
             
             <div class="form-header">
@@ -1355,7 +1404,6 @@
                      <button class="btn-danger-icon" id="deleteOrderBtn" title="Удалить заказ">🗑️</button>
                 </div>
                 <div id="orderDetailBody" class="modal-body"></div>
-                <!-- [!] ИЗМЕНЕНИЕ 1: БЛОК ДЛЯ СМЕНЫ СТАТУСА -->
                 <div class="form-group" style="margin-top: 20px; text-align: left;">
                     <label for="orderStatusSelect">Изменить статус:</label>
                     <select id="orderStatusSelect" style="width: 100%;">
@@ -1369,7 +1417,6 @@
             </div>
         </div>
 
-        <!-- [!] ИЗМЕНЕНИЕ 2: НОВОЕ МОДАЛЬНОЕ ОКНО ДЛЯ КАРТОЧКИ ПОЛЬЗОВАТЕЛЯ -->
         <div id="userDetailModal" class="modal">
             <div class="modal-content" style="max-width: 400px;">
                 <div class="modal-header">
@@ -1419,6 +1466,7 @@
             </div>
         </div>
 
+        <!-- [!] ИЗМЕНЕНИЕ 3: ОБНОВЛЕННОЕ МОДАЛЬНОЕ ОКНО БЛОКИРОВКИ -->
         <div id="addBlockModal" class="modal">
             <div class="modal-content" style="max-width: 400px;">
                 <h2>Добавить блокировку</h2>
@@ -1439,8 +1487,15 @@
                         <input type="date" id="blockDate" required>
                     </div>
                     <div class="form-group">
+                        <label for="blockType">Тип блокировки *</label>
+                        <select id="blockType" required onchange="app.toggleBlockTime()">
+                            <option value="time">Конкретное время</option>
+                            <option value="fullday">Весь день</option>
+                        </select>
+                    </div>
+                    <div class="form-group" id="blockTimeGroup">
                         <label for="blockTime">Время *</label>
-                        <input type="time" id="blockTime" required>
+                        <input type="time" id="blockTime">
                     </div>
                     <div class="form-group">
                         <label for="blockReason">Причина</label>
@@ -1523,14 +1578,38 @@ const app = (function() {
     let migrationUser = null;
     let currentOrderData = {};
     let isCurrentUserAdmin = false;
-    let cityChart = null;
+    // [!] ИЗМЕНЕНИЕ 1: Переменные для хранения графиков
+    let cityChart, ordersTrendChart, bloggerLevelChart; 
     let currentEditingOrderId = null;
     
+    // [!] ИЗМЕНЕНИЕ 4: Функция генерации номера заказа
+    function generateOrderNumber(city, date, firestoreId) {
+        const cityCodes = {
+            'Павлодар': 'PVL',
+            'Петропавловск': 'PPK',
+            'Кокшетау': 'KOK',
+            'Костанай': 'KSN',
+            'Усть-Каменогорск': 'UKK'
+        };
+        const cityCode = cityCodes[city] || 'UNK';
+        const dateObj = new Date(date);
+        const day = String(dateObj.getDate()).padStart(2, '0');
+        const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const year = String(dateObj.getFullYear()).slice(-2);
+        
+        const shortId = firestoreId.substring(0, 4).toUpperCase();
+        
+        return `${cityCode}-${day}${month}${year}-${shortId}`;
+    }
+
+
     async function sendTelegramNotification(orderData, screenshotFile) {
         const BOT_TOKEN = '8227812944:AAFy8ydOkUeCj3Qkjg7_Xsq6zyQpcUyMShY';
         const CHAT_ID = '1345815453';
 
         const message = `*Новая заявка на бартер*
+
+📝 *Заказ:* \`${orderData.orderNumber}\`
 
 👤 *Блогер:*
 Имя: ${orderData.userName}
@@ -1549,9 +1628,7 @@ Instagram: @${orderData.instagram}
 Адрес: ${orderData.street}
 Подъезд: ${orderData.entrance || 'не указан'}
 Этаж: ${orderData.floor || 'не указан'}
-Телефон получателя: \`${orderData.recipientPhone}\`
-
-🆔 *ID заказа:* \`${orderData.id.substring(0, 12)}\``;
+Телефон получателя: \`${orderData.recipientPhone}\``;
         
         try {
             if (screenshotFile) {
@@ -1761,14 +1838,23 @@ Instagram: @${orderData.instagram}
         return { level: 'macro-b', text: 'Макроблогер тип B' };
     }
 
+    // [!] ИЗМЕНЕНИЕ 3: Улучшенная функция проверки блокировки
     async function isSlotBlocked(city, date, time) {
         try {
-            const blockId = `${city}_${date}_${time}`;
-            const blockDoc = await db.collection(COLLECTIONS.BLOCKED_SLOTS).doc(blockId).get();
-            return blockDoc.exists;
+            // Проверка на конкретное время
+            const timeBlockId = `${city}_${date}_${time}`;
+            const timeBlockDoc = db.collection(COLLECTIONS.BLOCKED_SLOTS).doc(timeBlockId).get();
+
+            // Проверка на целый день
+            const dayBlockId = `${city}_${date}_fullday`;
+            const dayBlockDoc = db.collection(COLLECTIONS.BLOCKED_SLOTS).doc(dayBlockId).get();
+
+            const [timeBlock, dayBlock] = await Promise.all([timeBlockDoc, dayBlockDoc]);
+
+            return timeBlock.exists || dayBlock.exists;
         } catch (error) {
             console.error("Error checking blocked slot:", error);
-            return true;
+            return true; // В случае ошибки лучше считать слот заблокированным
         }
     }
 
@@ -1811,7 +1897,7 @@ Instagram: @${orderData.instagram}
         
         switch(tabName) {
             case 'overview': updateCRMStats(); break;
-            case 'analytics': updateCityAnalytics(); break;
+            case 'analytics': updateAllAnalytics(); break; // [!] ИЗМЕНЕНИЕ 1: Вызов общей функции аналитики
             case 'orders': updateOrdersList(); break;
             case 'users': updateUsersList(); break;
             case 'blocks': updateBlockedSlotsList(); break;
@@ -2000,41 +2086,98 @@ Instagram: @${orderData.instagram}
         }
     }
     
-    async function updateCityAnalytics() {
-        const ctx = document.getElementById('cityChart').getContext('2d');
+    // [!] ИЗМЕНЕНИЕ 1: Новые функции для расширенной аналитики
+    async function updateAllAnalytics() {
         try {
-            const ordersSnap = await db.collection(COLLECTIONS.ORDERS).get();
+            const [ordersSnap, usersSnap] = await Promise.all([
+                db.collection(COLLECTIONS.ORDERS).get(),
+                db.collection(COLLECTIONS.USERS).get()
+            ]);
+
+            // 1. График по городам
             const cityCounts = {};
             ordersSnap.forEach(doc => {
                 const city = doc.data().city;
-                if (city) {
-                    cityCounts[city] = (cityCounts[city] || 0) + 1;
+                if (city) cityCounts[city] = (cityCounts[city] || 0) + 1;
+            });
+            renderChart('cityChart', 'bar', Object.keys(cityCounts), Object.values(cityCounts), 'Заказы по городам', cityChart);
+
+            // 2. График динамики заказов
+            const ordersByDate = {};
+            const thirtyDaysAgo = new Date();
+            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+            
+            ordersSnap.forEach(doc => {
+                const createdAt = new Date(doc.data().createdAt);
+                if (createdAt >= thirtyDaysAgo) {
+                    const dateString = createdAt.toISOString().split('T')[0];
+                    ordersByDate[dateString] = (ordersByDate[dateString] || 0) + 1;
                 }
             });
-            
-            if (cityChart) cityChart.destroy();
-            
-            cityChart = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: Object.keys(cityCounts),
-                    datasets: [{
-                        label: 'Заказы по городам',
-                        data: Object.values(cityCounts),
-                        backgroundColor: '#00b4d8',
-                        borderColor: '#0099b8',
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    scales: { y: { beginAtZero: true, ticks: { color: '#fff' } }, x: { ticks: { color: '#fff' } } },
-                    plugins: { legend: { labels: { color: '#fff' } } }
+            const sortedDates = Object.keys(ordersByDate).sort();
+            const ordersTrendData = sortedDates.map(date => ordersByDate[date]);
+            renderChart('ordersTrendChart', 'line', sortedDates, ordersTrendData, 'Динамика заказов', ordersTrendChart);
+
+            // 3. График уровней блогеров
+            const levelCounts = { 'Микроблогер': 0, 'Макроблогер тип A': 0, 'Макроблогер тип B': 0 };
+            usersSnap.forEach(doc => {
+                const levelText = determineBloggerLevel(doc.data().registration?.followersCount || 0).text;
+                if (levelCounts.hasOwnProperty(levelText)) {
+                    levelCounts[levelText]++;
                 }
             });
-        } catch(e) { console.error(e) }
+            renderChart('bloggerLevelChart', 'doughnut', Object.keys(levelCounts), Object.values(levelCounts), 'Уровни блогеров', bloggerLevelChart);
+
+        } catch(e) { console.error("Analytics error:", e) }
     }
     
+    function renderChart(canvasId, type, labels, data, label, chartInstance) {
+        const ctx = document.getElementById(canvasId)?.getContext('2d');
+        if (!ctx) return;
+        
+        if (chartInstance) chartInstance.destroy();
+
+        const chartColors = {
+            backgroundColor: ['#00b4d8', '#ff6b35', '#28a745', '#ffc107', '#6f42c1'],
+            borderColor: '#4a4a4a'
+        };
+
+        const chartOptions = {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: type === 'line' || type === 'bar' ? { 
+                y: { beginAtZero: true, ticks: { color: '#fff', stepSize: 1 } }, 
+                x: { ticks: { color: '#fff' } } 
+            } : {},
+            plugins: { 
+                legend: { labels: { color: '#fff' } },
+                tooltip: { titleFont: { size: 14 }, bodyFont: { size: 12 } }
+            }
+        };
+
+        chartInstance = new Chart(ctx, {
+            type: type,
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: label,
+                    data: data,
+                    backgroundColor: type === 'doughnut' ? chartColors.backgroundColor : '#00b4d8',
+                    borderColor: type === 'line' ? '#ff6b35' : chartColors.borderColor,
+                    borderWidth: 2,
+                    tension: 0.1
+                }]
+            },
+            options: chartOptions
+        });
+        
+        // Сохраняем экземпляр графика
+        if (canvasId === 'cityChart') cityChart = chartInstance;
+        else if (canvasId === 'ordersTrendChart') ordersTrendChart = chartInstance;
+        else if (canvasId === 'bloggerLevelChart') bloggerLevelChart = chartInstance;
+    }
+
+
     function getStatusText(status) {
         switch(status) {
             case 'new': return 'Новый';
@@ -2054,17 +2197,18 @@ Instagram: @${orderData.instagram}
                 const order = { id: doc.id, ...doc.data() };
                 const el = document.createElement('div');
                 el.className = 'order-item';
-                el.dataset.search = `${order.userName} ${order.phone} ${order.instagram}`.toLowerCase();
+                // [!] ИЗМЕНЕНИЕ 4: Добавляем orderNumber в поиск
+                el.dataset.search = `${order.userName} ${order.phone} ${order.instagram} ${order.orderNumber}`.toLowerCase();
                 el.onclick = () => showOrderDetailModal(order.id);
                 el.innerHTML = `
                     <div class="order-header">
-                        <span class="order-id">#${order.id.substring(0, 6)}</span>
+                        <span class="order-id">${order.orderNumber || `#${order.id.substring(0, 6)}`}</span>
                         <span class="order-status status-${order.status}">${getStatusText(order.status)}</span>
                     </div>
                     <div class="order-info">
-                        <strong>${order.userName}</strong> (${determineBloggerLevel(order.followersCount || 0).text})<br>
-                        ${order.city}, ${new Date(order.date).toLocaleDateString('ru-RU')} - ${order.time}<br>
-                        <small>${new Date(order.createdAt).toLocaleString('ru-RU')}</small>
+                        <strong>${order.userName}</strong> (${order.city})<br>
+                        ${new Date(order.date).toLocaleDateString('ru-RU')} - ${order.time}<br>
+                        <small>Создан: ${new Date(order.createdAt).toLocaleString('ru-RU')}</small>
                     </div>`;
                 list.appendChild(el);
             });
@@ -2136,10 +2280,12 @@ Instagram: @${orderData.instagram}
                 const block = { id: doc.id, ...doc.data() };
                 const el = document.createElement('div');
                 el.className = 'blocked-slot';
+                // [!] ИЗМЕНЕНИЕ 3: Отображение типа блокировки
+                const timeDisplay = block.type === 'fullday' ? 'Весь день' : `в ${block.time}`;
                 el.innerHTML = `
                     <div class="blocked-slot-info">
                         <div class="blocked-slot-city">${block.city}</div>
-                        <div class="blocked-slot-time">${block.date} в ${block.time}</div>
+                        <div class="blocked-slot-time">${block.date} (${timeDisplay})</div>
                         ${block.reason ? `<div style="font-size: 12px; color: #999;">${block.reason}</div>` : ''}
                     </div>
                      <button class="btn-danger-icon" onclick="app.removeBlock('${block.id}')" title="Удалить блокировку">🗑️</button>`;
@@ -2215,16 +2361,27 @@ Instagram: @${orderData.instagram}
     function filterUsers() { filter('userSearch', '#usersList', '.user-item'); }
     function filterAdminUsers() { filter('adminUserSearch', '#adminUsersList', '.user-item'); }
     
+    // [!] ИЗМЕНЕНИЕ 3: Обновленная функция добавления блокировки
     async function addBlock(button) {
         await withLoading(button, async () => {
             const city = document.getElementById('blockCity').value;
             const date = document.getElementById('blockDate').value;
+            const type = document.getElementById('blockType').value;
             const time = document.getElementById('blockTime').value;
             const reason = document.getElementById('blockReason').value.trim();
-            if (!city || !date || !time) return;
 
-            const blockId = `${city}_${date}_${time}`;
-            const newBlock = { city, date, time, reason, addedAt: new Date().toISOString(), addedBy: telegramUser ? telegramUser.id : 'unknown' };
+            if (!city || !date) return;
+            if (type === 'time' && !time) return showError('Ошибка', 'Укажите время для блокировки.');
+
+            let blockId;
+            let newBlock = { city, date, type, reason, addedAt: new Date().toISOString(), addedBy: telegramUser ? telegramUser.id : 'unknown' };
+
+            if (type === 'fullday') {
+                blockId = `${city}_${date}_fullday`;
+            } else {
+                blockId = `${city}_${date}_${time}`;
+                newBlock.time = time;
+            }
             
             await db.collection(COLLECTIONS.BLOCKED_SLOTS).doc(blockId).set(newBlock);
             closeAddBlockModal();
@@ -2339,6 +2496,7 @@ Instagram: @${orderData.instagram}
         document.getElementById('nextFromDateTime').disabled = true;
     }
 
+    // [!] ИЗМЕНЕНИЕ 2: Обновленная логика отображения слотов
     async function updateTimeSlots() {
         const dateValue = document.getElementById('deliveryDate').value;
         currentOrderData.time = '';
@@ -2362,31 +2520,31 @@ Instagram: @${orderData.instagram}
         
         timeSlotsContainer.innerHTML = '';
         for (const time of timeSlots) {
+            const [slotHour] = time.split(':').map(Number);
+            
+            // Пропускаем прошедшее время
+            if (dateValue === todayStr && slotHour <= currentHour) {
+                continue;
+            }
+            
+            // Пропускаем заблокированное время
+            if (await isSlotBlocked(city, dateValue, time)) {
+                continue;
+            }
+
+            // Если все проверки пройдены, создаем и добавляем слот
             const slot = document.createElement('div');
             slot.className = 'time-slot';
             slot.textContent = time;
-            
-            const [slotHour] = time.split(':').map(Number);
-            let isDisabled = false;
-            
-            if (dateValue === todayStr && slotHour <= currentHour) {
-                isDisabled = true;
-            }
-            
-            if (await isSlotBlocked(city, dateValue, time)) {
-                isDisabled = true;
-            }
-            
-            if(isDisabled) {
-                slot.classList.add('disabled');
-                slot.title = 'Время недоступно';
-            } else {
-                slot.onclick = () => selectTimeSlot(slot, time);
-            }
-            
+            slot.onclick = () => selectTimeSlot(slot, time);
             timeSlotsContainer.appendChild(slot);
         }
+
+        if (timeSlotsContainer.innerHTML === '') {
+            timeSlotsContainer.innerHTML = '<p style="text-align:center;color:#999;">На выбранную дату нет доступного времени.</p>';
+        }
     }
+
 
     function selectTimeSlot(element, time) {
         document.querySelectorAll('.time-slot').forEach(item => item.classList.remove('selected'));
@@ -2421,6 +2579,8 @@ Instagram: @${orderData.instagram}
             const newOrder = {
                 ...currentOrderData,
                 id: orderId,
+                // [!] ИЗМЕНЕНИЕ 4: Добавляем сгенерированный номер заказа
+                orderNumber: generateOrderNumber(currentOrderData.city, currentOrderData.date, orderId),
                 userId: currentUserId,
                 userName: userData.registration.firstName,
                 avgViews: userData.registration.avgViews,
@@ -2436,7 +2596,8 @@ Instagram: @${orderData.instagram}
             userData.orders = userData.orders || [];
             userData.orders.push({ 
                 id: orderId, 
-                date: newOrder.date, 
+                date: newOrder.date,
+                orderNumber: newOrder.orderNumber, 
                 set: newOrder.set,
                 status: newOrder.status, 
                 createdAt: newOrder.createdAt 
@@ -2469,7 +2630,7 @@ Instagram: @${orderData.instagram}
                 item.className = 'order-item';
                 item.innerHTML = `
                     <div class="order-header">
-                        <span class="order-id">Заказ от ${new Date(order.createdAt || order.date).toLocaleDateString()}</span>
+                        <span class="order-id">${order.orderNumber || 'Заказ от ' + new Date(order.createdAt || order.date).toLocaleDateString()}</span>
                         <span class="order-status status-${order.status}">${getStatusText(order.status)}</span>
                     </div>
                     <div class="order-info">${order.set ? order.set.replace('set', 'Набор ') : 'Заказ макроблогера'}</div>`;
@@ -2575,7 +2736,7 @@ Instagram: @${orderData.instagram}
         const order = orderDoc.data();
         const body = document.getElementById('orderDetailBody');
         
-        document.getElementById('orderDetailTitle').textContent = `Заказ #${order.id.substring(0, 6)}`;
+        document.getElementById('orderDetailTitle').textContent = `Заказ ${order.orderNumber}`;
         body.innerHTML = `
             <strong>Блогер:</strong> ${order.userName}<br>
             <strong>Телефон:</strong> ${order.phone}<br>
@@ -2632,7 +2793,7 @@ Instagram: @${orderData.instagram}
                 item.style.cursor = 'default';
                 item.innerHTML = `
                     <div class="order-header">
-                         <span class="order-id">Заказ от ${new Date(order.createdAt).toLocaleDateString()}</span>
+                         <span class="order-id">${order.orderNumber}</span>
                          <span class="order-status status-${order.status}">${getStatusText(order.status)}</span>
                     </div>`;
                 ordersList.appendChild(item);
@@ -2688,7 +2849,19 @@ Instagram: @${orderData.instagram}
     function closeEditProfile() { document.getElementById('editProfileModal').style.display = 'none'; }
     function contactAdmin() { document.getElementById('contactModal').style.display = 'flex'; }
     function closeContactModal() { document.getElementById('contactModal').style.display = 'none'; }
-    function showAddBlockModal() { document.getElementById('addBlockModal').style.display = 'flex'; }
+    
+    // [!] ИЗМЕНЕНИЕ 3: Функция для переключения поля времени в блокировке
+    function toggleBlockTime() {
+        const type = document.getElementById('blockType').value;
+        document.getElementById('blockTimeGroup').style.display = type === 'time' ? 'block' : 'none';
+    }
+
+    function showAddBlockModal() { 
+        document.getElementById('addBlockModal').style.display = 'flex';
+        // Сброс формы при открытии
+        document.getElementById('addBlockForm').reset();
+        toggleBlockTime();
+    }
     function closeAddBlockModal() { document.getElementById('addBlockModal').style.display = 'none'; }
     function closeAddAdminModal() { document.getElementById('addAdminModal').style.display = 'none'; }
     function closeUserDetailModal() { document.getElementById('userDetailModal').style.display = 'none'; }
@@ -2740,7 +2913,7 @@ Instagram: @${orderData.instagram}
         handleCityChange, submitAddressAndShowDateTime, updateTimeSlots, submitOrder, saveProfile,
         closeModal, closeErrorModal, closeRejectionModal, closeOrderHistory, closeEditProfile,
         closeContactModal, showAddBlockModal, closeAddBlockModal, showAddAdminModal, closeAddAdminModal,
-        closeOrderDetailModal,
+        closeOrderDetailModal, toggleBlockTime,
         updateOrderStatus, showUserDetailModal, closeUserDetailModal
     };
 })();
