@@ -1370,7 +1370,7 @@
             <div class="modal-content">
                 <h2>Связаться с администратором</h2>
                 <p class="subtitle">Выберите удобный способ связи</p>
-                <a href="https://t.me/AdamRogozhin" class="contact-link" target="_blank">💬 Telegram поддержка</a>
+                <a href="https://t.me/oderefyu" class="contact-link" target="_blank">💬 Telegram поддержка</a>
                 <a href="mailto:adamrogozhin@gmail.com" class="contact-link">📧 Email поддержка</a>
                 <button class="btn-secondary" onclick="app.closeContactModal()">Закрыть</button>
             </div>
@@ -1518,15 +1518,23 @@
             return false;
         }
 
-        async function saveUser(userId, data) {
-            if (!userId) return console.error("User ID is missing, cannot save data.");
-            try {
-                await db.collection(COLLECTIONS.USERS).doc(userId).set(data, { merge: true });
-            } catch (error) {
-                console.error("Error saving data to Firestore: ", error);
-                showError("Ошибка сохранения", "Не удалось сохранить ваши данные в облако.");
-            }
-        }
+       async function saveUser(userId, data) {
+    if (!userId) {
+        console.error("User ID is missing, cannot save data.");
+        // Сообщаем пользователю о критической ошибке
+        showError("Критическая ошибка", "Отсутствует ID пользователя. Пожалуйста, перезапустите приложение.");
+        // Прерываем выполнение, чтобы избежать дальнейших проблем
+        throw new Error("User ID is missing");
+    }
+    try {
+        await db.collection(COLLECTIONS.USERS).doc(userId).set(data, { merge: true });
+    } catch (error) {
+        console.error("Error saving data to Firestore: ", error);
+        showError("Ошибка сохранения", "Не удалось сохранить ваши данные в облако. Проверьте интернет-соединение или попробуйте позже.");
+        // Пробрасываем ошибку дальше, чтобы вызывающая функция знала о проблеме
+        throw error;
+    }
+}
 
         async function loadUser(userId) {
             try {
