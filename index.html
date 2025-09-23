@@ -1406,35 +1406,6 @@
         // Ваша база данных Firestore сейчас, скорее всего, ОТКРЫТА ДЛЯ ВСЕХ.
         // Любой, кто знает ваш `projectId`, может читать, изменять и удалять ваши данные.
         // Чтобы защитить данные, вам НЕОБХОДИМО настроить Правила Безопасности (Security Rules) в консоли Firebase.
-        // 
-        // Пример базовых правил, которые стоит установить:
-        // 
-        // rules_version = '2';
-        // service cloud.firestore {
-        //   match /databases/{database}/documents {
-        //     // Пользователи могут читать и изменять только СВОИ собственные данные
-        //     match /users/{userId} {
-        //       allow read, update: if request.auth != null && request.auth.uid == userId;
-        //     }
-        //     // Разрешить создание пользователя (регистрацию) любому
-        //     match /users/{userId} {
-        //       allow create: if true;
-        //     }
-        //     // Заказы может создавать только авторизованный пользователь
-        //     match /orders/{orderId} {
-        //        allow create: if request.auth != null;
-        //     }
-        //     // Админы могут читать всё
-        //     match /{document=**} {
-        //       allow read, write: if get(/databases/$(database)/documents/admins/$(request.auth.uid)).exists;
-        //     }
-        //   }
-        // }
-        // 
-        // Этот пример требует использования Firebase Authentication.
-        // В вашем коде аутентификация не используется, что делает защиту сложнее.
-        // Без аутентификации невозможно надежно проверить, кто делает запрос.
-        // РЕКОМЕНДУЕТСЯ: Интегрировать Firebase Authentication для надежной защиты.
         
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
@@ -1463,9 +1434,11 @@
         let telegramUser = null;
         let currentUserId = null;
         let userData = {};
-        let migrationUser = null; 
+        let migrationUser = null;
         // [!] ИСПРАВЛЕНО: Переменная для хранения данных текущего заказа
         let currentOrderData = {};
+        // [!] ИСПРАВЛЕНИЕ 4: Добавлена переменная для хранения статуса администратора
+        let isCurrentUserAdmin = false;
 
         function initTelegram() {
             try {
@@ -1510,6 +1483,11 @@
             }
         }
         
+        // [!] ИСПРАВЛЕНИЕ 4: Функция для однократной проверки и установки статуса админа
+        async function checkAndSetAdminStatus() {
+            isCurrentUserAdmin = await isAdmin();
+        }
+
         function migrateOldAccount(userInfo) {
             if (userInfo && userInfo.registration && !userInfo.registration.password) {
                 migrationUser = userInfo;
@@ -1519,22 +1497,19 @@
         }
 
        async function saveUser(userId, data) {
-    if (!userId) {
-        console.error("User ID is missing, cannot save data.");
-        // Сообщаем пользователю о критической ошибке
-        showError("Критическая ошибка", "Отсутствует ID пользователя. Пожалуйста, перезапустите приложение.");
-        // Прерываем выполнение, чтобы избежать дальнейших проблем
-        throw new Error("User ID is missing");
-    }
-    try {
-        await db.collection(COLLECTIONS.USERS).doc(userId).set(data, { merge: true });
-    } catch (error) {
-        console.error("Error saving data to Firestore: ", error);
-        showError("Ошибка сохранения", "Не удалось сохранить ваши данные в облако. Проверьте интернет-соединение или попробуйте позже.");
-        // Пробрасываем ошибку дальше, чтобы вызывающая функция знала о проблеме
-        throw error;
-    }
-}
+            if (!userId) {
+                console.error("User ID is missing, cannot save data.");
+                showError("Критическая ошибка", "Отсутствует ID пользователя. Пожалуйста, перезапустите приложение.");
+                throw new Error("User ID is missing");
+            }
+            try {
+                await db.collection(COLLECTIONS.USERS).doc(userId).set(data, { merge: true });
+            } catch (error) {
+                console.error("Error saving data to Firestore: ", error);
+                showError("Ошибка сохранения", "Не удалось сохранить ваши данные в облако. Проверьте интернет-соединение или попробуйте позже.");
+                throw error;
+            }
+        }
 
         async function loadUser(userId) {
             try {
@@ -1619,6 +1594,8 @@
                 
                 userData = existingUser;
                 await saveUser(currentUserId, { lastActivity: new Date().toISOString() });
+                // [!] ИСПРАВЛЕНИЕ 4: Проверяем статус админа после авто-входа
+                await checkAndSetAdminStatus();
                 return true;
             }
             return false;
@@ -1657,10 +1634,11 @@
             }
         }
 
-        async function showDashboard() {
+        function showDashboard() {
             showScreen(SCREENS.DASHBOARD);
             updateDashboard();
-            document.getElementById('adminPanel').style.display = await isAdmin() ? 'block' : 'none';
+            // [!] ИСПРАВЛЕНИЕ 4: Используем переменную вместо асинхронного вызова
+            document.getElementById('adminPanel').style.display = isCurrentUserAdmin ? 'block' : 'none';
         }
 
         // [!] УЛУЧШЕНО: Функции-обертки для навигации
@@ -1673,7 +1651,7 @@
         function showInstructions() { showScreen(SCREENS.INSTRUCTIONS); }
 
         async function showCRM() {
-            if (!await isAdmin()) {
+            if (!isCurrentUserAdmin) {
                 showError('Доступ запрещен', 'У вас нет прав администратора');
                 return;
             }
@@ -1736,6 +1714,8 @@
                     }
                     userData.lastActivity = new Date().toISOString();
                     await saveUser(currentUserId, userData);
+                    // [!] ИСПРАВЛЕНИЕ 4: Проверяем статус админа после ручного входа
+                    await checkAndSetAdminStatus();
                     showDashboard();
                 } else {
                     showError('Неверные данные', 'Проверьте правильность введенных данных или пройдите регистрацию');
@@ -1762,6 +1742,8 @@
                     userData = migrationUser;
                     currentUserId = migrationUser.userId;
                     migrationUser = null;
+                     // [!] ИСПРАВЛЕНИЕ 4: Проверяем статус админа после миграции
+                    await checkAndSetAdminStatus();
                     showDashboard();
                 }
             });
@@ -1803,6 +1785,8 @@
                 };
 
                 await saveUser(currentUserId, userData);
+                 // [!] ИСПРАВЛЕНИЕ 4: Проверяем статус админа после регистрации
+                await checkAndSetAdminStatus();
                 showDashboard();
             });
         }
@@ -2126,6 +2110,15 @@
                 showError('Ошибка', 'Пожалуйста, заполните все обязательные поля: город, улица, телефон.');
                 return false;
             }
+
+            // [!] ИСПРАВЛЕНИЕ 3: Добавлена валидация для скриншота
+            const isMacro = userData.level !== 'micro';
+            const screenshotInput = document.getElementById('orderScreenshot');
+            if (isMacro && (!screenshotInput.files || screenshotInput.files.length === 0)) {
+                showError('Требуется скриншот', 'Для макроблогеров необходимо загрузить скриншот заказа.');
+                return false;
+            }
+            
             return true;
         }
 
@@ -2144,9 +2137,18 @@
                     createdAt: new Date().toISOString()
                 };
                 
-                // [!] ИСПРАВЛЕНО: Безопасная инициализация массива заказов
+                // [!] ИСПРАВЛЕНИЕ 1: Заменяем undefined на null, чтобы избежать ошибки Firestore
+                newOrder.set = newOrder.set ?? null;
+                
                 userData.orders = userData.orders || [];
-                userData.orders.push({ id: orderId, date: newOrder.date, set: newOrder.set, status: newOrder.status, createdAt: newOrder.createdAt });
+                // [!] ИСПРАВЛЕНИЕ 1: Также исправляем здесь для консистентности
+                userData.orders.push({ 
+                    id: orderId, 
+                    date: newOrder.date, 
+                    set: newOrder.set, // null вместо undefined
+                    status: newOrder.status, 
+                    createdAt: newOrder.createdAt 
+                });
                 
                 const batch = db.batch();
                 batch.set(db.collection(COLLECTIONS.ORDERS).doc(orderId), newOrder);
@@ -2213,21 +2215,36 @@
                     }
                 }
                 
+                // [!] ИСПРАВЛЕНИЕ 2: Создаем объект с точечными обновлениями вместо отправки всего userData
+                const updates = {
+                    'registration.firstName': newFirstName,
+                    'registration.phone': newPhone,
+                    'registration.instagramLogin': newInstagram,
+                    'registration.followersCount': newFollowers,
+                    'registration.avgViews': newViews,
+                    'level': determineBloggerLevel(newFollowers).level,
+                    'lastActivity': new Date().toISOString()
+                };
+
+                const newPassword = document.getElementById('editPassword').value.trim();
+                if (validatePassword(newPassword)) {
+                    updates['registration.password'] = hashPassword(newPassword);
+                }
+                
+                // Используем .update() для надежности
+                await db.collection(COLLECTIONS.USERS).doc(currentUserId).update(updates);
+
+                // После успешного обновления в БД, обновляем локальные данные
                 userData.registration.firstName = newFirstName;
                 userData.registration.phone = newPhone;
                 userData.registration.instagramLogin = newInstagram;
                 userData.registration.followersCount = newFollowers;
                 userData.registration.avgViews = newViews;
-                
-                const newPassword = document.getElementById('editPassword').value.trim();
-                if (validatePassword(newPassword)) {
-                    userData.registration.password = hashPassword(newPassword);
+                userData.level = updates.level;
+                if (updates['registration.password']) {
+                    userData.registration.password = updates['registration.password'];
                 }
                 
-                // [!] ИСПРАВЛЕНО: Обновление уровня блогера при изменении данных
-                userData.level = determineBloggerLevel(newFollowers).level;
-                
-                await saveUser(currentUserId, userData);
                 updateDashboard();
                 closeEditProfile();
                 showSuccessMessage('Профиль успешно обновлен!');
@@ -2238,6 +2255,7 @@
             userData = {};
             currentUserId = null;
             telegramUser = null;
+            isCurrentUserAdmin = false; // Сбрасываем статус
             window.location.reload();
         }
 
