@@ -1482,57 +1482,55 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
     <script>
-    const app = (function() {
+const app = (function() {
 
-        const firebaseConfig = {
-            apiKey: "AIzaSyATmIapS6SJi7KnvKrJp5sfD9VMXxKMCgA",
-            authDomain: "vesla-barter.firebaseapp.com",
-            projectId: "vesla-barter",
-            storageBucket: "vesla-barter.firebasestorage.app",
-            messagingSenderId: "730193371508",
-            appId: "1:730193371508:web:a6517d156f2766ece50c21",
-            measurementId: "G-1QJ9RRS1L6"
-        };
-        
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
+    const firebaseConfig = {
+        apiKey: "AIzaSyATmIapS6SJi7KnvKrJp5sfD9VMXxKMCgA",
+        authDomain: "vesla-barter.firebaseapp.com",
+        projectId: "vesla-barter",
+        storageBucket: "vesla-barter.firebasestorage.app",
+        messagingSenderId: "730193371508",
+        appId: "1:730193371508:web:a6517d156f2766ece50c21",
+        measurementId: "G-1QJ9RRS1L6"
+    };
+    
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
 
-        const COLLECTIONS = {
-            USERS: 'users',
-            ORDERS: 'orders',
-            ADMINS: 'admins',
-            BLOCKED_SLOTS: 'blockedSlots'
-        };
-        const SCREENS = {
-            WELCOME: 'welcomeScreen',
-            REGISTRATION: 'registrationScreen',
-            LOGIN: 'loginScreen',
-            MIGRATION: 'migrationScreen',
-            DASHBOARD: 'dashboardScreen',
-            CRM: 'crmScreen',
-            SET_SELECTION: 'setSelectionScreen',
-            ADDRESS: 'addressScreen',
-            DATE_TIME: 'dateTimeScreen',
-            INSTRUCTIONS: 'instructionsScreen'
-        };
+    const COLLECTIONS = {
+        USERS: 'users',
+        ORDERS: 'orders',
+        ADMINS: 'admins',
+        BLOCKED_SLOTS: 'blockedSlots'
+    };
+    const SCREENS = {
+        WELCOME: 'welcomeScreen',
+        REGISTRATION: 'registrationScreen',
+        LOGIN: 'loginScreen',
+        MIGRATION: 'migrationScreen',
+        DASHBOARD: 'dashboardScreen',
+        CRM: 'crmScreen',
+        SET_SELECTION: 'setSelectionScreen',
+        ADDRESS: 'addressScreen',
+        DATE_TIME: 'dateTimeScreen',
+        INSTRUCTIONS: 'instructionsScreen'
+    };
 
-        let tg;
-        let telegramUser = null;
-        let currentUserId = null;
-        let userData = {};
-        let migrationUser = null;
-        let currentOrderData = {};
-        let isCurrentUserAdmin = false;
-        let cityChart = null;
-        let currentEditingOrderId = null; // Для хранения ID заказа в модалке
-        
-        // +++ НАЧАЛО: ФУНКЦИЯ ДЛЯ ОТПРАВКИ В TELEGRAM +++
-        async function sendTelegramNotification(orderData, screenshotFile) {
-            const BOT_TOKEN = '8227812944:AAFy8ydOkUeCj3Qkjg7_Xsq6zyQpcUyMShY';
-            const CHAT_ID = '1345815453';
+    let tg;
+    let telegramUser = null;
+    let currentUserId = null;
+    let userData = {};
+    let migrationUser = null;
+    let currentOrderData = {};
+    let isCurrentUserAdmin = false;
+    let cityChart = null;
+    let currentEditingOrderId = null;
+    
+    async function sendTelegramNotification(orderData, screenshotFile) {
+        const BOT_TOKEN = '8227812944:AAFy8ydOkUeCj3Qkjg7_Xsq6zyQpcUyMShY';
+        const CHAT_ID = '1345815453';
 
-            // Формируем текст сообщения
-            const message = `*Новая заявка на бартер*
+        const message = `*Новая заявка на бартер*
 
 👤 *Блогер:*
 Имя: ${orderData.userName}
@@ -1554,1203 +1552,1198 @@ Instagram: @${orderData.instagram}
 Телефон получателя: \`${orderData.recipientPhone}\`
 
 🆔 *ID заказа:* \`${orderData.id.substring(0, 12)}\``;
-            
-            try {
-                // Если есть скриншот, отправляем фото с подписью
-                if (screenshotFile) {
-                    const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`;
-                    const formData = new FormData();
-                    formData.append('chat_id', CHAT_ID);
-                    formData.append('photo', screenshotFile);
-                    formData.append('caption', message);
-                    formData.append('parse_mode', 'Markdown');
-
-                    const response = await fetch(url, { method: 'POST', body: formData });
-                    const result = await response.json();
-                    if (!result.ok) throw new Error(result.description);
-
-                // Если скриншота нет, отправляем просто текст
-                } else {
-                    const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
-                    const response = await fetch(url, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            chat_id: CHAT_ID,
-                            text: message,
-                            parse_mode: 'Markdown'
-                        })
-                    });
-                    const result = await response.json();
-                    if (!result.ok) throw new Error(result.description);
-                }
-                console.log('Уведомление в Telegram успешно отправлено!');
-
-            } catch (error) {
-                console.error('Ошибка отправки уведомления в Telegram:', error);
-                // Можно показать пользователю некритичную ошибку, если это необходимо
-            }
-        }
-        // +++ КОНЕЦ: ФУНКЦИЯ ДЛЯ ОТПРАВКИ В TELEGRAM +++
-
-        function initTelegram() {
-            try {
-                if (window.Telegram && window.Telegram.WebApp) {
-                    tg = window.Telegram.WebApp;
-                    tg.ready();
-                    tg.expand();
-                    if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
-                        telegramUser = tg.initDataUnsafe.user;
-                        currentUserId = 'tg_' + telegramUser.id;
-                    }
-                }
-            } catch (error) {
-                console.error('Error initializing Telegram:', error);
-            }
-        }
-
-        function hashPassword(password) {
-            let hash = 0;
-            for (let i = 0; i < password.length; i++) {
-                const char = password.charCodeAt(i);
-                hash = ((hash << 5) - hash) + char;
-                hash &= hash;
-            }
-            return hash.toString();
-        }
         
-        function validatePassword(password) { return password && password.length >= 6; }
-        function validateNumber(value, min = 1, max = 10000000) {
-            const num = parseInt(value);
-            return !isNaN(num) && num >= min && num <= max;
-        }
+        try {
+            if (screenshotFile) {
+                const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`;
+                const formData = new FormData();
+                formData.append('chat_id', CHAT_ID);
+                formData.append('photo', screenshotFile);
+                formData.append('caption', message);
+                formData.append('parse_mode', 'Markdown');
 
-        async function isAdmin(userId) {
-            if (!userId) return false;
-            const checkId = String(userId).replace('tg_','');
-            try {
-                const adminDoc = await db.collection(COLLECTIONS.ADMINS).doc(checkId).get();
-                return adminDoc.exists;
-            } catch (error) {
-                console.error("Error checking admin status:", error);
+                const response = await fetch(url, { method: 'POST', body: formData });
+                const result = await response.json();
+                if (!result.ok) throw new Error(result.description);
+
+            } else {
+                const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        chat_id: CHAT_ID,
+                        text: message,
+                        parse_mode: 'Markdown'
+                    })
+                });
+                const result = await response.json();
+                if (!result.ok) throw new Error(result.description);
+            }
+            console.log('Уведомление в Telegram успешно отправлено!');
+
+        } catch (error) {
+            console.error('Ошибка отправки уведомления в Telegram:', error);
+        }
+    }
+
+    function initTelegram() {
+        try {
+            if (window.Telegram && window.Telegram.WebApp) {
+                tg = window.Telegram.WebApp;
+                tg.ready();
+                tg.expand();
+                if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
+                    telegramUser = tg.initDataUnsafe.user;
+                    currentUserId = 'tg_' + telegramUser.id;
+                }
+            }
+        } catch (error) {
+            console.error('Error initializing Telegram:', error);
+        }
+    }
+
+    function hashPassword(password) {
+        let hash = 0;
+        for (let i = 0; i < password.length; i++) {
+            const char = password.charCodeAt(i);
+            hash = ((hash << 5) - hash) + char;
+            hash &= hash;
+        }
+        return hash.toString();
+    }
+    
+    function validatePassword(password) { return password && password.length >= 6; }
+    function validateNumber(value, min = 1, max = 10000000) {
+        const num = parseInt(value);
+        return !isNaN(num) && num >= min && num <= max;
+    }
+
+    async function isAdmin(userId) {
+        if (!userId) return false;
+        const checkId = String(userId).replace('tg_','');
+        try {
+            const adminDoc = await db.collection(COLLECTIONS.ADMINS).doc(checkId).get();
+            return adminDoc.exists;
+        } catch (error) {
+            console.error("Error checking admin status:", error);
+            return false;
+        }
+    }
+    
+    async function checkAndSetAdminStatus() {
+        const checkId = telegramUser ? telegramUser.id : (userData.telegramId || null);
+        isCurrentUserAdmin = await isAdmin(checkId);
+    }
+
+    function migrateOldAccount(userInfo) {
+        if (userInfo && userInfo.registration && !userInfo.registration.password) {
+            migrationUser = userInfo;
+            return true; 
+        }
+        return false;
+    }
+
+   async function saveUser(userId, data) {
+        if (!userId) {
+            console.error("User ID is missing, cannot save data.");
+            showError("Критическая ошибка", "Отсутствует ID пользователя. Пожалуйста, перезапустите приложение.");
+            throw new Error("User ID is missing");
+        }
+        try {
+            await db.collection(COLLECTIONS.USERS).doc(userId).set(data, { merge: true });
+        } catch (error) {
+            console.error("Error saving data to Firestore: ", error);
+            showError("Ошибка сохранения", "Не удалось сохранить ваши данные в облако. Проверьте интернет-соединение или попробуйте позже.");
+            throw error;
+        }
+    }
+
+    async function loadUser(userId) {
+        try {
+            const doc = await db.collection(COLLECTIONS.USERS).doc(userId).get();
+            return doc.exists ? { userId: doc.id, ...doc.data() } : null;
+        } catch (error) {
+            console.error("Error loading user from Firestore:", error);
+            return null;
+        }
+    }
+    
+    async function findUserByCredentials(phone, instagram, password) {
+        try {
+            const snapshot = await db.collection(COLLECTIONS.USERS)
+                .where('registration.phone', '==', phone)
+                .where('registration.instagramLogin', '==', instagram.toLowerCase())
+                .get();
+
+            if (snapshot.empty) return null;
+
+            for (const doc of snapshot.docs) {
+                const foundUser = { userId: doc.id, ...doc.data() };
+                if (foundUser.registration.password === hashPassword(password)) {
+                    return foundUser;
+                }
+            }
+            return null;
+        } catch (error) {
+            console.error("Error finding user by credentials:", error);
+            return null;
+        }
+    }
+    
+    async function findUserByPhoneAndInstagram(phone, instagram) {
+        try {
+            const snapshot = await db.collection(COLLECTIONS.USERS)
+                .where('registration.phone', '==', phone)
+                .where('registration.instagramLogin', '==', instagram.toLowerCase())
+                .get();
+
+            if (snapshot.empty) return null;
+            
+            const userDoc = snapshot.docs[0];
+            const foundUser = { userId: userDoc.id, ...userDoc.data() };
+
+            return !foundUser.registration.password ? foundUser : null;
+        } catch (error) {
+            console.error("Error finding user for migration:", error);
+            return null;
+        }
+    }
+    
+    async function checkForDuplicateRegistration(phone, instagram, excludeUserId = null) {
+        try {
+            const phoneQuery = db.collection(COLLECTIONS.USERS).where('registration.phone', '==', phone).get();
+            const instagramQuery = db.collection(COLLECTIONS.USERS).where('registration.instagramLogin', '==', instagram.toLowerCase()).get();
+
+            const [phoneSnapshot, instagramSnapshot] = await Promise.all([phoneQuery, instagramQuery]);
+
+            const phoneExists = !phoneSnapshot.empty && phoneSnapshot.docs[0].id !== excludeUserId;
+            const instagramExists = !instagramSnapshot.empty && instagramSnapshot.docs[0].id !== excludeUserId;
+
+            return { phoneExists, instagramExists, canRegister: !phoneExists && !instagramExists };
+        } catch (error) {
+            console.error("Error checking for duplicates:", error);
+            return { phoneExists: true, instagramExists: true, canRegister: false };
+        }
+    }
+
+    async function attemptTelegramAutoLogin() {
+        if (!telegramUser) return false;
+        
+        document.getElementById('autoLoginInfo').style.display = 'block';
+        const existingUser = await loadUser('tg_' + telegramUser.id);
+        document.getElementById('autoLoginInfo').style.display = 'none';
+
+        if (existingUser) {
+            if (migrateOldAccount(existingUser)) {
+                showScreen(SCREENS.MIGRATION);
                 return false;
             }
-        }
-        
-        async function checkAndSetAdminStatus() {
-            const checkId = telegramUser ? telegramUser.id : (userData.telegramId || null);
-            isCurrentUserAdmin = await isAdmin(checkId);
-        }
-
-        function migrateOldAccount(userInfo) {
-            if (userInfo && userInfo.registration && !userInfo.registration.password) {
-                migrationUser = userInfo;
-                return true; 
-            }
-            return false;
-        }
-
-       async function saveUser(userId, data) {
-            if (!userId) {
-                console.error("User ID is missing, cannot save data.");
-                showError("Критическая ошибка", "Отсутствует ID пользователя. Пожалуйста, перезапустите приложение.");
-                throw new Error("User ID is missing");
-            }
-            try {
-                await db.collection(COLLECTIONS.USERS).doc(userId).set(data, { merge: true });
-            } catch (error) {
-                console.error("Error saving data to Firestore: ", error);
-                showError("Ошибка сохранения", "Не удалось сохранить ваши данные в облако. Проверьте интернет-соединение или попробуйте позже.");
-                throw error;
-            }
-        }
-
-        async function loadUser(userId) {
-            try {
-                const doc = await db.collection(COLLECTIONS.USERS).doc(userId).get();
-                return doc.exists ? { userId: doc.id, ...doc.data() } : null;
-            } catch (error) {
-                console.error("Error loading user from Firestore:", error);
-                return null;
-            }
-        }
-        
-        async function findUserByCredentials(phone, instagram, password) {
-            try {
-                const snapshot = await db.collection(COLLECTIONS.USERS)
-                    .where('registration.phone', '==', phone)
-                    .where('registration.instagramLogin', '==', instagram.toLowerCase())
-                    .get();
-
-                if (snapshot.empty) return null;
-
-                for (const doc of snapshot.docs) {
-                    const foundUser = { userId: doc.id, ...doc.data() };
-                    if (foundUser.registration.password === hashPassword(password)) {
-                        return foundUser;
-                    }
-                }
-                return null;
-            } catch (error) {
-                console.error("Error finding user by credentials:", error);
-                return null;
-            }
-        }
-        
-        async function findUserByPhoneAndInstagram(phone, instagram) {
-            try {
-                const snapshot = await db.collection(COLLECTIONS.USERS)
-                    .where('registration.phone', '==', phone)
-                    .where('registration.instagramLogin', '==', instagram.toLowerCase())
-                    .get();
-
-                if (snapshot.empty) return null;
-                
-                const userDoc = snapshot.docs[0];
-                const foundUser = { userId: userDoc.id, ...userDoc.data() };
-
-                return !foundUser.registration.password ? foundUser : null;
-            } catch (error) {
-                console.error("Error finding user for migration:", error);
-                return null;
-            }
-        }
-        
-        async function checkForDuplicateRegistration(phone, instagram, excludeUserId = null) {
-            try {
-                const phoneQuery = db.collection(COLLECTIONS.USERS).where('registration.phone', '==', phone).get();
-                const instagramQuery = db.collection(COLLECTIONS.USERS).where('registration.instagramLogin', '==', instagram.toLowerCase()).get();
-
-                const [phoneSnapshot, instagramSnapshot] = await Promise.all([phoneQuery, instagramQuery]);
-
-                const phoneExists = !phoneSnapshot.empty && phoneSnapshot.docs[0].id !== excludeUserId;
-                const instagramExists = !instagramSnapshot.empty && instagramSnapshot.docs[0].id !== excludeUserId;
-
-                return { phoneExists, instagramExists, canRegister: !phoneExists && !instagramExists };
-            } catch (error) {
-                console.error("Error checking for duplicates:", error);
-                return { phoneExists: true, instagramExists: true, canRegister: false };
-            }
-        }
-
-        async function attemptTelegramAutoLogin() {
-            if (!telegramUser) return false;
             
-            document.getElementById('autoLoginInfo').style.display = 'block';
-            const existingUser = await loadUser('tg_' + telegramUser.id);
-            document.getElementById('autoLoginInfo').style.display = 'none';
-
-            if (existingUser) {
-                if (migrateOldAccount(existingUser)) {
-                    showScreen(SCREENS.MIGRATION);
-                    return false;
-                }
-                
-                userData = existingUser;
-                await saveUser(currentUserId, { lastActivity: new Date().toISOString() });
-                await checkAndSetAdminStatus();
-                return true;
-            }
-            return false;
+            userData = existingUser;
+            await saveUser(currentUserId, { lastActivity: new Date().toISOString() });
+            await checkAndSetAdminStatus();
+            return true;
         }
+        return false;
+    }
 
-        function fillTelegramData() {
-            if (telegramUser && telegramUser.first_name) {
-                const firstNameField = document.getElementById('firstName');
-                if (firstNameField) firstNameField.value = telegramUser.first_name;
-            }
+    function fillTelegramData() {
+        if (telegramUser && telegramUser.first_name) {
+            const firstNameField = document.getElementById('firstName');
+            if (firstNameField) firstNameField.value = telegramUser.first_name;
         }
+    }
 
-        function determineBloggerLevel(followersCount) {
-            if (followersCount <= 6000) return { level: 'micro', text: 'Микроблогер' };
-            if (followersCount <= 10500) return { level: 'macro-a', text: 'Макроблогер тип A' };
-            return { level: 'macro-b', text: 'Макроблогер тип B' };
+    function determineBloggerLevel(followersCount) {
+        if (followersCount <= 6000) return { level: 'micro', text: 'Микроблогер' };
+        if (followersCount <= 10500) return { level: 'macro-a', text: 'Макроблогер тип A' };
+        return { level: 'macro-b', text: 'Макроблогер тип B' };
+    }
+
+    async function isSlotBlocked(city, date, time) {
+        try {
+            const blockId = `${city}_${date}_${time}`;
+            const blockDoc = await db.collection(COLLECTIONS.BLOCKED_SLOTS).doc(blockId).get();
+            return blockDoc.exists;
+        } catch (error) {
+            console.error("Error checking blocked slot:", error);
+            return true;
         }
+    }
 
-        async function isSlotBlocked(city, date, time) {
-            try {
-                const blockId = `${city}_${date}_${time}`;
-                const blockDoc = await db.collection(COLLECTIONS.BLOCKED_SLOTS).doc(blockId).get();
-                return blockDoc.exists;
-            } catch (error) {
-                console.error("Error checking blocked slot:", error);
-                return true;
-            }
+    function showScreen(screenId) {
+        document.querySelectorAll('.form-screen, .dashboard, .welcome-screen, .crm-screen').forEach(s => s.style.display = 'none');
+        const screen = document.getElementById(screenId);
+        if (screen) {
+            screen.style.display = (screenId === SCREENS.WELCOME) ? 'flex' : 'block';
         }
+    }
 
-        function showScreen(screenId) {
-            document.querySelectorAll('.form-screen, .dashboard, .welcome-screen, .crm-screen').forEach(s => s.style.display = 'none');
-            const screen = document.getElementById(screenId);
-            if (screen) {
-                screen.style.display = (screenId === SCREENS.WELCOME) ? 'flex' : 'block';
-            }
+    function showDashboard() {
+        showScreen(SCREENS.DASHBOARD);
+        updateDashboard();
+        document.getElementById('adminPanel').style.display = isCurrentUserAdmin ? 'block' : 'none';
+    }
+
+    function showWelcomeScreen() { showScreen(SCREENS.WELCOME); }
+    function showRegistration() { showScreen(SCREENS.REGISTRATION); fillTelegramData(); }
+    function showLogin() { showScreen(SCREENS.LOGIN); }
+    function showSetSelection() { showScreen(SCREENS.SET_SELECTION); }
+    function showAddressForm() { showScreen(SCREENS.ADDRESS); }
+    function showDateTimeSelection() { showScreen(SCREENS.DATE_TIME); }
+    function showInstructions() { showScreen(SCREENS.INSTRUCTIONS); }
+
+    async function showCRM() {
+        if (!isCurrentUserAdmin) {
+            showError('Доступ запрещен', 'У вас нет прав администратора');
+            return;
         }
+        showScreen(SCREENS.CRM);
+        updateCRMData();
+    }
 
-        function showDashboard() {
-            showScreen(SCREENS.DASHBOARD);
-            updateDashboard();
-            document.getElementById('adminPanel').style.display = isCurrentUserAdmin ? 'block' : 'none';
+    function showCrmTab(tabName, element) {
+        document.querySelectorAll('.crm-content').forEach(c => c.classList.remove('active'));
+        document.querySelectorAll('.crm-tab').forEach(t => t.classList.remove('active'));
+        document.getElementById('crm' + tabName.charAt(0).toUpperCase() + tabName.slice(1)).classList.add('active');
+        element.classList.add('active');
+        
+        switch(tabName) {
+            case 'overview': updateCRMStats(); break;
+            case 'analytics': updateCityAnalytics(); break;
+            case 'orders': updateOrdersList(); break;
+            case 'users': updateUsersList(); break;
+            case 'blocks': updateBlockedSlotsList(); break;
+            case 'admins': updateAdminsList(); break;
         }
-
-        function showWelcomeScreen() { showScreen(SCREENS.WELCOME); }
-        function showRegistration() { showScreen(SCREENS.REGISTRATION); fillTelegramData(); }
-        function showLogin() { showScreen(SCREENS.LOGIN); }
-        function showSetSelection() { showScreen(SCREENS.SET_SELECTION); }
-        function showAddressForm() { showScreen(SCREENS.ADDRESS); }
-        function showDateTimeSelection() { showScreen(SCREENS.DATE_TIME); }
-        function showInstructions() { showScreen(SCREENS.INSTRUCTIONS); }
-
-        async function showCRM() {
-            if (!isCurrentUserAdmin) {
-                showError('Доступ запрещен', 'У вас нет прав администратора');
+    }
+    
+    async function withLoading(button, asyncFunction) {
+        const originalText = button.innerHTML;
+        button.disabled = true;
+        button.innerHTML = 'Загрузка...';
+        try {
+            await asyncFunction();
+        } catch (error) {
+            console.error("Operation failed:", error);
+            showError("Произошла ошибка", "Пожалуйста, попробуйте еще раз. " + error.message);
+        } finally {
+            button.disabled = false;
+            button.innerHTML = originalText;
+        }
+    }
+    
+    async function submitLogin(button) {
+        await withLoading(button, async () => {
+            const phone = document.getElementById('loginPhone').value.trim();
+            const instagram = document.getElementById('loginInstagram').value.trim();
+            const password = document.getElementById('loginPassword').value.trim();
+            
+            if (!phone || !instagram || !password) return showError('Ошибка валидации', 'Пожалуйста, заполните все поля');
+            
+            const oldUser = await findUserByPhoneAndInstagram(phone, instagram);
+            if (oldUser) {
+                migrationUser = oldUser;
+                showScreen(SCREENS.MIGRATION);
                 return;
             }
-            showScreen(SCREENS.CRM);
-            updateCRMData();
-        }
-
-        function showCrmTab(tabName, element) {
-            document.querySelectorAll('.crm-content').forEach(c => c.classList.remove('active'));
-            document.querySelectorAll('.crm-tab').forEach(t => t.classList.remove('active'));
-            document.getElementById('crm' + tabName.charAt(0).toUpperCase() + tabName.slice(1)).classList.add('active');
-            element.classList.add('active');
             
-            switch(tabName) {
-                case 'overview': updateCRMStats(); break;
-                case 'analytics': updateCityAnalytics(); break;
-                case 'orders': updateOrdersList(); break;
-                case 'users': updateUsersList(); break;
-                case 'blocks': updateBlockedSlotsList(); break;
-                case 'admins': updateAdminsList(); break;
-            }
-        }
-        
-        async function withLoading(button, asyncFunction) {
-            const originalText = button.innerHTML;
-            button.disabled = true;
-            button.innerHTML = 'Загрузка...';
-            try {
-                await asyncFunction();
-            } catch (error) {
-                console.error("Operation failed:", error);
-                showError("Произошла ошибка", "Пожалуйста, попробуйте еще раз. " + error.message);
-            } finally {
-                button.disabled = false;
-                button.innerHTML = originalText;
-            }
-        }
-        
-        async function submitLogin(button) {
-            await withLoading(button, async () => {
-                const phone = document.getElementById('loginPhone').value.trim();
-                const instagram = document.getElementById('loginInstagram').value.trim();
-                const password = document.getElementById('loginPassword').value.trim();
-                
-                if (!phone || !instagram || !password) return showError('Ошибка валидации', 'Пожалуйста, заполните все поля');
-                
-                const oldUser = await findUserByPhoneAndInstagram(phone, instagram);
-                if (oldUser) {
-                    migrationUser = oldUser;
-                    showScreen(SCREENS.MIGRATION);
-                    return;
+            const existingUser = await findUserByCredentials(phone, instagram, password);
+            if (existingUser) {
+                userData = existingUser;
+                currentUserId = existingUser.userId;
+                if (telegramUser && !userData.telegramId) {
+                    userData.telegramId = telegramUser.id;
                 }
-                
-                const existingUser = await findUserByCredentials(phone, instagram, password);
-                if (existingUser) {
-                    userData = existingUser;
-                    currentUserId = existingUser.userId;
-                    if (telegramUser && !userData.telegramId) {
-                        userData.telegramId = telegramUser.id;
-                    }
-                    userData.lastActivity = new Date().toISOString();
-                    await saveUser(currentUserId, userData);
-                    await checkAndSetAdminStatus();
-                    showDashboard();
-                } else {
-                    showError('Неверные данные', 'Проверьте правильность введенных данных или пройдите регистрацию');
-                }
-            });
-        }
-
-        async function submitMigration(button) {
-            await withLoading(button, async () => {
-                const password = document.getElementById('migrationPassword').value.trim();
-                const passwordConfirm = document.getElementById('migrationPasswordConfirm').value.trim();
-                
-                if (!validatePassword(password) || password !== passwordConfirm) {
-                   return showError('Ошибка пароля', 'Пароли не совпадают или короче 6 символов.');
-                }
-
-                if (migrationUser) {
-                    migrationUser.registration.password = hashPassword(password);
-                    migrationUser.lastActivity = new Date().toISOString();
-                    if (telegramUser && !migrationUser.telegramId) migrationUser.telegramId = telegramUser.id;
-                    
-                    await saveUser(migrationUser.userId, migrationUser);
-                    
-                    userData = migrationUser;
-                    currentUserId = migrationUser.userId;
-                    migrationUser = null;
-                    await checkAndSetAdminStatus();
-                    showDashboard();
-                }
-            });
-        }
-
-        async function submitRegistration(button) {
-            await withLoading(button, async () => {
-                const firstName = document.getElementById('firstName').value.trim();
-                const phone = document.getElementById('phone').value.trim();
-                const instagramLogin = document.getElementById('instagramLogin').value.trim().toLowerCase();
-                const password = document.getElementById('password').value.trim();
-                const followersCount = parseInt(document.getElementById('followersCount').value);
-                const avgViews = parseInt(document.getElementById('avgViews').value);
-
-                if (!firstName || !phone || !instagramLogin || !password || isNaN(followersCount) || isNaN(avgViews)) {
-                    return showError('Ошибка валидации', 'Пожалуйста, заполните все обязательные поля');
-                }
-
-                if (avgViews < 300) return showRejectionModal();
-                
-                const duplicateCheck = await checkForDuplicateRegistration(phone, instagramLogin);
-                if (!duplicateCheck.canRegister) {
-                    let msg = 'Аккаунт с такими данными уже зарегистрирован.';
-                    if (duplicateCheck.phoneExists) msg += '\n• Телефон уже используется';
-                    if (duplicateCheck.instagramExists) msg += '\n• Instagram уже используется';
-                    return showError('Аккаунт уже существует', msg);
-                }
-
-                const bloggerData = determineBloggerLevel(followersCount);
-                if (!currentUserId) currentUserId = (telegramUser ? 'tg_' + telegramUser.id : db.collection(COLLECTIONS.USERS).doc().id);
-                
-                userData = {
-                    registration: { firstName, phone, instagramLogin, followersCount, avgViews, password: hashPassword(password) },
-                    level: bloggerData.level,
-                    orders: [],
-                    telegramId: telegramUser ? telegramUser.id : null,
-                    registrationDate: new Date().toISOString(),
-                    lastActivity: new Date().toISOString()
-                };
-
+                userData.lastActivity = new Date().toISOString();
                 await saveUser(currentUserId, userData);
                 await checkAndSetAdminStatus();
                 showDashboard();
-            });
-        }
-
-        function updateDashboard() {
-            if (!userData.registration) return;
-            const { firstName, followersCount, avgViews } = userData.registration;
-            const levelInfo = determineBloggerLevel(followersCount);
-
-            document.getElementById('userName').textContent = firstName;
-            
-            const userAvatar = document.getElementById('userAvatar');
-            if (telegramUser && telegramUser.photo_url) {
-                userAvatar.innerHTML = `<img src="${telegramUser.photo_url}" alt="${firstName}">`;
             } else {
-                userAvatar.innerHTML = ''; 
-                userAvatar.textContent = firstName ? firstName.charAt(0).toUpperCase() : '👤';
+                showError('Неверные данные', 'Проверьте правильность введенных данных или пройдите регистрацию');
+            }
+        });
+    }
+
+    async function submitMigration(button) {
+        await withLoading(button, async () => {
+            const password = document.getElementById('migrationPassword').value.trim();
+            const passwordConfirm = document.getElementById('migrationPasswordConfirm').value.trim();
+            
+            if (!validatePassword(password) || password !== passwordConfirm) {
+               return showError('Ошибка пароля', 'Пароли не совпадают или короче 6 символов.');
             }
 
-            document.getElementById('userLevel').textContent = levelInfo.text;
-            document.getElementById('followersDisplay').textContent = followersCount.toLocaleString('ru-RU');
-            document.getElementById('viewsDisplay').textContent = avgViews.toLocaleString('ru-RU');
-
-            // [!] ИЗМЕНЕНИЕ 3: ЛОГИКА ДИНАМИЧЕСКОГО СТАТУСА
-            const statusPanel = document.getElementById('statusPanel');
-            if (userData.orders && userData.orders.length > 0) {
-                const latestOrder = userData.orders.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0];
-                let statusMessage = '';
+            if (migrationUser) {
+                migrationUser.registration.password = hashPassword(password);
+                migrationUser.lastActivity = new Date().toISOString();
+                if (telegramUser && !migrationUser.telegramId) migrationUser.telegramId = telegramUser.id;
                 
-                if (latestOrder.status === 'confirmed') {
-                    statusMessage = '✅ <strong>Ваш заказ подтвержден!</strong> Ожидайте доставку.';
-                } else if (latestOrder.status === 'delivered') {
-                    statusMessage = '⚠️ <strong>Не забудьте сдать отчет</strong> по последнему заказу.';
-                }
+                await saveUser(migrationUser.userId, migrationUser);
+                
+                userData = migrationUser;
+                currentUserId = migrationUser.userId;
+                migrationUser = null;
+                await checkAndSetAdminStatus();
+                showDashboard();
+            }
+        });
+    }
 
-                if (statusMessage) {
-                    statusPanel.innerHTML = statusMessage;
-                    statusPanel.style.display = 'block';
-                } else {
-                    statusPanel.style.display = 'none';
-                }
+    async function submitRegistration(button) {
+        await withLoading(button, async () => {
+            const firstName = document.getElementById('firstName').value.trim();
+            const phone = document.getElementById('phone').value.trim();
+            const instagramLogin = document.getElementById('instagramLogin').value.trim().toLowerCase();
+            const password = document.getElementById('password').value.trim();
+            const followersCount = parseInt(document.getElementById('followersCount').value);
+            const avgViews = parseInt(document.getElementById('avgViews').value);
+
+            if (!firstName || !phone || !instagramLogin || !password || isNaN(followersCount) || isNaN(avgViews)) {
+                return showError('Ошибка валидации', 'Пожалуйста, заполните все обязательные поля');
+            }
+
+            if (avgViews < 300) return showRejectionModal();
+            
+            const duplicateCheck = await checkForDuplicateRegistration(phone, instagramLogin);
+            if (!duplicateCheck.canRegister) {
+                let msg = 'Аккаунт с такими данными уже зарегистрирован.';
+                if (duplicateCheck.phoneExists) msg += '\n• Телефон уже используется';
+                if (duplicateCheck.instagramExists) msg += '\n• Instagram уже используется';
+                return showError('Аккаунт уже существует', msg);
+            }
+
+            const bloggerData = determineBloggerLevel(followersCount);
+            if (!currentUserId) currentUserId = (telegramUser ? 'tg_' + telegramUser.id : db.collection(COLLECTIONS.USERS).doc().id);
+            
+            userData = {
+                registration: { firstName, phone, instagramLogin, followersCount, avgViews, password: hashPassword(password) },
+                level: bloggerData.level,
+                orders: [],
+                telegramId: telegramUser ? telegramUser.id : null,
+                registrationDate: new Date().toISOString(),
+                lastActivity: new Date().toISOString()
+            };
+
+            await saveUser(currentUserId, userData);
+            await checkAndSetAdminStatus();
+            showDashboard();
+        });
+    }
+
+    function updateDashboard() {
+        if (!userData.registration) return;
+        const { firstName, followersCount, avgViews } = userData.registration;
+        const levelInfo = determineBloggerLevel(followersCount);
+
+        document.getElementById('userName').textContent = firstName;
+        
+        const userAvatar = document.getElementById('userAvatar');
+        if (telegramUser && telegramUser.photo_url) {
+            userAvatar.innerHTML = `<img src="${telegramUser.photo_url}" alt="${firstName}">`;
+        } else {
+            userAvatar.innerHTML = ''; 
+            userAvatar.textContent = firstName ? firstName.charAt(0).toUpperCase() : '👤';
+        }
+
+        document.getElementById('userLevel').textContent = levelInfo.text;
+        document.getElementById('followersDisplay').textContent = followersCount.toLocaleString('ru-RU');
+        document.getElementById('viewsDisplay').textContent = avgViews.toLocaleString('ru-RU');
+
+        const statusPanel = document.getElementById('statusPanel');
+        if (userData.orders && userData.orders.length > 0) {
+            const latestOrder = userData.orders.sort((a, b) => new Date(b.createdAt || b.date) - new Date(a.createdAt || a.date))[0];
+            let statusMessage = '';
+            
+            if (latestOrder.status === 'confirmed') {
+                statusMessage = '✅ <strong>Ваш заказ подтвержден!</strong> Ожидайте доставку.';
+            } else if (latestOrder.status === 'delivered') {
+                statusMessage = '⚠️ <strong>Не забудьте сдать отчет</strong> по последнему заказу.';
+            }
+
+            if (statusMessage) {
+                statusPanel.innerHTML = statusMessage;
+                statusPanel.style.display = 'block';
             } else {
                 statusPanel.style.display = 'none';
             }
+        } else {
+            statusPanel.style.display = 'none';
         }
+    }
 
-        // --- CRM Функции ---
-        async function updateCRMData() {
-            updateCRMStats();
-            const activeTab = document.querySelector('.crm-tab.active');
-            if (activeTab) {
-                activeTab.click();
-            }
+    // --- CRM Функции ---
+    async function updateCRMData() {
+        updateCRMStats();
+        const activeTab = document.querySelector('.crm-tab.active');
+        if (activeTab) {
+            activeTab.click();
         }
+    }
 
-        async function updateCRMStats() {
-            try {
-                const [usersSnap, ordersSnap, newOrdersSnap, blocksSnap] = await Promise.all([
-                    db.collection(COLLECTIONS.USERS).get(),
-                    db.collection(COLLECTIONS.ORDERS).get(),
-                    db.collection(COLLECTIONS.ORDERS).where('status', '==', 'new').get(),
-                    db.collection(COLLECTIONS.BLOCKED_SLOTS).get()
-                ]);
-
-                document.getElementById('totalUsers').textContent = usersSnap.size;
-                document.getElementById('totalOrders').textContent = ordersSnap.size;
-                document.getElementById('newOrders').textContent = newOrdersSnap.size;
-                document.getElementById('blockedSlots').textContent = blocksSnap.size;
-            } catch (error) {
-                console.error("Error updating CRM stats:", error);
-            }
-        }
-        
-        async function updateCityAnalytics() {
-            const ctx = document.getElementById('cityChart').getContext('2d');
-            try {
-                const ordersSnap = await db.collection(COLLECTIONS.ORDERS).get();
-                const cityCounts = {};
-                ordersSnap.forEach(doc => {
-                    const city = doc.data().city;
-                    if (city) {
-                        cityCounts[city] = (cityCounts[city] || 0) + 1;
-                    }
-                });
-                
-                if (cityChart) cityChart.destroy();
-                
-                cityChart = new Chart(ctx, {
-                    type: 'bar',
-                    data: {
-                        labels: Object.keys(cityCounts),
-                        datasets: [{
-                            label: 'Заказы по городам',
-                            data: Object.values(cityCounts),
-                            backgroundColor: '#00b4d8',
-                            borderColor: '#0099b8',
-                            borderWidth: 1
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        scales: { y: { beginAtZero: true, ticks: { color: '#fff' } }, x: { ticks: { color: '#fff' } } },
-                        plugins: { legend: { labels: { color: '#fff' } } }
-                    }
-                });
-            } catch(e) { console.error(e) }
-        }
-        
-        function getStatusText(status) {
-            switch(status) {
-                case 'new': return 'Новый';
-                case 'confirmed': return 'Подтвержден';
-                case 'delivered': return 'Доставлен';
-                default: return status;
-            }
-        }
-
-        async function updateOrdersList() {
-            const list = document.getElementById('ordersList');
-            list.innerHTML = '<div class="loading-indicator">Загрузка заказов...</div>';
-            try {
-                const snapshot = await db.collection(COLLECTIONS.ORDERS).orderBy('createdAt', 'desc').get();
-                list.innerHTML = snapshot.empty ? '<p style="text-align:center;padding:20px;color:#999;">Заказов нет.</p>' : '';
-                snapshot.forEach(doc => {
-                    const order = { id: doc.id, ...doc.data() };
-                    const el = document.createElement('div');
-                    el.className = 'order-item';
-                    el.dataset.search = `${order.userName} ${order.phone} ${order.instagram}`.toLowerCase();
-                    el.onclick = () => showOrderDetailModal(order.id);
-                    el.innerHTML = `
-                        <div class="order-header">
-                            <span class="order-id">#${order.id.substring(0, 6)}</span>
-                            <span class="order-status status-${order.status}">${getStatusText(order.status)}</span>
-                        </div>
-                        <div class="order-info">
-                            <strong>${order.userName}</strong> (${determineBloggerLevel(order.followersCount || 0).text})<br>
-                            ${order.city}, ${new Date(order.date).toLocaleDateString('ru-RU')} - ${order.time}<br>
-                            <small>${new Date(order.createdAt).toLocaleString('ru-RU')}</small>
-                        </div>`;
-                    list.appendChild(el);
-                });
-            } catch (error) {
-                console.error("Error fetching orders:", error);
-                list.innerHTML = '<p style="color:red;text-align:center;padding:20px;">Ошибка загрузки</p>';
-            }
-        }
-
-        // [!] ИЗМЕНЕНИЕ 2: ФУНКЦИЯ ОБНОВЛЕНА ДЛЯ КЛИКАБЕЛЬНОСТИ
-        async function updateUsersList() {
-            const list = document.getElementById('usersList');
-            list.innerHTML = '<div class="loading-indicator">Загрузка пользователей...</div>';
-            try {
-                const [usersSnapshot, adminsSnapshot] = await Promise.all([
-                     db.collection(COLLECTIONS.USERS).orderBy('registrationDate', 'desc').get(),
-                     db.collection(COLLECTIONS.ADMINS).get()
-                ]);
-
-                const adminIds = new Set(adminsSnapshot.docs.map(doc => doc.id));
-                
-                list.innerHTML = usersSnapshot.empty ? '<p style="text-align:center;padding:20px;color:#999;">Пользователей нет.</p>' : '';
-                usersSnapshot.forEach(doc => {
-                    const user = { userId: doc.id, ...doc.data() };
-                    const reg = user.registration;
-                    if (!reg) return;
-
-                    const isUserAdmin = adminIds.has(String(user.telegramId));
-
-                    const el = document.createElement('div');
-                    el.className = 'user-item';
-                    el.dataset.search = `${reg.firstName} ${reg.phone} ${reg.instagramLogin}`.toLowerCase();
-                    el.onclick = () => showUserDetailModal(user.userId); // Добавляем клик
-                    el.innerHTML = `
-                        <div class="user-details">
-                            <span class="user-name-phone">${reg.firstName} (${reg.phone})</span>
-                            <div style="font-size: 14px; color: #ccc;">
-                                Instagram: ${reg.instagramLogin}<br>
-                                Подписчики: ${reg.followersCount.toLocaleString('ru-RU')} | Просмотры: ${reg.avgViews.toLocaleString('ru-RU')}
-                                ${isUserAdmin ? '<br><strong style="color: #28a745;">Администратор</strong>' : ''}
-                            </div>
-                        </div>
-                        <div class="user-controls">
-                           <button class="btn-danger-icon" onclick="event.stopPropagation(); app.removeUser('${user.userId}', '${reg.firstName}')">🗑️</button>
-                        </div>`;
-                    list.appendChild(el);
-                });
-            } catch (error) {
-                console.error("Error fetching users:", error);
-                list.innerHTML = '<p style="color:red;text-align:center;padding:20px;">Ошибка загрузки</p>';
-            }
-        }
-        
-        async function updateBlockedSlotsList() {
-            const list = document.getElementById('blockedSlotsList');
-            list.innerHTML = '<div class="loading-indicator">Загрузка...</div>';
-            try {
-                const snapshot = await db.collection(COLLECTIONS.BLOCKED_SLOTS).get();
-                list.innerHTML = snapshot.empty ? '<p style="text-align:center;padding:20px;color:#999;">Блокировок нет.</p>' : '';
-                snapshot.forEach(doc => {
-                    const block = { id: doc.id, ...doc.data() };
-                    const el = document.createElement('div');
-                    el.className = 'blocked-slot';
-                    el.innerHTML = `
-                        <div class="blocked-slot-info">
-                            <div class="blocked-slot-city">${block.city}</div>
-                            <div class="blocked-slot-time">${block.date} в ${block.time}</div>
-                            ${block.reason ? `<div style="font-size: 12px; color: #999;">${block.reason}</div>` : ''}
-                        </div>
-                         <button class="btn-danger-icon" onclick="app.removeBlock('${block.id}')" title="Удалить блокировку">🗑️</button>`;
-                    list.appendChild(el);
-                });
-            } catch (error) {
-                console.error("Error fetching blocks:", error);
-                list.innerHTML = '<p style="color:red;text-align:center;padding:20px;">Ошибка загрузки</p>';
-            }
-        }
-        
-        async function updateAdminsList() {
-            const list = document.getElementById('adminsList');
-            list.innerHTML = '<div class="loading-indicator">Загрузка...</div>';
-            try {
-                const snapshot = await db.collection(COLLECTIONS.ADMINS).get();
-                list.innerHTML = snapshot.empty ? '<p style="text-align:center;padding:20px;color:#999;">Админов нет.</p>' : '';
-                snapshot.forEach(doc => {
-                    const admin = { id: doc.id, ...doc.data() };
-                    const el = document.createElement('div');
-                    el.className = 'user-item';
-                    el.innerHTML = `
-                        <div class="user-header">
-                            <span class="user-name-phone">${admin.name || 'Админ'} (ID: ${admin.id})</span>
-                            <div class="user-controls">
-                                ${admin.id !== '1345815453' ? `<button class="btn-danger-icon" onclick="app.removeAdmin('${admin.id}')">🗑️</button>` : '<span style="color:#999;font-size:12px;">Главный</span>'}
-                            </div>
-                        </div>`;
-                    list.appendChild(el);
-                });
-            } catch (error) {
-                console.error("Error fetching admins:", error);
-                list.innerHTML = '<p style="color:red;text-align:center;padding:20px;">Ошибка загрузки</p>';
-            }
-        }
-
-        // [!] ИЗМЕНЕНИЕ 1: НОВАЯ ФУНКЦИЯ ДЛЯ ОБНОВЛЕНИЯ СТАТУСА
-        async function updateOrderStatus() {
-            if (!currentEditingOrderId) return;
-            
-            const newStatus = document.getElementById('orderStatusSelect').value;
-            try {
-                // Обновляем в коллекции orders
-                await db.collection(COLLECTIONS.ORDERS).doc(currentEditingOrderId).update({ status: newStatus });
-                
-                // Находим пользователя и обновляем статус в его массиве заказов
-                const orderDoc = await db.collection(COLLECTIONS.ORDERS).doc(currentEditingOrderId).get();
-                const orderData = orderDoc.data();
-                const userToUpdate = await loadUser(orderData.userId);
-
-                if (userToUpdate && userToUpdate.orders) {
-                    const orderIndex = userToUpdate.orders.findIndex(o => o.id === currentEditingOrderId);
-                    if (orderIndex > -1) {
-                        userToUpdate.orders[orderIndex].status = newStatus;
-                        await db.collection(COLLECTIONS.USERS).doc(orderData.userId).update({ orders: userToUpdate.orders });
-                    }
-                }
-                
-                showSuccessMessage('Статус обновлен!');
-                closeOrderDetailModal();
-                updateOrdersList(); // Обновляем список заказов на экране
-            } catch (error) {
-                console.error("Error updating order status: ", error);
-                showError('Ошибка', 'Не удалось обновить статус заказа.');
-            }
-        }
-
-        function filter(inputId, listSelector, itemSelector) {
-            const query = document.getElementById(inputId).value.toLowerCase();
-            document.querySelectorAll(`${listSelector} ${itemSelector}`).forEach(item => {
-                const searchableText = item.dataset.search || '';
-                item.style.display = searchableText.includes(query) ? '' : 'none';
-            });
-        }
-        function filterOrders() { filter('orderSearch', '#ordersList', '.order-item'); }
-        function filterUsers() { filter('userSearch', '#usersList', '.user-item'); }
-        function filterAdminUsers() { filter('adminUserSearch', '#adminUsersList', '.user-item'); }
-        
-        async function addBlock(button) {
-            await withLoading(button, async () => {
-                const city = document.getElementById('blockCity').value;
-                const date = document.getElementById('blockDate').value;
-                const time = document.getElementById('blockTime').value;
-                const reason = document.getElementById('blockReason').value.trim();
-                if (!city || !date || !time) return;
-
-                const blockId = `${city}_${date}_${time}`;
-                const newBlock = { city, date, time, reason, addedAt: new Date().toISOString(), addedBy: telegramUser ? telegramUser.id : 'unknown' };
-                
-                await db.collection(COLLECTIONS.BLOCKED_SLOTS).doc(blockId).set(newBlock);
-                closeAddBlockModal();
-                updateBlockedSlotsList();
-                showSuccessMessage('Блокировка добавлена!');
-            });
-        }
-
-        async function removeBlock(blockId) {
-            if (confirm('Удалить эту блокировку?')) {
-                await db.collection(COLLECTIONS.BLOCKED_SLOTS).doc(blockId).delete();
-                updateBlockedSlotsList();
-                showSuccessMessage('Блокировка удалена!');
-            }
-        }
-        
-        async function removeUser(userId, userName) {
-            if(confirm(`Вы уверены, что хотите удалить пользователя ${userName}? Это действие необратимо.`)) {
-                try {
-                    await db.collection(COLLECTIONS.USERS).doc(userId).delete();
-                    showSuccessMessage(`Пользователь ${userName} удален.`);
-                    updateUsersList();
-                } catch(e) {
-                    showError('Ошибка', 'Не удалось удалить пользователя.');
-                    console.error(e);
-                }
-            }
-        }
-
-        async function addAdmin(userId, userName) {
-            if (!userId) return;
-            const userDoc = await loadUser(userId);
-            const telegramId = userDoc?.telegramId;
-
-            if(!telegramId) return showError("Ошибка", "У этого пользователя нет привязанного Telegram ID.");
-
-            const newAdmin = { name: userName, addedAt: new Date().toISOString(), addedBy: telegramUser ? telegramUser.id : 'unknown' };
-            await db.collection(COLLECTIONS.ADMINS).doc(String(telegramId)).set(newAdmin);
-
-            closeAddAdminModal();
-            updateAdminsList();
-            showSuccessMessage(`${userName} назначен администратором!`);
-        }
-
-        async function removeAdmin(adminId) {
-            if (adminId === '1345815453') return showError('Ошибка', 'Нельзя удалить главного администратора');
-            if (confirm(`Удалить администратора?`)) {
-                await db.collection(COLLECTIONS.ADMINS).doc(adminId).delete();
-                updateAdminsList();
-                showSuccessMessage('Администратор удален!');
-            }
-        }
-        
-        async function removeOrder(orderId) {
-             if (confirm('Вы уверены, что хотите удалить этот заказ?')) {
-                try {
-                    await db.collection(COLLECTIONS.ORDERS).doc(orderId).delete();
-                    closeOrderDetailModal();
-                    updateOrdersList();
-                    showSuccessMessage('Заказ удален.');
-                } catch(e) {
-                    console.error("Error removing order: ", e);
-                    showError('Ошибка', 'Не удалось удалить заказ.');
-                }
-            }
-        }
-        
-        // --- Логика заказа ---
-        function startCollaboration() {
-            currentOrderData = {};
-            if (userData.level === 'micro') {
-                showSetSelection();
-            } else {
-                showAddressForm();
-            }
-        }
-
-        function handleCityChange() {
-            const isMacro = userData.level !== 'micro';
-            document.getElementById('orderScreenshotGroup').style.display = isMacro ? 'block' : 'none';
-        }
-
-        function selectSet(element, setId) {
-            document.querySelectorAll('.set-item').forEach(item => item.classList.remove('selected'));
-            element.classList.add('selected');
-            currentOrderData.set = setId;
-            document.getElementById('nextFromSet').disabled = false;
-        }
-        
-        function submitAddressAndShowDateTime() {
-            if (!validateAddressForm()) return;
-            
-            currentOrderData.city = document.getElementById('city').value;
-            currentOrderData.street = document.getElementById('street').value;
-            currentOrderData.entrance = document.getElementById('entrance').value;
-            currentOrderData.floor = document.getElementById('floor').value;
-            currentOrderData.recipientPhone = document.getElementById('recipientPhone').value;
-            currentOrderData.comment = document.getElementById('comment').value;
-
-            showDateTimeSelection();
-            setupDateInput();
-        }
-
-        function setupDateInput() {
-            const dateInput = document.getElementById('deliveryDate');
-            const today = new Date();
-            const yyyy = today.getFullYear();
-            const mm = String(today.getMonth() + 1).padStart(2, '0');
-            const dd = String(today.getDate()).padStart(2, '0');
-            dateInput.min = `${yyyy}-${mm}-${dd}`;
-            dateInput.value = '';
-            document.getElementById('timeSlots').innerHTML = '';
-            document.getElementById('nextFromDateTime').disabled = true;
-        }
-
-        async function updateTimeSlots() {
-            const dateValue = document.getElementById('deliveryDate').value;
-            currentOrderData.time = '';
-            document.getElementById('nextFromDateTime').disabled = true;
-
-            const timeSlotsContainer = document.getElementById('timeSlots');
-            timeSlotsContainer.innerHTML = '<div class="loading-indicator">Проверка доступного времени...</div>';
-
-            if (!dateValue) {
-                timeSlotsContainer.innerHTML = '';
-                return;
-            }
-            currentOrderData.date = dateValue;
-            
-            const timeSlots = ['12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00'];
-            const city = document.getElementById('city').value;
-            
-            const now = new Date();
-            const todayStr = now.toISOString().split('T')[0];
-            const currentHour = now.getHours();
-            
-            timeSlotsContainer.innerHTML = '';
-            for (const time of timeSlots) {
-                const slot = document.createElement('div');
-                slot.className = 'time-slot';
-                slot.textContent = time;
-                
-                const [slotHour] = time.split(':').map(Number);
-                let isDisabled = false;
-                
-                if (dateValue === todayStr && slotHour <= currentHour) {
-                    isDisabled = true;
-                }
-                
-                if (await isSlotBlocked(city, dateValue, time)) {
-                    isDisabled = true;
-                }
-                
-                if(isDisabled) {
-                    slot.classList.add('disabled');
-                    slot.title = 'Время недоступно';
-                } else {
-                    slot.onclick = () => selectTimeSlot(slot, time);
-                }
-                
-                timeSlotsContainer.appendChild(slot);
-            }
-        }
-
-        function selectTimeSlot(element, time) {
-            document.querySelectorAll('.time-slot').forEach(item => item.classList.remove('selected'));
-            element.classList.add('selected');
-            currentOrderData.time = time;
-            document.getElementById('nextFromDateTime').disabled = false;
-        }
-
-        function validateAddressForm() {
-            const city = document.getElementById('city').value;
-            const street = document.getElementById('street').value;
-            const phone = document.getElementById('recipientPhone').value;
-            if (!city || !street || !phone) {
-                showError('Ошибка', 'Пожалуйста, заполните все обязательные поля: город, улица, телефон.');
-                return false;
-            }
-
-            const isMacro = userData.level !== 'micro';
-            const screenshotInput = document.getElementById('orderScreenshot');
-            if (isMacro && (!screenshotInput.files || screenshotInput.files.length === 0)) {
-                showError('Требуется скриншот', 'Для макроблогеров необходимо загрузить скриншот заказа.');
-                return false;
-            }
-            
-            return true;
-        }
-
-        async function submitOrder(button) {
-            await withLoading(button, async () => {
-                const orderId = db.collection(COLLECTIONS.ORDERS).doc().id;
-                
-                const newOrder = {
-                    ...currentOrderData,
-                    id: orderId,
-                    userId: currentUserId,
-                    userName: userData.registration.firstName,
-                    avgViews: userData.registration.avgViews,
-                    followersCount: userData.registration.followersCount,
-                    instagram: userData.registration.instagramLogin,
-                    phone: userData.registration.phone,
-                    status: 'new',
-                    createdAt: new Date().toISOString()
-                };
-                
-                newOrder.set = newOrder.set ?? null;
-                
-                userData.orders = userData.orders || [];
-                userData.orders.push({ 
-                    id: orderId, 
-                    date: newOrder.date, 
-                    set: newOrder.set,
-                    status: newOrder.status, 
-                    createdAt: newOrder.createdAt 
-                });
-                
-                const batch = db.batch();
-                batch.set(db.collection(COLLECTIONS.ORDERS).doc(orderId), newOrder);
-                batch.update(db.collection(COLLECTIONS.USERS).doc(currentUserId), { orders: userData.orders });
-                await batch.commit();
-
-                const screenshotInput = document.getElementById('orderScreenshot');
-                const screenshotFile = screenshotInput.files && screenshotInput.files.length > 0 ? screenshotInput.files[0] : null;
-
-                sendTelegramNotification(newOrder, screenshotFile);
-                
-                showSuccessModal();
-            });
-        }
-        
-        // --- Другие функции ---
-        function showOrderHistory() {
-            const list = document.getElementById('orderHistoryList');
-            list.innerHTML = '';
-            const sortedOrders = (userData.orders || []).sort((a, b) => new Date(b.createdAt || b.date) - new Date(a.createdAt || a.date));
-            
-            if (sortedOrders.length === 0) {
-                list.innerHTML = '<p style="color:#999;text-align:center;">У вас еще не было заказов.</p>';
-            } else {
-                sortedOrders.forEach(order => {
-                    const item = document.createElement('div');
-                    item.className = 'order-item';
-                    item.innerHTML = `
-                        <div class="order-header">
-                            <span class="order-id">Заказ от ${new Date(order.createdAt || order.date).toLocaleDateString()}</span>
-                            <span class="order-status status-${order.status}">${getStatusText(order.status)}</span>
-                        </div>
-                        <div class="order-info">${order.set ? order.set.replace('set', 'Набор ') : 'Заказ макроблогера'}</div>`;
-                    list.appendChild(item);
-                });
-            }
-            document.getElementById('orderHistoryModal').style.display = 'flex';
-        }
-
-        function editProfile() {
-            const reg = userData.registration;
-            document.getElementById('editFirstName').value = reg.firstName;
-            document.getElementById('editPhone').value = reg.phone;
-            document.getElementById('editInstagram').value = reg.instagramLogin;
-            document.getElementById('editFollowers').value = reg.followersCount;
-            document.getElementById('editViews').value = reg.avgViews;
-            document.getElementById('editPassword').value = '';
-            document.getElementById('editProfileModal').style.display = 'flex';
-        }
-
-        async function saveProfile(button) {
-            await withLoading(button, async () => {
-                const reg = userData.registration;
-                const newPhone = document.getElementById('editPhone').value.trim();
-                const newInstagram = document.getElementById('editInstagram').value.trim().toLowerCase();
-                const newFirstName = document.getElementById('editFirstName').value.trim();
-                const newFollowers = parseInt(document.getElementById('editFollowers').value);
-                const newViews = parseInt(document.getElementById('editViews').value);
-                
-                if (!newFirstName || !newPhone || !newInstagram || isNaN(newFollowers) || isNaN(newViews)) {
-                    return showError('Ошибка валидации', 'Пожалуйста, заполните все поля корректно.');
-                }
-
-                if (newPhone !== reg.phone || newInstagram !== reg.instagramLogin) {
-                    const duplicateCheck = await checkForDuplicateRegistration(newPhone, newInstagram, currentUserId);
-                    if (!duplicateCheck.canRegister) {
-                        return showError('Данные заняты', 'Телефон или Instagram уже используются другим пользователем.');
-                    }
-                }
-                
-                const updates = {
-                    'registration.firstName': newFirstName,
-                    'registration.phone': newPhone,
-                    'registration.instagramLogin': newInstagram,
-                    'registration.followersCount': newFollowers,
-                    'registration.avgViews': newViews,
-                    'level': determineBloggerLevel(newFollowers).level,
-                    'lastActivity': new Date().toISOString()
-                };
-
-                const newPassword = document.getElementById('editPassword').value.trim();
-                if (validatePassword(newPassword)) {
-                    updates['registration.password'] = hashPassword(newPassword);
-                }
-                
-                await db.collection(COLLECTIONS.USERS).doc(currentUserId).update(updates);
-
-                userData.registration.firstName = newFirstName;
-                userData.registration.phone = newPhone;
-                userData.registration.instagramLogin = newInstagram;
-                userData.registration.followersCount = newFollowers;
-                userData.registration.avgViews = newViews;
-                userData.level = updates.level;
-                if (updates['registration.password']) {
-                    userData.registration.password = updates['registration.password'];
-                }
-                
-                updateDashboard();
-                closeEditProfile();
-                showSuccessMessage('Профиль успешно обновлен!');
-            });
-        }
-
-        function logout() {
-            userData = {};
-            currentUserId = null;
-            telegramUser = null;
-            isCurrentUserAdmin = false;
-            window.location.reload();
-        }
-
-        // --- Модальные окна ---
-        function showSuccessModal() {
-            document.getElementById('successTitle').textContent = 'Заказ оформлен!';
-            document.getElementById('successMessage').textContent = 'Через 24 часа после доставки вам придет напоминание об отчете';
-            document.getElementById('successModal').style.display = 'flex';
-        }
-        function showSuccessMessage(message) {
-            document.getElementById('successTitle').textContent = 'Успешно!';
-            document.getElementById('successMessage').textContent = message;
-            document.getElementById('successModal').style.display = 'flex';
-        }
-        function showError(title, message) {
-            document.getElementById('errorTitle').textContent = title;
-            document.getElementById('errorMessage').textContent = message;
-            document.getElementById('errorModal').style.display = 'flex';
-        }
-        async function showOrderDetailModal(orderId) {
-            currentEditingOrderId = orderId; // [!] ИЗМЕНЕНИЕ 1: Сохраняем ID заказа
-            const orderDoc = await db.collection(COLLECTIONS.ORDERS).doc(orderId).get();
-            if(!orderDoc.exists) return showError('Ошибка', 'Заказ не найден');
-            
-            const order = orderDoc.data();
-            const body = document.getElementById('orderDetailBody');
-            
-            document.getElementById('orderDetailTitle').textContent = `Заказ #${order.id.substring(0, 6)}`;
-            body.innerHTML = `
-                <strong>Блогер:</strong> ${order.userName}<br>
-                <strong>Телефон:</strong> ${order.phone}<br>
-                <strong>Instagram:</strong> @${order.instagram}<br>
-                <strong>Город:</strong> ${order.city}<br>
-                <strong>Адрес:</strong> ${order.street}<br>
-                <strong>Подъезд:</strong> ${order.entrance || '-'}<br>
-                <strong>Этаж:</strong> ${order.floor || '-'}<br>
-                <strong>Телефон получателя:</strong> ${order.recipientPhone}<br>
-                <strong>Дата и время:</strong> ${order.date} в ${order.time}<br>
-                <strong>Набор:</strong> ${order.set ? order.set.replace('set', 'Набор ') : 'Заказ макроблогера'}<br>
-                <strong>Комментарий:</strong> ${order.comment || '-'}<br>
-                <strong>Статус:</strong> <span class="order-status status-${order.status}" style="display:inline-block;">${getStatusText(order.status)}</span>
-            `;
-            
-            // [!] ИЗМЕНЕНИЕ 1: Устанавливаем текущий статус в выпадающем списке
-            document.getElementById('orderStatusSelect').value = order.status;
-            
-            document.getElementById('deleteOrderBtn').onclick = () => removeOrder(order.id);
-            document.getElementById('orderDetailModal').style.display = 'flex';
-        }
-        function closeOrderDetailModal() { 
-            document.getElementById('orderDetailModal').style.display = 'none';
-            currentEditingOrderId = null; // [!] ИЗМЕНЕНИЕ 1: Сбрасываем ID
-        }
-
-        // [!] ИЗМЕНЕНИЕ 2: НОВАЯ ФУНКЦИЯ ДЛЯ ПОКАЗА КАРТОЧКИ ПОЛЬЗОВАТЕЛЯ
-        async function showUserDetailModal(userId) {
-            const user = await loadUser(userId);
-            if (!user) return showError('Ошибка', 'Пользователь не найден');
-
-            const reg = user.registration;
-            const body = document.getElementById('userDetailBody');
-            const ordersList = document.getElementById('userOrdersHistoryCrm');
-            
-            document.getElementById('userDetailTitle').textContent = reg.firstName;
-            body.innerHTML = `
-                <strong>Телефон:</strong> ${reg.phone}<br>
-                <strong>Instagram:</strong> @${reg.instagramLogin}<br>
-                <strong>Подписчики:</strong> ${reg.followersCount.toLocaleString('ru-RU')}<br>
-                <strong>Просмотры:</strong> ${reg.avgViews.toLocaleString('ru-RU')}<br>
-                <strong>Уровень:</strong> ${determineBloggerLevel(reg.followersCount).text}
-            `;
-
-            ordersList.innerHTML = '<div class="loading-indicator">Загрузка заказов...</div>';
-            const ordersSnap = await db.collection(COLLECTIONS.ORDERS).where('userId', '==', userId).orderBy('createdAt', 'desc').get();
-            
-            if (ordersSnap.empty) {
-                ordersList.innerHTML = '<p style="color:#999;text-align:center;">У пользователя нет заказов.</p>';
-            } else {
-                ordersList.innerHTML = '';
-                ordersSnap.forEach(doc => {
-                    const order = doc.data();
-                    const item = document.createElement('div');
-                    item.className = 'order-item';
-                    item.style.cursor = 'default';
-                    item.innerHTML = `
-                        <div class="order-header">
-                             <span class="order-id">Заказ от ${new Date(order.createdAt).toLocaleDateString()}</span>
-                             <span class="order-status status-${order.status}">${getStatusText(order.status)}</span>
-                        </div>`;
-                    ordersList.appendChild(item);
-                });
-            }
-
-            document.getElementById('userDetailModal').style.display = 'flex';
-        }
-        
-        async function showAddAdminModal() { 
-            const list = document.getElementById('adminUsersList');
-            list.innerHTML = '<div class="loading-indicator">Загрузка пользователей...</div>';
-            document.getElementById('addAdminModal').style.display = 'flex';
-            
-            const [usersSnapshot, adminsSnapshot] = await Promise.all([
-                 db.collection(COLLECTIONS.USERS).orderBy('registration.firstName').get(),
-                 db.collection(COLLECTIONS.ADMINS).get()
+    async function updateCRMStats() {
+        try {
+            const [usersSnap, ordersSnap, newOrdersSnap, blocksSnap] = await Promise.all([
+                db.collection(COLLECTIONS.USERS).get(),
+                db.collection(COLLECTIONS.ORDERS).get(),
+                db.collection(COLLECTIONS.ORDERS).where('status', '==', 'new').get(),
+                db.collection(COLLECTIONS.BLOCKED_SLOTS).get()
             ]);
-            
-            const adminIds = new Set(adminsSnapshot.docs.map(doc => doc.id));
-            
-            list.innerHTML = '';
-            usersSnapshot.forEach(doc => {
-                const user = { userId: doc.id, ...doc.data() };
-                if (!user.registration || !user.telegramId) return;
 
-                const isAlreadyAdmin = adminIds.has(String(user.telegramId));
-                
+            document.getElementById('totalUsers').textContent = usersSnap.size;
+            document.getElementById('totalOrders').textContent = ordersSnap.size;
+            document.getElementById('newOrders').textContent = newOrdersSnap.size;
+            document.getElementById('blockedSlots').textContent = blocksSnap.size;
+        } catch (error) {
+            console.error("Error updating CRM stats:", error);
+        }
+    }
+    
+    async function updateCityAnalytics() {
+        const ctx = document.getElementById('cityChart').getContext('2d');
+        try {
+            const ordersSnap = await db.collection(COLLECTIONS.ORDERS).get();
+            const cityCounts = {};
+            ordersSnap.forEach(doc => {
+                const city = doc.data().city;
+                if (city) {
+                    cityCounts[city] = (cityCounts[city] || 0) + 1;
+                }
+            });
+            
+            if (cityChart) cityChart.destroy();
+            
+            cityChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(cityCounts),
+                    datasets: [{
+                        label: 'Заказы по городам',
+                        data: Object.values(cityCounts),
+                        backgroundColor: '#00b4d8',
+                        borderColor: '#0099b8',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: { y: { beginAtZero: true, ticks: { color: '#fff' } }, x: { ticks: { color: '#fff' } } },
+                    plugins: { legend: { labels: { color: '#fff' } } }
+                }
+            });
+        } catch(e) { console.error(e) }
+    }
+    
+    function getStatusText(status) {
+        switch(status) {
+            case 'new': return 'Новый';
+            case 'confirmed': return 'Подтвержден';
+            case 'delivered': return 'Доставлен';
+            default: return status;
+        }
+    }
+
+    async function updateOrdersList() {
+        const list = document.getElementById('ordersList');
+        list.innerHTML = '<div class="loading-indicator">Загрузка заказов...</div>';
+        try {
+            const snapshot = await db.collection(COLLECTIONS.ORDERS).orderBy('createdAt', 'desc').get();
+            list.innerHTML = snapshot.empty ? '<p style="text-align:center;padding:20px;color:#999;">Заказов нет.</p>' : '';
+            snapshot.forEach(doc => {
+                const order = { id: doc.id, ...doc.data() };
                 const el = document.createElement('div');
-                el.className = 'user-item';
-                el.dataset.search = `${user.registration.firstName} ${user.registration.instagramLogin}`.toLowerCase();
+                el.className = 'order-item';
+                el.dataset.search = `${order.userName} ${order.phone} ${order.instagram}`.toLowerCase();
+                el.onclick = () => showOrderDetailModal(order.id);
                 el.innerHTML = `
-                    <div>
-                        <strong>${user.registration.firstName}</strong>
-                        <div style="font-size: 12px; color: #999;">@${user.registration.instagramLogin}</div>
+                    <div class="order-header">
+                        <span class="order-id">#${order.id.substring(0, 6)}</span>
+                        <span class="order-status status-${order.status}">${getStatusText(order.status)}</span>
                     </div>
-                    ${isAlreadyAdmin 
-                        ? '<span class="user-admin-badge">Уже админ</span>'
-                        : `<button class="btn-primary btn-small" onclick="app.addAdmin('${user.userId}', '${user.registration.firstName}')">Назначить</button>`
-                    }`;
+                    <div class="order-info">
+                        <strong>${order.userName}</strong> (${determineBloggerLevel(order.followersCount || 0).text})<br>
+                        ${order.city}, ${new Date(order.date).toLocaleDateString('ru-RU')} - ${order.time}<br>
+                        <small>${new Date(order.createdAt).toLocaleString('ru-RU')}</small>
+                    </div>`;
                 list.appendChild(el);
             });
+        } catch (error) {
+            console.error("Error fetching orders:", error);
+            list.innerHTML = '<p style="color:red;text-align:center;padding:20px;">Ошибка загрузки</p>';
         }
-        
-        function showRejectionModal() { document.getElementById('rejectionModal').style.display = 'flex'; }
-        function closeModal() { 
-            document.getElementById('successModal').style.display = 'none';
-            showDashboard();
-        }
-        function closeErrorModal() { document.getElementById('errorModal').style.display = 'none'; }
-        function closeRejectionModal() { document.getElementById('rejectionModal').style.display = 'none'; }
-        function closeOrderHistory() { document.getElementById('orderHistoryModal').style.display = 'none'; }
-        function closeEditProfile() { document.getElementById('editProfileModal').style.display = 'none'; }
-        function contactAdmin() { document.getElementById('contactModal').style.display = 'flex'; }
-        function closeContactModal() { document.getElementById('contactModal').style.display = 'none'; }
-        function showAddBlockModal() { document.getElementById('addBlockModal').style.display = 'flex'; }
-        function closeAddBlockModal() { document.getElementById('addBlockModal').style.display = 'none'; }
-        function closeAddAdminModal() { document.getElementById('addAdminModal').style.display = 'none'; }
-        function closeUserDetailModal() { document.getElementById('userDetailModal').style.display = 'none'; } // [!] ИЗМЕНЕНИЕ 2: НОВАЯ ФУНКЦИЯ
-        
-        function setupPhoneMask(inputId) {
-            const phoneInput = document.getElementById(inputId);
-            if (!phoneInput) return;
-            
-            const format = (input) => {
-                let digits = input.value.replace(/\D/g, '');
-                if (digits.startsWith('7') || digits.startsWith('8')) {
-                    digits = digits.substring(1);
-                }
-                let formatted = '+7 (';
-                if (digits.length > 0) formatted += digits.substring(0, 3);
-                if (digits.length > 3) formatted += ') ' + digits.substring(3, 6);
-                if (digits.length > 6) formatted += '-' + digits.substring(6, 8);
-                if (digits.length > 8) formatted += '-' + digits.substring(8, 10);
-                input.value = formatted;
-            };
-            
-            phoneInput.addEventListener('input', () => format(phoneInput));
-        }
+    }
+    
+    async function updateUsersList() {
+        const list = document.getElementById('usersList');
+        list.innerHTML = '<div class="loading-indicator">Загрузка пользователей...</div>';
+        try {
+            const [usersSnapshot, adminsSnapshot] = await Promise.all([
+                 db.collection(COLLECTIONS.USERS).orderBy('registrationDate', 'desc').get(),
+                 db.collection(COLLECTIONS.ADMINS).get()
+            ]);
 
-        async function initializeApp() {
-            initTelegram();
-            if (await attemptTelegramAutoLogin()) {
-                showDashboard();
-            } else {
-                showWelcomeScreen();
+            const adminIds = new Set(adminsSnapshot.docs.map(doc => doc.id));
+            
+            list.innerHTML = usersSnapshot.empty ? '<p style="text-align:center;padding:20px;color:#999;">Пользователей нет.</p>' : '';
+            usersSnapshot.forEach(doc => {
+                const user = { userId: doc.id, ...doc.data() };
+                const reg = user.registration;
+                if (!reg) return;
+
+                const isUserAdmin = adminIds.has(String(user.telegramId));
+
+                const el = document.createElement('div');
+                el.className = 'user-item';
+                el.dataset.search = `${reg.firstName} ${reg.phone} ${reg.instagramLogin}`.toLowerCase();
+                
+                el.innerHTML = `
+                    <div class="user-details">
+                        <span class="user-name-phone">${reg.firstName} (${reg.phone})</span>
+                        <div style="font-size: 14px; color: #ccc;">
+                            Instagram: ${reg.instagramLogin}<br>
+                            Подписчики: ${reg.followersCount.toLocaleString('ru-RU')} | Просмотры: ${reg.avgViews.toLocaleString('ru-RU')}
+                            ${isUserAdmin ? '<br><strong style="color: #28a745;">Администратор</strong>' : ''}
+                        </div>
+                    </div>
+                    <div class="user-controls">
+                       <button class="btn-danger-icon">🗑️</button>
+                    </div>`;
+
+                el.addEventListener('click', () => showUserDetailModal(user.userId));
+                
+                const deleteBtn = el.querySelector('.btn-danger-icon');
+                deleteBtn.addEventListener('click', (event) => {
+                    event.stopPropagation();
+                    removeUser(user.userId, reg.firstName);
+                });
+
+                list.appendChild(el);
+            });
+        } catch (error) {
+            console.error("Error fetching users:", error);
+            list.innerHTML = '<p style="color:red;text-align:center;padding:20px;">Ошибка загрузки</p>';
+        }
+    }
+    
+    async function updateBlockedSlotsList() {
+        const list = document.getElementById('blockedSlotsList');
+        list.innerHTML = '<div class="loading-indicator">Загрузка...</div>';
+        try {
+            const snapshot = await db.collection(COLLECTIONS.BLOCKED_SLOTS).get();
+            list.innerHTML = snapshot.empty ? '<p style="text-align:center;padding:20px;color:#999;">Блокировок нет.</p>' : '';
+            snapshot.forEach(doc => {
+                const block = { id: doc.id, ...doc.data() };
+                const el = document.createElement('div');
+                el.className = 'blocked-slot';
+                el.innerHTML = `
+                    <div class="blocked-slot-info">
+                        <div class="blocked-slot-city">${block.city}</div>
+                        <div class="blocked-slot-time">${block.date} в ${block.time}</div>
+                        ${block.reason ? `<div style="font-size: 12px; color: #999;">${block.reason}</div>` : ''}
+                    </div>
+                     <button class="btn-danger-icon" onclick="app.removeBlock('${block.id}')" title="Удалить блокировку">🗑️</button>`;
+                list.appendChild(el);
+            });
+        } catch (error) {
+            console.error("Error fetching blocks:", error);
+            list.innerHTML = '<p style="color:red;text-align:center;padding:20px;">Ошибка загрузки</p>';
+        }
+    }
+    
+    async function updateAdminsList() {
+        const list = document.getElementById('adminsList');
+        list.innerHTML = '<div class="loading-indicator">Загрузка...</div>';
+        try {
+            const snapshot = await db.collection(COLLECTIONS.ADMINS).get();
+            list.innerHTML = snapshot.empty ? '<p style="text-align:center;padding:20px;color:#999;">Админов нет.</p>' : '';
+            snapshot.forEach(doc => {
+                const admin = { id: doc.id, ...doc.data() };
+                const el = document.createElement('div');
+                el.className = 'user-item';
+                el.innerHTML = `
+                    <div class="user-header">
+                        <span class="user-name-phone">${admin.name || 'Админ'} (ID: ${admin.id})</span>
+                        <div class="user-controls">
+                            ${admin.id !== '1345815453' ? `<button class="btn-danger-icon" onclick="app.removeAdmin('${admin.id}')">🗑️</button>` : '<span style="color:#999;font-size:12px;">Главный</span>'}
+                        </div>
+                    </div>`;
+                list.appendChild(el);
+            });
+        } catch (error) {
+            console.error("Error fetching admins:", error);
+            list.innerHTML = '<p style="color:red;text-align:center;padding:20px;">Ошибка загрузки</p>';
+        }
+    }
+
+    async function updateOrderStatus() {
+        if (!currentEditingOrderId) return;
+        
+        const newStatus = document.getElementById('orderStatusSelect').value;
+        try {
+            await db.collection(COLLECTIONS.ORDERS).doc(currentEditingOrderId).update({ status: newStatus });
+            
+            const orderDoc = await db.collection(COLLECTIONS.ORDERS).doc(currentEditingOrderId).get();
+            const orderData = orderDoc.data();
+            const userToUpdate = await loadUser(orderData.userId);
+
+            if (userToUpdate && userToUpdate.orders) {
+                const orderIndex = userToUpdate.orders.findIndex(o => o.id === currentEditingOrderId);
+                if (orderIndex > -1) {
+                    userToUpdate.orders[orderIndex].status = newStatus;
+                    await db.collection(COLLECTIONS.USERS).doc(orderData.userId).update({ orders: userToUpdate.orders });
+                }
+            }
+            
+            showSuccessMessage('Статус обновлен!');
+            closeOrderDetailModal();
+            updateOrdersList();
+        } catch (error) {
+            console.error("Error updating order status: ", error);
+            showError('Ошибка', 'Не удалось обновить статус заказа.');
+        }
+    }
+
+    function filter(inputId, listSelector, itemSelector) {
+        const query = document.getElementById(inputId).value.toLowerCase();
+        document.querySelectorAll(`${listSelector} ${itemSelector}`).forEach(item => {
+            const searchableText = item.dataset.search || '';
+            item.style.display = searchableText.includes(query) ? '' : 'none';
+        });
+    }
+    function filterOrders() { filter('orderSearch', '#ordersList', '.order-item'); }
+    function filterUsers() { filter('userSearch', '#usersList', '.user-item'); }
+    function filterAdminUsers() { filter('adminUserSearch', '#adminUsersList', '.user-item'); }
+    
+    async function addBlock(button) {
+        await withLoading(button, async () => {
+            const city = document.getElementById('blockCity').value;
+            const date = document.getElementById('blockDate').value;
+            const time = document.getElementById('blockTime').value;
+            const reason = document.getElementById('blockReason').value.trim();
+            if (!city || !date || !time) return;
+
+            const blockId = `${city}_${date}_${time}`;
+            const newBlock = { city, date, time, reason, addedAt: new Date().toISOString(), addedBy: telegramUser ? telegramUser.id : 'unknown' };
+            
+            await db.collection(COLLECTIONS.BLOCKED_SLOTS).doc(blockId).set(newBlock);
+            closeAddBlockModal();
+            updateBlockedSlotsList();
+            showSuccessMessage('Блокировка добавлена!');
+        });
+    }
+
+    async function removeBlock(blockId) {
+        if (confirm('Удалить эту блокировку?')) {
+            await db.collection(COLLECTIONS.BLOCKED_SLOTS).doc(blockId).delete();
+            updateBlockedSlotsList();
+            showSuccessMessage('Блокировка удалена!');
+        }
+    }
+    
+    async function removeUser(userId, userName) {
+        if(confirm(`Вы уверены, что хотите удалить пользователя ${userName}? Это действие необратимо.`)) {
+            try {
+                await db.collection(COLLECTIONS.USERS).doc(userId).delete();
+                showSuccessMessage(`Пользователь ${userName} удален.`);
+                updateUsersList();
+            } catch(e) {
+                showError('Ошибка', 'Не удалось удалить пользователя.');
+                console.error(e);
             }
         }
+    }
 
-        document.addEventListener('DOMContentLoaded', () => {
-            setupPhoneMask('loginPhone');
-            setupPhoneMask('phone');
-            setupPhoneMask('recipientPhone');
-            setupPhoneMask('editPhone');
+    async function addAdmin(userId, userName) {
+        if (!userId) return;
+        const userDoc = await loadUser(userId);
+        const telegramId = userDoc?.telegramId;
+
+        if(!telegramId) return showError("Ошибка", "У этого пользователя нет привязанного Telegram ID.");
+
+        const newAdmin = { name: userName, addedAt: new Date().toISOString(), addedBy: telegramUser ? telegramUser.id : 'unknown' };
+        await db.collection(COLLECTIONS.ADMINS).doc(String(telegramId)).set(newAdmin);
+
+        closeAddAdminModal();
+        updateAdminsList();
+        showSuccessMessage(`${userName} назначен администратором!`);
+    }
+
+    async function removeAdmin(adminId) {
+        if (adminId === '1345815453') return showError('Ошибка', 'Нельзя удалить главного администратора');
+        if (confirm(`Удалить администратора?`)) {
+            await db.collection(COLLECTIONS.ADMINS).doc(adminId).delete();
+            updateAdminsList();
+            showSuccessMessage('Администратор удален!');
+        }
+    }
+    
+    async function removeOrder(orderId) {
+         if (confirm('Вы уверены, что хотите удалить этот заказ?')) {
+            try {
+                await db.collection(COLLECTIONS.ORDERS).doc(orderId).delete();
+                closeOrderDetailModal();
+                updateOrdersList();
+                showSuccessMessage('Заказ удален.');
+            } catch(e) {
+                console.error("Error removing order: ", e);
+                showError('Ошибка', 'Не удалось удалить заказ.');
+            }
+        }
+    }
+    
+    function startCollaboration() {
+        currentOrderData = {};
+        if (userData.level === 'micro') {
+            showSetSelection();
+        } else {
+            showAddressForm();
+        }
+    }
+
+    function handleCityChange() {
+        const isMacro = userData.level !== 'micro';
+        document.getElementById('orderScreenshotGroup').style.display = isMacro ? 'block' : 'none';
+    }
+
+    function selectSet(element, setId) {
+        document.querySelectorAll('.set-item').forEach(item => item.classList.remove('selected'));
+        element.classList.add('selected');
+        currentOrderData.set = setId;
+        document.getElementById('nextFromSet').disabled = false;
+    }
+    
+    function submitAddressAndShowDateTime() {
+        if (!validateAddressForm()) return;
+        
+        currentOrderData.city = document.getElementById('city').value;
+        currentOrderData.street = document.getElementById('street').value;
+        currentOrderData.entrance = document.getElementById('entrance').value;
+        currentOrderData.floor = document.getElementById('floor').value;
+        currentOrderData.recipientPhone = document.getElementById('recipientPhone').value;
+        currentOrderData.comment = document.getElementById('comment').value;
+
+        showDateTimeSelection();
+        setupDateInput();
+    }
+
+    function setupDateInput() {
+        const dateInput = document.getElementById('deliveryDate');
+        const today = new Date();
+        const yyyy = today.getFullYear();
+        const mm = String(today.getMonth() + 1).padStart(2, '0');
+        const dd = String(today.getDate()).padStart(2, '0');
+        dateInput.min = `${yyyy}-${mm}-${dd}`;
+        dateInput.value = '';
+        document.getElementById('timeSlots').innerHTML = '';
+        document.getElementById('nextFromDateTime').disabled = true;
+    }
+
+    async function updateTimeSlots() {
+        const dateValue = document.getElementById('deliveryDate').value;
+        currentOrderData.time = '';
+        document.getElementById('nextFromDateTime').disabled = true;
+
+        const timeSlotsContainer = document.getElementById('timeSlots');
+        timeSlotsContainer.innerHTML = '<div class="loading-indicator">Проверка доступного времени...</div>';
+
+        if (!dateValue) {
+            timeSlotsContainer.innerHTML = '';
+            return;
+        }
+        currentOrderData.date = dateValue;
+        
+        const timeSlots = ['12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00'];
+        const city = document.getElementById('city').value;
+        
+        const now = new Date();
+        const todayStr = now.toISOString().split('T')[0];
+        const currentHour = now.getHours();
+        
+        timeSlotsContainer.innerHTML = '';
+        for (const time of timeSlots) {
+            const slot = document.createElement('div');
+            slot.className = 'time-slot';
+            slot.textContent = time;
             
-            setTimeout(initializeApp, 100);
-        });
+            const [slotHour] = time.split(':').map(Number);
+            let isDisabled = false;
+            
+            if (dateValue === todayStr && slotHour <= currentHour) {
+                isDisabled = true;
+            }
+            
+            if (await isSlotBlocked(city, dateValue, time)) {
+                isDisabled = true;
+            }
+            
+            if(isDisabled) {
+                slot.classList.add('disabled');
+                slot.title = 'Время недоступно';
+            } else {
+                slot.onclick = () => selectTimeSlot(slot, time);
+            }
+            
+            timeSlotsContainer.appendChild(slot);
+        }
+    }
 
-        return {
-            showRegistration, showLogin, showWelcomeScreen, submitLogin, submitRegistration, 
-            submitMigration, showDashboard, logout, startCollaboration, showOrderHistory, editProfile,
-            contactAdmin, showCRM, showCrmTab, filterOrders, filterUsers, filterAdminUsers,
-            removeBlock, removeAdmin, removeUser,
-            addBlock, addAdmin, selectSet, showSetSelection, showAddressForm, showDateTimeSelection, showInstructions,
-            handleCityChange, submitAddressAndShowDateTime, updateTimeSlots, submitOrder, saveProfile,
-            closeModal, closeErrorModal, closeRejectionModal, closeOrderHistory, closeEditProfile,
-            closeContactModal, showAddBlockModal, closeAddBlockModal, showAddAdminModal, closeAddAdminModal,
-            closeOrderDetailModal,
-            // [!] ЭКСПОРТ НОВЫХ ФУНКЦИЙ
-            updateOrderStatus, showUserDetailModal, closeUserDetailModal
+    function selectTimeSlot(element, time) {
+        document.querySelectorAll('.time-slot').forEach(item => item.classList.remove('selected'));
+        element.classList.add('selected');
+        currentOrderData.time = time;
+        document.getElementById('nextFromDateTime').disabled = false;
+    }
+
+    function validateAddressForm() {
+        const city = document.getElementById('city').value;
+        const street = document.getElementById('street').value;
+        const phone = document.getElementById('recipientPhone').value;
+        if (!city || !street || !phone) {
+            showError('Ошибка', 'Пожалуйста, заполните все обязательные поля: город, улица, телефон.');
+            return false;
+        }
+
+        const isMacro = userData.level !== 'micro';
+        const screenshotInput = document.getElementById('orderScreenshot');
+        if (isMacro && (!screenshotInput.files || screenshotInput.files.length === 0)) {
+            showError('Требуется скриншот', 'Для макроблогеров необходимо загрузить скриншот заказа.');
+            return false;
+        }
+        
+        return true;
+    }
+
+    async function submitOrder(button) {
+        await withLoading(button, async () => {
+            const orderId = db.collection(COLLECTIONS.ORDERS).doc().id;
+            
+            const newOrder = {
+                ...currentOrderData,
+                id: orderId,
+                userId: currentUserId,
+                userName: userData.registration.firstName,
+                avgViews: userData.registration.avgViews,
+                followersCount: userData.registration.followersCount,
+                instagram: userData.registration.instagramLogin,
+                phone: userData.registration.phone,
+                status: 'new',
+                createdAt: new Date().toISOString()
+            };
+            
+            newOrder.set = newOrder.set ?? null;
+            
+            userData.orders = userData.orders || [];
+            userData.orders.push({ 
+                id: orderId, 
+                date: newOrder.date, 
+                set: newOrder.set,
+                status: newOrder.status, 
+                createdAt: newOrder.createdAt 
+            });
+            
+            const batch = db.batch();
+            batch.set(db.collection(COLLECTIONS.ORDERS).doc(orderId), newOrder);
+            batch.update(db.collection(COLLECTIONS.USERS).doc(currentUserId), { orders: userData.orders });
+            await batch.commit();
+
+            const screenshotInput = document.getElementById('orderScreenshot');
+            const screenshotFile = screenshotInput.files && screenshotInput.files.length > 0 ? screenshotInput.files[0] : null;
+
+            sendTelegramNotification(newOrder, screenshotFile);
+            
+            showSuccessModal();
+        });
+    }
+    
+    function showOrderHistory() {
+        const list = document.getElementById('orderHistoryList');
+        list.innerHTML = '';
+        const sortedOrders = (userData.orders || []).sort((a, b) => new Date(b.createdAt || b.date) - new Date(a.createdAt || a.date));
+        
+        if (sortedOrders.length === 0) {
+            list.innerHTML = '<p style="color:#999;text-align:center;">У вас еще не было заказов.</p>';
+        } else {
+            sortedOrders.forEach(order => {
+                const item = document.createElement('div');
+                item.className = 'order-item';
+                item.innerHTML = `
+                    <div class="order-header">
+                        <span class="order-id">Заказ от ${new Date(order.createdAt || order.date).toLocaleDateString()}</span>
+                        <span class="order-status status-${order.status}">${getStatusText(order.status)}</span>
+                    </div>
+                    <div class="order-info">${order.set ? order.set.replace('set', 'Набор ') : 'Заказ макроблогера'}</div>`;
+                list.appendChild(item);
+            });
+        }
+        document.getElementById('orderHistoryModal').style.display = 'flex';
+    }
+
+    function editProfile() {
+        const reg = userData.registration;
+        document.getElementById('editFirstName').value = reg.firstName;
+        document.getElementById('editPhone').value = reg.phone;
+        document.getElementById('editInstagram').value = reg.instagramLogin;
+        document.getElementById('editFollowers').value = reg.followersCount;
+        document.getElementById('editViews').value = reg.avgViews;
+        document.getElementById('editPassword').value = '';
+        document.getElementById('editProfileModal').style.display = 'flex';
+    }
+
+    async function saveProfile(button) {
+        await withLoading(button, async () => {
+            const reg = userData.registration;
+            const newPhone = document.getElementById('editPhone').value.trim();
+            const newInstagram = document.getElementById('editInstagram').value.trim().toLowerCase();
+            const newFirstName = document.getElementById('editFirstName').value.trim();
+            const newFollowers = parseInt(document.getElementById('editFollowers').value);
+            const newViews = parseInt(document.getElementById('editViews').value);
+            
+            if (!newFirstName || !newPhone || !newInstagram || isNaN(newFollowers) || isNaN(newViews)) {
+                return showError('Ошибка валидации', 'Пожалуйста, заполните все поля корректно.');
+            }
+
+            if (newPhone !== reg.phone || newInstagram !== reg.instagramLogin) {
+                const duplicateCheck = await checkForDuplicateRegistration(newPhone, newInstagram, currentUserId);
+                if (!duplicateCheck.canRegister) {
+                    return showError('Данные заняты', 'Телефон или Instagram уже используются другим пользователем.');
+                }
+            }
+            
+            const updates = {
+                'registration.firstName': newFirstName,
+                'registration.phone': newPhone,
+                'registration.instagramLogin': newInstagram,
+                'registration.followersCount': newFollowers,
+                'registration.avgViews': newViews,
+                'level': determineBloggerLevel(newFollowers).level,
+                'lastActivity': new Date().toISOString()
+            };
+
+            const newPassword = document.getElementById('editPassword').value.trim();
+            if (validatePassword(newPassword)) {
+                updates['registration.password'] = hashPassword(newPassword);
+            }
+            
+            await db.collection(COLLECTIONS.USERS).doc(currentUserId).update(updates);
+
+            userData.registration.firstName = newFirstName;
+            userData.registration.phone = newPhone;
+            userData.registration.instagramLogin = newInstagram;
+            userData.registration.followersCount = newFollowers;
+            userData.registration.avgViews = newViews;
+            userData.level = updates.level;
+            if (updates['registration.password']) {
+                userData.registration.password = updates['registration.password'];
+            }
+            
+            updateDashboard();
+            closeEditProfile();
+            showSuccessMessage('Профиль успешно обновлен!');
+        });
+    }
+
+    function logout() {
+        userData = {};
+        currentUserId = null;
+        telegramUser = null;
+        isCurrentUserAdmin = false;
+        window.location.reload();
+    }
+
+    // --- Модальные окна ---
+    function showSuccessModal() {
+        document.getElementById('successTitle').textContent = 'Заказ оформлен!';
+        document.getElementById('successMessage').textContent = 'Через 24 часа после доставки вам придет напоминание об отчете';
+        document.getElementById('successModal').style.display = 'flex';
+    }
+    function showSuccessMessage(message) {
+        document.getElementById('successTitle').textContent = 'Успешно!';
+        document.getElementById('successMessage').textContent = message;
+        document.getElementById('successModal').style.display = 'flex';
+    }
+    function showError(title, message) {
+        document.getElementById('errorTitle').textContent = title;
+        document.getElementById('errorMessage').textContent = message;
+        document.getElementById('errorModal').style.display = 'flex';
+    }
+    async function showOrderDetailModal(orderId) {
+        currentEditingOrderId = orderId;
+        const orderDoc = await db.collection(COLLECTIONS.ORDERS).doc(orderId).get();
+        if(!orderDoc.exists) return showError('Ошибка', 'Заказ не найден');
+        
+        const order = orderDoc.data();
+        const body = document.getElementById('orderDetailBody');
+        
+        document.getElementById('orderDetailTitle').textContent = `Заказ #${order.id.substring(0, 6)}`;
+        body.innerHTML = `
+            <strong>Блогер:</strong> ${order.userName}<br>
+            <strong>Телефон:</strong> ${order.phone}<br>
+            <strong>Instagram:</strong> @${order.instagram}<br>
+            <strong>Город:</strong> ${order.city}<br>
+            <strong>Адрес:</strong> ${order.street}<br>
+            <strong>Подъезд:</strong> ${order.entrance || '-'}<br>
+            <strong>Этаж:</strong> ${order.floor || '-'}<br>
+            <strong>Телефон получателя:</strong> ${order.recipientPhone}<br>
+            <strong>Дата и время:</strong> ${order.date} в ${order.time}<br>
+            <strong>Набор:</strong> ${order.set ? order.set.replace('set', 'Набор ') : 'Заказ макроблогера'}<br>
+            <strong>Комментарий:</strong> ${order.comment || '-'}<br>
+            <strong>Статус:</strong> <span class="order-status status-${order.status}" style="display:inline-block;">${getStatusText(order.status)}</span>
+        `;
+        
+        document.getElementById('orderStatusSelect').value = order.status;
+        
+        document.getElementById('deleteOrderBtn').onclick = () => removeOrder(order.id);
+        document.getElementById('orderDetailModal').style.display = 'flex';
+    }
+    function closeOrderDetailModal() { 
+        document.getElementById('orderDetailModal').style.display = 'none';
+        currentEditingOrderId = null;
+    }
+
+    async function showUserDetailModal(userId) {
+        const user = await loadUser(userId);
+        if (!user) return showError('Ошибка', 'Пользователь не найден');
+
+        const reg = user.registration;
+        const body = document.getElementById('userDetailBody');
+        const ordersList = document.getElementById('userOrdersHistoryCrm');
+        
+        document.getElementById('userDetailTitle').textContent = reg.firstName;
+        body.innerHTML = `
+            <strong>Телефон:</strong> ${reg.phone}<br>
+            <strong>Instagram:</strong> @${reg.instagramLogin}<br>
+            <strong>Подписчики:</strong> ${reg.followersCount.toLocaleString('ru-RU')}<br>
+            <strong>Просмотры:</strong> ${reg.avgViews.toLocaleString('ru-RU')}<br>
+            <strong>Уровень:</strong> ${determineBloggerLevel(reg.followersCount).text}
+        `;
+
+        ordersList.innerHTML = '<div class="loading-indicator">Загрузка заказов...</div>';
+        const ordersSnap = await db.collection(COLLECTIONS.ORDERS).where('userId', '==', userId).orderBy('createdAt', 'desc').get();
+        
+        if (ordersSnap.empty) {
+            ordersList.innerHTML = '<p style="color:#999;text-align:center;">У пользователя нет заказов.</p>';
+        } else {
+            ordersList.innerHTML = '';
+            ordersSnap.forEach(doc => {
+                const order = doc.data();
+                const item = document.createElement('div');
+                item.className = 'order-item';
+                item.style.cursor = 'default';
+                item.innerHTML = `
+                    <div class="order-header">
+                         <span class="order-id">Заказ от ${new Date(order.createdAt).toLocaleDateString()}</span>
+                         <span class="order-status status-${order.status}">${getStatusText(order.status)}</span>
+                    </div>`;
+                ordersList.appendChild(item);
+            });
+        }
+
+        document.getElementById('userDetailModal').style.display = 'flex';
+    }
+    
+    async function showAddAdminModal() { 
+        const list = document.getElementById('adminUsersList');
+        list.innerHTML = '<div class="loading-indicator">Загрузка пользователей...</div>';
+        document.getElementById('addAdminModal').style.display = 'flex';
+        
+        const [usersSnapshot, adminsSnapshot] = await Promise.all([
+             db.collection(COLLECTIONS.USERS).orderBy('registration.firstName').get(),
+             db.collection(COLLECTIONS.ADMINS).get()
+        ]);
+        
+        const adminIds = new Set(adminsSnapshot.docs.map(doc => doc.id));
+        
+        list.innerHTML = '';
+        usersSnapshot.forEach(doc => {
+            const user = { userId: doc.id, ...doc.data() };
+            if (!user.registration || !user.telegramId) return;
+
+            const isAlreadyAdmin = adminIds.has(String(user.telegramId));
+            
+            const el = document.createElement('div');
+            el.className = 'user-item';
+            el.dataset.search = `${user.registration.firstName} ${user.registration.instagramLogin}`.toLowerCase();
+            el.innerHTML = `
+                <div>
+                    <strong>${user.registration.firstName}</strong>
+                    <div style="font-size: 12px; color: #999;">@${user.registration.instagramLogin}</div>
+                </div>
+                ${isAlreadyAdmin 
+                    ? '<span class="user-admin-badge">Уже админ</span>'
+                    : `<button class="btn-primary btn-small" onclick="app.addAdmin('${user.userId}', '${user.registration.firstName}')">Назначить</button>`
+                }`;
+            list.appendChild(el);
+        });
+    }
+    
+    function showRejectionModal() { document.getElementById('rejectionModal').style.display = 'flex'; }
+    function closeModal() { 
+        document.getElementById('successModal').style.display = 'none';
+        showDashboard();
+    }
+    function closeErrorModal() { document.getElementById('errorModal').style.display = 'none'; }
+    function closeRejectionModal() { document.getElementById('rejectionModal').style.display = 'none'; }
+    function closeOrderHistory() { document.getElementById('orderHistoryModal').style.display = 'none'; }
+    function closeEditProfile() { document.getElementById('editProfileModal').style.display = 'none'; }
+    function contactAdmin() { document.getElementById('contactModal').style.display = 'flex'; }
+    function closeContactModal() { document.getElementById('contactModal').style.display = 'none'; }
+    function showAddBlockModal() { document.getElementById('addBlockModal').style.display = 'flex'; }
+    function closeAddBlockModal() { document.getElementById('addBlockModal').style.display = 'none'; }
+    function closeAddAdminModal() { document.getElementById('addAdminModal').style.display = 'none'; }
+    function closeUserDetailModal() { document.getElementById('userDetailModal').style.display = 'none'; }
+    
+    function setupPhoneMask(inputId) {
+        const phoneInput = document.getElementById(inputId);
+        if (!phoneInput) return;
+        
+        const format = (input) => {
+            let digits = input.value.replace(/\D/g, '');
+            if (digits.startsWith('7') || digits.startsWith('8')) {
+                digits = digits.substring(1);
+            }
+            let formatted = '+7 (';
+            if (digits.length > 0) formatted += digits.substring(0, 3);
+            if (digits.length > 3) formatted += ') ' + digits.substring(3, 6);
+            if (digits.length > 6) formatted += '-' + digits.substring(6, 8);
+            if (digits.length > 8) formatted += '-' + digits.substring(8, 10);
+            input.value = formatted;
         };
-    })();
+        
+        phoneInput.addEventListener('input', () => format(phoneInput));
+    }
+
+    async function initializeApp() {
+        initTelegram();
+        if (await attemptTelegramAutoLogin()) {
+            showDashboard();
+        } else {
+            showWelcomeScreen();
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        setupPhoneMask('loginPhone');
+        setupPhoneMask('phone');
+        setupPhoneMask('recipientPhone');
+        setupPhoneMask('editPhone');
+        
+        setTimeout(initializeApp, 100);
+    });
+
+    return {
+        showRegistration, showLogin, showWelcomeScreen, submitLogin, submitRegistration, 
+        submitMigration, showDashboard, logout, startCollaboration, showOrderHistory, editProfile,
+        contactAdmin, showCRM, showCrmTab, filterOrders, filterUsers, filterAdminUsers,
+        removeBlock, removeAdmin, removeUser,
+        addBlock, addAdmin, selectSet, showSetSelection, showAddressForm, showDateTimeSelection, showInstructions,
+        handleCityChange, submitAddressAndShowDateTime, updateTimeSlots, submitOrder, saveProfile,
+        closeModal, closeErrorModal, closeRejectionModal, closeOrderHistory, closeEditProfile,
+        closeContactModal, showAddBlockModal, closeAddBlockModal, showAddAdminModal, closeAddAdminModal,
+        closeOrderDetailModal,
+        updateOrderStatus, showUserDetailModal, closeUserDetailModal
+    };
+})();
     </script>
 </body>
 </html>
