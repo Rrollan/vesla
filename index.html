@@ -1,3 +1,4 @@
+html
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -5,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Бартер для блогеров</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         /* [!] ВАШИ CSS СТИЛИ ОСТАЛИСЬ БЕЗ ИЗМЕНЕНИЙ [!] */
         * {
@@ -141,6 +143,19 @@
             background: #dc3545;
             color: white;
         }
+        
+        .btn-danger-icon {
+            background: transparent;
+            border: none;
+            color: #dc3545;
+            font-size: 20px;
+            cursor: pointer;
+            padding: 5px;
+        }
+        .btn-danger-icon:hover {
+            color: #ff6b6b;
+        }
+
 
         .btn-danger:hover {
             background: #c82333;
@@ -381,12 +396,12 @@
             background: #3a3a3a;
             border-radius: 15px;
             margin-bottom: 20px;
-            overflow: hidden;
+            overflow-x: auto;
         }
 
         .crm-tab {
             flex: 1;
-            padding: 15px;
+            padding: 15px 10px;
             background: transparent;
             border: none;
             color: #999;
@@ -394,6 +409,7 @@
             transition: all 0.3s ease;
             font-size: 14px;
             font-weight: 500;
+            white-space: nowrap;
         }
 
         .crm-tab.active {
@@ -449,6 +465,7 @@
             padding: 20px;
             border-bottom: 1px solid #4a4a4a;
             transition: background 0.3s ease;
+            cursor: pointer;
         }
 
         .order-item:hover {
@@ -536,6 +553,13 @@
             border-radius: 8px;
             padding: 15px;
             margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .user-details {
+            flex-grow: 1;
         }
 
         .user-header {
@@ -553,6 +577,13 @@
         .user-controls {
             display: flex;
             gap: 10px;
+            align-items: center;
+        }
+        
+        .user-admin-badge {
+            font-size: 12px;
+            color: #28a745;
+            font-weight: bold;
         }
 
         /* Модальные окна */
@@ -579,6 +610,25 @@
             animation: fadeIn 0.3s ease-out;
             max-height: 80vh;
             overflow-y: auto;
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            text-align: left;
+        }
+        .modal-header h2 {
+            margin: 0;
+        }
+        .modal-body {
+            text-align: left;
+            font-size: 14px;
+            color: #ccc;
+            line-height: 1.6;
+        }
+        .modal-body strong {
+            color: #fff;
         }
 
         .success-icon {
@@ -883,8 +933,7 @@
             <h1>Бартер для блогеров</h1>
             <p class="subtitle">Эксклюзивное предложение<br>для блогеров и инфлюенсеров</p>
             <div class="welcome-buttons">
-                <button class="btn-primary" onclick="app.showRegistration()">Регистрация</button>
-                <button class="btn-secondary" onclick="app.showLogin()">Ручной вход</button>
+                 <button class="btn-primary" onclick="app.showRegistration()">Начать</button>
             </div>
             <div class="auto-login-info" id="autoLoginInfo" style="display: none;">
                 <div class="loading-indicator">
@@ -1052,6 +1101,7 @@
 
             <div class="crm-tabs">
                 <button class="crm-tab active" onclick="app.showCrmTab('overview', this)">Обзор</button>
+                <button class="crm-tab" onclick="app.showCrmTab('analytics', this)">Аналитика</button>
                 <button class="crm-tab" onclick="app.showCrmTab('orders', this)">Заказы</button>
                 <button class="crm-tab" onclick="app.showCrmTab('users', this)">Пользователи</button>
                 <button class="crm-tab" onclick="app.showCrmTab('blocks', this)">Блокировки</button>
@@ -1082,6 +1132,12 @@
                     <h3>Контакты для пользователей</h3>
                     <a href="https://t.me/AdamRogozhin" class="contact-link" target="_blank">💬 Telegram поддержка</a>
                     <a href="mailto:adamrogozhin@gmail.com" class="contact-link">📧 Email поддержка</a>
+                </div>
+            </div>
+            
+            <div id="crmAnalytics" class="crm-content">
+                <div class="crm-stat-card">
+                    <canvas id="cityChart" style="background: #3a3a3a; border-radius: 15px; padding: 10px;"></canvas>
                 </div>
             </div>
 
@@ -1274,6 +1330,17 @@
                 <button class="btn-primary" onclick="app.closeOrderHistory()">Закрыть</button>
             </div>
         </div>
+        
+        <div id="orderDetailModal" class="modal">
+            <div class="modal-content" style="max-width: 400px;">
+                <div class="modal-header">
+                     <h2 id="orderDetailTitle">Детали заказа</h2>
+                     <button class="btn-danger-icon" id="deleteOrderBtn" title="Удалить заказ">🗑️</button>
+                </div>
+                <div id="orderDetailBody" class="modal-body"></div>
+                <button class="btn-primary" onclick="app.closeOrderDetailModal()" style="margin-top: 20px;">Закрыть</button>
+            </div>
+        </div>
 
         <div id="editProfileModal" class="modal">
             <div class="modal-content" style="max-width: 400px;">
@@ -1349,20 +1416,9 @@
         <div id="addAdminModal" class="modal">
             <div class="modal-content" style="max-width: 400px;">
                 <h2>Добавить администратора</h2>
-                <form id="addAdminForm" style="margin: 20px 0; text-align: left;">
-                    <div class="form-group">
-                        <label for="adminTelegramId">Telegram ID *</label>
-                        <input type="number" id="adminTelegramId" required placeholder="123456789">
-                    </div>
-                    <div class="form-group">
-                        <label for="adminName">Имя</label>
-                        <input type="text" id="adminName" placeholder="Имя администратора">
-                    </div>
-                </form>
-                <div style="display: flex; gap: 10px;">
-                    <button class="btn-primary" onclick="app.addAdmin(this)" style="flex: 1;">Добавить</button>
-                    <button class="btn-secondary" onclick="app.closeAddAdminModal()" style="flex: 1;">Отмена</button>
-                </div>
+                <input type="text" id="adminUserSearch" class="search-input" placeholder="Поиск пользователя для назначения..." onkeyup="app.filterAdminUsers()">
+                <div id="adminUsersList" style="text-align: left; max-height: 40vh; overflow-y: auto;"></div>
+                <button class="btn-secondary" onclick="app.closeAddAdminModal()" style="margin-top: 20px;">Закрыть</button>
             </div>
         </div>
 
@@ -1426,6 +1482,7 @@
         let migrationUser = null;
         let currentOrderData = {};
         let isCurrentUserAdmin = false;
+        let cityChart = null;
         
         // +++ НАЧАЛО: ФУНКЦИЯ ДЛЯ ОТПРАВКИ В TELEGRAM +++
         async function sendTelegramNotification(orderData, screenshotFile) {
@@ -1526,10 +1583,11 @@ Instagram: @${orderData.instagram}
             return !isNaN(num) && num >= min && num <= max;
         }
 
-        async function isAdmin() {
-            if (!telegramUser) return false;
+        async function isAdmin(userId) {
+            if (!userId) return false;
+            const checkId = String(userId).replace('tg_','');
             try {
-                const adminDoc = await db.collection(COLLECTIONS.ADMINS).doc(String(telegramUser.id)).get();
+                const adminDoc = await db.collection(COLLECTIONS.ADMINS).doc(checkId).get();
                 return adminDoc.exists;
             } catch (error) {
                 console.error("Error checking admin status:", error);
@@ -1538,7 +1596,8 @@ Instagram: @${orderData.instagram}
         }
         
         async function checkAndSetAdminStatus() {
-            isCurrentUserAdmin = await isAdmin();
+            const checkId = telegramUser ? telegramUser.id : (userData.telegramId || null);
+            isCurrentUserAdmin = await isAdmin(checkId);
         }
 
         function migrateOldAccount(userInfo) {
@@ -1716,6 +1775,7 @@ Instagram: @${orderData.instagram}
             
             switch(tabName) {
                 case 'overview': updateCRMStats(); break;
+                case 'analytics': updateCityAnalytics(); break;
                 case 'orders': updateOrdersList(); break;
                 case 'users': updateUsersList(); break;
                 case 'blocks': updateBlockedSlotsList(); break;
@@ -1819,7 +1879,7 @@ Instagram: @${orderData.instagram}
                 }
 
                 const bloggerData = determineBloggerLevel(followersCount);
-                if (!currentUserId) currentUserId = db.collection(COLLECTIONS.USERS).doc().id;
+                if (!currentUserId) currentUserId = (telegramUser ? 'tg_' + telegramUser.id : db.collection(COLLECTIONS.USERS).doc().id);
                 
                 userData = {
                     registration: { firstName, phone, instagramLogin, followersCount, avgViews, password: hashPassword(password) },
@@ -1875,6 +1935,41 @@ Instagram: @${orderData.instagram}
             }
         }
         
+        async function updateCityAnalytics() {
+            const ctx = document.getElementById('cityChart').getContext('2d');
+            try {
+                const ordersSnap = await db.collection(COLLECTIONS.ORDERS).get();
+                const cityCounts = {};
+                ordersSnap.forEach(doc => {
+                    const city = doc.data().city;
+                    if (city) {
+                        cityCounts[city] = (cityCounts[city] || 0) + 1;
+                    }
+                });
+                
+                if (cityChart) cityChart.destroy();
+                
+                cityChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: Object.keys(cityCounts),
+                        datasets: [{
+                            label: 'Заказы по городам',
+                            data: Object.values(cityCounts),
+                            backgroundColor: '#00b4d8',
+                            borderColor: '#0099b8',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        scales: { y: { beginAtZero: true, ticks: { color: '#fff' } }, x: { ticks: { color: '#fff' } } },
+                        plugins: { legend: { labels: { color: '#fff' } } }
+                    }
+                });
+            } catch(e) { console.error(e) }
+        }
+        
         function getStatusText(status) {
             switch(status) {
                 case 'new': return 'Новый';
@@ -1895,6 +1990,7 @@ Instagram: @${orderData.instagram}
                     const el = document.createElement('div');
                     el.className = 'order-item';
                     el.dataset.search = `${order.userName} ${order.phone} ${order.instagram}`.toLowerCase();
+                    el.onclick = () => showOrderDetailModal(order.id);
                     el.innerHTML = `
                         <div class="order-header">
                             <span class="order-id">#${order.id.substring(0, 6)}</span>
@@ -1902,9 +1998,7 @@ Instagram: @${orderData.instagram}
                         </div>
                         <div class="order-info">
                             <strong>${order.userName}</strong> (${determineBloggerLevel(order.followersCount || 0).text})<br>
-                            ${order.phone} | ${order.instagram}<br>
-                            ${order.city}, ${order.street}<br>
-                            ${order.set ? order.set.replace('set', 'Набор ') : 'Заказ макроблогера'}<br>
+                            ${order.city}, ${new Date(order.date).toLocaleDateString('ru-RU')} - ${order.time}<br>
                             <small>${new Date(order.createdAt).toLocaleString('ru-RU')}</small>
                         </div>`;
                     list.appendChild(el);
@@ -1919,23 +2013,35 @@ Instagram: @${orderData.instagram}
             const list = document.getElementById('usersList');
             list.innerHTML = '<div class="loading-indicator">Загрузка пользователей...</div>';
             try {
-                const snapshot = await db.collection(COLLECTIONS.USERS).orderBy('registrationDate', 'desc').get();
-                list.innerHTML = snapshot.empty ? '<p style="text-align:center;padding:20px;color:#999;">Пользователей нет.</p>' : '';
-                snapshot.forEach(doc => {
+                const [usersSnapshot, adminsSnapshot] = await Promise.all([
+                     db.collection(COLLECTIONS.USERS).orderBy('registrationDate', 'desc').get(),
+                     db.collection(COLLECTIONS.ADMINS).get()
+                ]);
+
+                const adminIds = new Set(adminsSnapshot.docs.map(doc => doc.id));
+                
+                list.innerHTML = usersSnapshot.empty ? '<p style="text-align:center;padding:20px;color:#999;">Пользователей нет.</p>' : '';
+                usersSnapshot.forEach(doc => {
                     const user = { userId: doc.id, ...doc.data() };
                     const reg = user.registration;
                     if (!reg) return;
+
+                    const isUserAdmin = adminIds.has(String(user.telegramId));
+
                     const el = document.createElement('div');
                     el.className = 'user-item';
                     el.dataset.search = `${reg.firstName} ${reg.phone} ${reg.instagramLogin}`.toLowerCase();
                     el.innerHTML = `
-                        <div class="user-header">
+                        <div class="user-details">
                             <span class="user-name-phone">${reg.firstName} (${reg.phone})</span>
+                            <div style="font-size: 14px; color: #ccc;">
+                                Instagram: ${reg.instagramLogin}<br>
+                                Подписчики: ${reg.followersCount.toLocaleString('ru-RU')} | Просмотры: ${reg.avgViews.toLocaleString('ru-RU')}
+                                ${isUserAdmin ? '<br><strong style="color: #28a745;">Администратор</strong>' : ''}
+                            </div>
                         </div>
-                        <div style="font-size: 14px; color: #ccc;">
-                            Instagram: ${reg.instagramLogin}<br>
-                            Подписчики: ${reg.followersCount.toLocaleString('ru-RU')}<br>
-                            Просмотры: ${reg.avgViews.toLocaleString('ru-RU')}
+                        <div class="user-controls">
+                           <button class="btn-danger-icon" onclick="app.removeUser('${user.userId}', '${reg.firstName}')">🗑️</button>
                         </div>`;
                     list.appendChild(el);
                 });
@@ -1961,7 +2067,7 @@ Instagram: @${orderData.instagram}
                             <div class="blocked-slot-time">${block.date} в ${block.time}</div>
                             ${block.reason ? `<div style="font-size: 12px; color: #999;">${block.reason}</div>` : ''}
                         </div>
-                        <button class="btn-danger btn-small" onclick="app.removeBlock('${block.id}')">Удалить</button>`;
+                         <button class="btn-danger-icon" onclick="app.removeBlock('${block.id}')" title="Удалить блокировку">🗑️</button>`;
                     list.appendChild(el);
                 });
             } catch (error) {
@@ -1984,7 +2090,7 @@ Instagram: @${orderData.instagram}
                         <div class="user-header">
                             <span class="user-name-phone">${admin.name || 'Админ'} (ID: ${admin.id})</span>
                             <div class="user-controls">
-                                ${admin.id !== '1345815453' ? `<button class="btn-danger btn-small" onclick="app.removeAdmin('${admin.id}')">Удалить</button>` : '<span style="color:#999;font-size:12px;">Главный</span>'}
+                                ${admin.id !== '1345815453' ? `<button class="btn-danger-icon" onclick="app.removeAdmin('${admin.id}')">🗑️</button>` : '<span style="color:#999;font-size:12px;">Главный</span>'}
                             </div>
                         </div>`;
                     list.appendChild(el);
@@ -2004,6 +2110,7 @@ Instagram: @${orderData.instagram}
         }
         function filterOrders() { filter('orderSearch', '#ordersList', '.order-item'); }
         function filterUsers() { filter('userSearch', '#usersList', '.user-item'); }
+        function filterAdminUsers() { filter('adminUserSearch', '#adminUsersList', '.user-item'); }
         
         async function addBlock(button) {
             await withLoading(button, async () => {
@@ -2030,20 +2137,33 @@ Instagram: @${orderData.instagram}
                 showSuccessMessage('Блокировка удалена!');
             }
         }
+        
+        async function removeUser(userId, userName) {
+            if(confirm(`Вы уверены, что хотите удалить пользователя ${userName}? Это действие необратимо.`)) {
+                try {
+                    await db.collection(COLLECTIONS.USERS).doc(userId).delete();
+                    showSuccessMessage(`Пользователь ${userName} удален.`);
+                    updateUsersList();
+                } catch(e) {
+                    showError('Ошибка', 'Не удалось удалить пользователя.');
+                    console.error(e);
+                }
+            }
+        }
 
-        async function addAdmin(button) {
-            await withLoading(button, async () => {
-                const telegramId = document.getElementById('adminTelegramId').value;
-                const name = document.getElementById('adminName').value.trim() || 'Администратор';
-                if (!telegramId) return;
+        async function addAdmin(userId, userName) {
+            if (!userId) return;
+            const userDoc = await loadUser(userId);
+            const telegramId = userDoc?.telegramId;
 
-                const newAdmin = { name, addedAt: new Date().toISOString(), addedBy: telegramUser ? telegramUser.id : 'unknown' };
-                await db.collection(COLLECTIONS.ADMINS).doc(telegramId).set(newAdmin);
+            if(!telegramId) return showError("Ошибка", "У этого пользователя нет привязанного Telegram ID.");
 
-                closeAddAdminModal();
-                updateAdminsList();
-                showSuccessMessage('Администратор добавлен!');
-            });
+            const newAdmin = { name: userName, addedAt: new Date().toISOString(), addedBy: telegramUser ? telegramUser.id : 'unknown' };
+            await db.collection(COLLECTIONS.ADMINS).doc(String(telegramId)).set(newAdmin);
+
+            closeAddAdminModal();
+            updateAdminsList();
+            showSuccessMessage(`${userName} назначен администратором!`);
         }
 
         async function removeAdmin(adminId) {
@@ -2052,6 +2172,20 @@ Instagram: @${orderData.instagram}
                 await db.collection(COLLECTIONS.ADMINS).doc(adminId).delete();
                 updateAdminsList();
                 showSuccessMessage('Администратор удален!');
+            }
+        }
+        
+        async function removeOrder(orderId) {
+             if (confirm('Вы уверены, что хотите удалить этот заказ?')) {
+                try {
+                    await db.collection(COLLECTIONS.ORDERS).doc(orderId).delete();
+                    closeOrderDetailModal();
+                    updateOrdersList();
+                    showSuccessMessage('Заказ удален.');
+                } catch(e) {
+                    console.error("Error removing order: ", e);
+                    showError('Ошибка', 'Не удалось удалить заказ.');
+                }
             }
         }
         
@@ -2117,8 +2251,12 @@ Instagram: @${orderData.instagram}
             }
             currentOrderData.date = dateValue;
             
-            const timeSlots = ['12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00', '21:00'];
+            const timeSlots = ['12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00'];
             const city = document.getElementById('city').value;
+            
+            const now = new Date();
+            const todayStr = now.toISOString().split('T')[0];
+            const currentHour = now.getHours();
             
             timeSlotsContainer.innerHTML = '';
             for (const time of timeSlots) {
@@ -2126,12 +2264,25 @@ Instagram: @${orderData.instagram}
                 slot.className = 'time-slot';
                 slot.textContent = time;
                 
+                const [slotHour] = time.split(':').map(Number);
+                let isDisabled = false;
+                
+                // Проверяем, если дата сегодня, то время не должно быть в прошлом
+                if (dateValue === todayStr && slotHour <= currentHour) {
+                    isDisabled = true;
+                }
+                
                 if (await isSlotBlocked(city, dateValue, time)) {
+                    isDisabled = true;
+                }
+                
+                if(isDisabled) {
                     slot.classList.add('disabled');
                     slot.title = 'Время недоступно';
                 } else {
                     slot.onclick = () => selectTimeSlot(slot, time);
                 }
+                
                 timeSlotsContainer.appendChild(slot);
             }
         }
@@ -2320,6 +2471,69 @@ Instagram: @${orderData.instagram}
             document.getElementById('errorMessage').textContent = message;
             document.getElementById('errorModal').style.display = 'flex';
         }
+        async function showOrderDetailModal(orderId) {
+            const orderDoc = await db.collection(COLLECTIONS.ORDERS).doc(orderId).get();
+            if(!orderDoc.exists) return showError('Ошибка', 'Заказ не найден');
+            
+            const order = orderDoc.data();
+            const body = document.getElementById('orderDetailBody');
+            
+            document.getElementById('orderDetailTitle').textContent = `Заказ #${order.id.substring(0, 6)}`;
+            body.innerHTML = `
+                <strong>Блогер:</strong> ${order.userName}<br>
+                <strong>Телефон:</strong> ${order.phone}<br>
+                <strong>Instagram:</strong> @${order.instagram}<br>
+                <strong>Город:</strong> ${order.city}<br>
+                <strong>Адрес:</strong> ${order.street}<br>
+                <strong>Подъезд:</strong> ${order.entrance || '-'}<br>
+                <strong>Этаж:</strong> ${order.floor || '-'}<br>
+                <strong>Телефон получателя:</strong> ${order.recipientPhone}<br>
+                <strong>Дата и время:</strong> ${order.date} в ${order.time}<br>
+                <strong>Набор:</strong> ${order.set ? order.set.replace('set', 'Набор ') : 'Заказ макроблогера'}<br>
+                <strong>Комментарий:</strong> ${order.comment || '-'}<br>
+                <strong>Статус:</strong> <span class="order-status status-${order.status}" style="display:inline-block;">${getStatusText(order.status)}</span>
+            `;
+            
+            document.getElementById('deleteOrderBtn').onclick = () => removeOrder(order.id);
+            document.getElementById('orderDetailModal').style.display = 'flex';
+        }
+        function closeOrderDetailModal() { document.getElementById('orderDetailModal').style.display = 'none'; }
+        
+        async function showAddAdminModal() { 
+            const list = document.getElementById('adminUsersList');
+            list.innerHTML = '<div class="loading-indicator">Загрузка пользователей...</div>';
+            document.getElementById('addAdminModal').style.display = 'flex';
+            
+            const [usersSnapshot, adminsSnapshot] = await Promise.all([
+                 db.collection(COLLECTIONS.USERS).orderBy('registration.firstName').get(),
+                 db.collection(COLLECTIONS.ADMINS).get()
+            ]);
+            
+            const adminIds = new Set(adminsSnapshot.docs.map(doc => doc.id));
+            
+            list.innerHTML = '';
+            usersSnapshot.forEach(doc => {
+                const user = { userId: doc.id, ...doc.data() };
+                if (!user.registration || !user.telegramId) return;
+
+                const isAlreadyAdmin = adminIds.has(String(user.telegramId));
+                
+                const el = document.createElement('div');
+                el.className = 'user-item';
+                el.dataset.search = `${user.registration.firstName} ${user.registration.instagramLogin}`.toLowerCase();
+                el.innerHTML = `
+                    <div>
+                        <strong>${user.registration.firstName}</strong>
+                        <div style="font-size: 12px; color: #999;">@${user.registration.instagramLogin}</div>
+                    </div>
+                    ${isAlreadyAdmin 
+                        ? '<span class="user-admin-badge">Уже админ</span>'
+                        : `<button class="btn-primary btn-small" onclick="app.addAdmin('${user.userId}', '${user.registration.firstName}')">Назначить</button>`
+                    }`;
+                list.appendChild(el);
+            });
+        }
+        
         function showRejectionModal() { document.getElementById('rejectionModal').style.display = 'flex'; }
         function closeModal() { 
             document.getElementById('successModal').style.display = 'none';
@@ -2333,7 +2547,6 @@ Instagram: @${orderData.instagram}
         function closeContactModal() { document.getElementById('contactModal').style.display = 'none'; }
         function showAddBlockModal() { document.getElementById('addBlockModal').style.display = 'flex'; }
         function closeAddBlockModal() { document.getElementById('addBlockModal').style.display = 'none'; }
-        function showAddAdminModal() { document.getElementById('addAdminModal').style.display = 'flex'; }
         function closeAddAdminModal() { document.getElementById('addAdminModal').style.display = 'none'; }
         
         function setupPhoneMask(inputId) {
@@ -2377,11 +2590,13 @@ Instagram: @${orderData.instagram}
         return {
             showRegistration, showLogin, showWelcomeScreen, submitLogin, submitRegistration, 
             submitMigration, showDashboard, logout, startCollaboration, showOrderHistory, editProfile,
-            contactAdmin, showCRM, showCrmTab, filterOrders, filterUsers, removeBlock, removeAdmin,
+            contactAdmin, showCRM, showCrmTab, filterOrders, filterUsers, filterAdminUsers,
+            removeBlock, removeAdmin, removeUser,
             addBlock, addAdmin, selectSet, showSetSelection, showAddressForm, showDateTimeSelection, showInstructions,
             handleCityChange, submitAddressAndShowDateTime, updateTimeSlots, submitOrder, saveProfile,
             closeModal, closeErrorModal, closeRejectionModal, closeOrderHistory, closeEditProfile,
-            closeContactModal, showAddBlockModal, closeAddBlockModal, showAddAdminModal, closeAddAdminModal
+            closeContactModal, showAddBlockModal, closeAddBlockModal, showAddAdminModal, closeAddAdminModal,
+            closeOrderDetailModal
         };
     })();
     </script>
