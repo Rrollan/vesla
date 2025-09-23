@@ -564,6 +564,12 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            cursor: pointer; /* Делаем элемент кликабельным */
+            transition: background 0.3s ease;
+        }
+
+        .user-item:hover {
+            background: #404040;
         }
 
         .user-details {
@@ -1075,6 +1081,9 @@
                 </div>
             </div>
 
+            <!-- [!] ИЗМЕНЕНИЕ 3: БЛОК ДЛЯ ДИНАМИЧЕСКОГО СТАТУСА -->
+            <div id="statusPanel" class="action-card" style="display: none; border-color: #00b4d8; text-align: left;"></div>
+
             <div class="dashboard-actions">
                 <div class="action-card" onclick="app.startCollaboration()">
                     <div class="action-icon">🎯</div>
@@ -1346,7 +1355,31 @@
                      <button class="btn-danger-icon" id="deleteOrderBtn" title="Удалить заказ">🗑️</button>
                 </div>
                 <div id="orderDetailBody" class="modal-body"></div>
-                <button class="btn-primary" onclick="app.closeOrderDetailModal()" style="margin-top: 20px;">Закрыть</button>
+                <!-- [!] ИЗМЕНЕНИЕ 1: БЛОК ДЛЯ СМЕНЫ СТАТУСА -->
+                <div class="form-group" style="margin-top: 20px; text-align: left;">
+                    <label for="orderStatusSelect">Изменить статус:</label>
+                    <select id="orderStatusSelect" style="width: 100%;">
+                        <option value="new">Новый</option>
+                        <option value="confirmed">Подтвержден</option>
+                        <option value="delivered">Доставлен</option>
+                    </select>
+                </div>
+                <button class="btn-primary" onclick="app.updateOrderStatus()">Сохранить статус</button>
+                <button class="btn-secondary" onclick="app.closeOrderDetailModal()" style="margin-top: 20px;">Закрыть</button>
+            </div>
+        </div>
+
+        <!-- [!] ИЗМЕНЕНИЕ 2: НОВОЕ МОДАЛЬНОЕ ОКНО ДЛЯ КАРТОЧКИ ПОЛЬЗОВАТЕЛЯ -->
+        <div id="userDetailModal" class="modal">
+            <div class="modal-content" style="max-width: 400px;">
+                <div class="modal-header">
+                     <h2 id="userDetailTitle">Карточка пользователя</h2>
+                </div>
+                <div id="userDetailBody" class="modal-body"></div>
+                <hr style="border-color: #4a4a4a; margin: 20px 0;">
+                <h3 style="text-align: left; margin-bottom: 10px;">История заказов</h3>
+                <div id="userOrdersHistoryCrm" style="text-align: left; max-height: 25vh; overflow-y: auto;"></div>
+                <button class="btn-primary" onclick="app.closeUserDetailModal()" style="margin-top: 20px;">Закрыть</button>
             </div>
         </div>
 
@@ -1491,6 +1524,7 @@
         let currentOrderData = {};
         let isCurrentUserAdmin = false;
         let cityChart = null;
+        let currentEditingOrderId = null; // Для хранения ID заказа в модалке
         
         // +++ НАЧАЛО: ФУНКЦИЯ ДЛЯ ОТПРАВКИ В TELEGRAM +++
         async function sendTelegramNotification(orderData, screenshotFile) {
@@ -1911,21 +1945,39 @@ Instagram: @${orderData.instagram}
 
             document.getElementById('userName').textContent = firstName;
             
-            // [!] ИЗМЕНЕН БЛОК ОБНОВЛЕНИЯ АВАТАРА
             const userAvatar = document.getElementById('userAvatar');
-            // Проверяем, есть ли фото в данных из Telegram
             if (telegramUser && telegramUser.photo_url) {
-                // Если есть, создаем тег img и вставляем его
                 userAvatar.innerHTML = `<img src="${telegramUser.photo_url}" alt="${firstName}">`;
             } else {
-                // Иначе, оставляем старую логику с первой буквой имени
-                userAvatar.innerHTML = ''; // Очищаем от возможного старого img
+                userAvatar.innerHTML = ''; 
                 userAvatar.textContent = firstName ? firstName.charAt(0).toUpperCase() : '👤';
             }
 
             document.getElementById('userLevel').textContent = levelInfo.text;
             document.getElementById('followersDisplay').textContent = followersCount.toLocaleString('ru-RU');
             document.getElementById('viewsDisplay').textContent = avgViews.toLocaleString('ru-RU');
+
+            // [!] ИЗМЕНЕНИЕ 3: ЛОГИКА ДИНАМИЧЕСКОГО СТАТУСА
+            const statusPanel = document.getElementById('statusPanel');
+            if (userData.orders && userData.orders.length > 0) {
+                const latestOrder = userData.orders.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0];
+                let statusMessage = '';
+                
+                if (latestOrder.status === 'confirmed') {
+                    statusMessage = '✅ <strong>Ваш заказ подтвержден!</strong> Ожидайте доставку.';
+                } else if (latestOrder.status === 'delivered') {
+                    statusMessage = '⚠️ <strong>Не забудьте сдать отчет</strong> по последнему заказу.';
+                }
+
+                if (statusMessage) {
+                    statusPanel.innerHTML = statusMessage;
+                    statusPanel.style.display = 'block';
+                } else {
+                    statusPanel.style.display = 'none';
+                }
+            } else {
+                statusPanel.style.display = 'none';
+            }
         }
 
         // --- CRM Функции ---
@@ -2029,6 +2081,7 @@ Instagram: @${orderData.instagram}
             }
         }
 
+        // [!] ИЗМЕНЕНИЕ 2: ФУНКЦИЯ ОБНОВЛЕНА ДЛЯ КЛИКАБЕЛЬНОСТИ
         async function updateUsersList() {
             const list = document.getElementById('usersList');
             list.innerHTML = '<div class="loading-indicator">Загрузка пользователей...</div>';
@@ -2051,6 +2104,7 @@ Instagram: @${orderData.instagram}
                     const el = document.createElement('div');
                     el.className = 'user-item';
                     el.dataset.search = `${reg.firstName} ${reg.phone} ${reg.instagramLogin}`.toLowerCase();
+                    el.onclick = () => showUserDetailModal(user.userId); // Добавляем клик
                     el.innerHTML = `
                         <div class="user-details">
                             <span class="user-name-phone">${reg.firstName} (${reg.phone})</span>
@@ -2061,7 +2115,7 @@ Instagram: @${orderData.instagram}
                             </div>
                         </div>
                         <div class="user-controls">
-                           <button class="btn-danger-icon" onclick="app.removeUser('${user.userId}', '${reg.firstName}')">🗑️</button>
+                           <button class="btn-danger-icon" onclick="event.stopPropagation(); app.removeUser('${user.userId}', '${reg.firstName}')">🗑️</button>
                         </div>`;
                     list.appendChild(el);
                 });
@@ -2118,6 +2172,37 @@ Instagram: @${orderData.instagram}
             } catch (error) {
                 console.error("Error fetching admins:", error);
                 list.innerHTML = '<p style="color:red;text-align:center;padding:20px;">Ошибка загрузки</p>';
+            }
+        }
+
+        // [!] ИЗМЕНЕНИЕ 1: НОВАЯ ФУНКЦИЯ ДЛЯ ОБНОВЛЕНИЯ СТАТУСА
+        async function updateOrderStatus() {
+            if (!currentEditingOrderId) return;
+            
+            const newStatus = document.getElementById('orderStatusSelect').value;
+            try {
+                // Обновляем в коллекции orders
+                await db.collection(COLLECTIONS.ORDERS).doc(currentEditingOrderId).update({ status: newStatus });
+                
+                // Находим пользователя и обновляем статус в его массиве заказов
+                const orderDoc = await db.collection(COLLECTIONS.ORDERS).doc(currentEditingOrderId).get();
+                const orderData = orderDoc.data();
+                const userToUpdate = await loadUser(orderData.userId);
+
+                if (userToUpdate && userToUpdate.orders) {
+                    const orderIndex = userToUpdate.orders.findIndex(o => o.id === currentEditingOrderId);
+                    if (orderIndex > -1) {
+                        userToUpdate.orders[orderIndex].status = newStatus;
+                        await db.collection(COLLECTIONS.USERS).doc(orderData.userId).update({ orders: userToUpdate.orders });
+                    }
+                }
+                
+                showSuccessMessage('Статус обновлен!');
+                closeOrderDetailModal();
+                updateOrdersList(); // Обновляем список заказов на экране
+            } catch (error) {
+                console.error("Error updating order status: ", error);
+                showError('Ошибка', 'Не удалось обновить статус заказа.');
             }
         }
 
@@ -2287,7 +2372,6 @@ Instagram: @${orderData.instagram}
                 const [slotHour] = time.split(':').map(Number);
                 let isDisabled = false;
                 
-                // Проверяем, если дата сегодня, то время не должно быть в прошлом
                 if (dateValue === todayStr && slotHour <= currentHour) {
                     isDisabled = true;
                 }
@@ -2333,14 +2417,13 @@ Instagram: @${orderData.instagram}
             return true;
         }
 
-        // +++ НАЧАЛО: ИЗМЕНЕННАЯ ФУНКЦИЯ SUBMITORDER +++
         async function submitOrder(button) {
             await withLoading(button, async () => {
                 const orderId = db.collection(COLLECTIONS.ORDERS).doc().id;
                 
                 const newOrder = {
                     ...currentOrderData,
-                    id: orderId, // Добавляем ID заказа для отправки в Telegram
+                    id: orderId,
                     userId: currentUserId,
                     userName: userData.registration.firstName,
                     avgViews: userData.registration.avgViews,
@@ -2367,17 +2450,14 @@ Instagram: @${orderData.instagram}
                 batch.update(db.collection(COLLECTIONS.USERS).doc(currentUserId), { orders: userData.orders });
                 await batch.commit();
 
-                // Получаем файл скриншота, если он был загружен
                 const screenshotInput = document.getElementById('orderScreenshot');
                 const screenshotFile = screenshotInput.files && screenshotInput.files.length > 0 ? screenshotInput.files[0] : null;
 
-                // Отправляем уведомление в Telegram (эта функция не будет блокировать интерфейс)
                 sendTelegramNotification(newOrder, screenshotFile);
                 
                 showSuccessModal();
             });
         }
-        // +++ КОНЕЦ: ИЗМЕНЕННАЯ ФУНКЦИЯ SUBMITORDER +++
         
         // --- Другие функции ---
         function showOrderHistory() {
@@ -2492,6 +2572,7 @@ Instagram: @${orderData.instagram}
             document.getElementById('errorModal').style.display = 'flex';
         }
         async function showOrderDetailModal(orderId) {
+            currentEditingOrderId = orderId; // [!] ИЗМЕНЕНИЕ 1: Сохраняем ID заказа
             const orderDoc = await db.collection(COLLECTIONS.ORDERS).doc(orderId).get();
             if(!orderDoc.exists) return showError('Ошибка', 'Заказ не найден');
             
@@ -2514,10 +2595,58 @@ Instagram: @${orderData.instagram}
                 <strong>Статус:</strong> <span class="order-status status-${order.status}" style="display:inline-block;">${getStatusText(order.status)}</span>
             `;
             
+            // [!] ИЗМЕНЕНИЕ 1: Устанавливаем текущий статус в выпадающем списке
+            document.getElementById('orderStatusSelect').value = order.status;
+            
             document.getElementById('deleteOrderBtn').onclick = () => removeOrder(order.id);
             document.getElementById('orderDetailModal').style.display = 'flex';
         }
-        function closeOrderDetailModal() { document.getElementById('orderDetailModal').style.display = 'none'; }
+        function closeOrderDetailModal() { 
+            document.getElementById('orderDetailModal').style.display = 'none';
+            currentEditingOrderId = null; // [!] ИЗМЕНЕНИЕ 1: Сбрасываем ID
+        }
+
+        // [!] ИЗМЕНЕНИЕ 2: НОВАЯ ФУНКЦИЯ ДЛЯ ПОКАЗА КАРТОЧКИ ПОЛЬЗОВАТЕЛЯ
+        async function showUserDetailModal(userId) {
+            const user = await loadUser(userId);
+            if (!user) return showError('Ошибка', 'Пользователь не найден');
+
+            const reg = user.registration;
+            const body = document.getElementById('userDetailBody');
+            const ordersList = document.getElementById('userOrdersHistoryCrm');
+            
+            document.getElementById('userDetailTitle').textContent = reg.firstName;
+            body.innerHTML = `
+                <strong>Телефон:</strong> ${reg.phone}<br>
+                <strong>Instagram:</strong> @${reg.instagramLogin}<br>
+                <strong>Подписчики:</strong> ${reg.followersCount.toLocaleString('ru-RU')}<br>
+                <strong>Просмотры:</strong> ${reg.avgViews.toLocaleString('ru-RU')}<br>
+                <strong>Уровень:</strong> ${determineBloggerLevel(reg.followersCount).text}
+            `;
+
+            ordersList.innerHTML = '<div class="loading-indicator">Загрузка заказов...</div>';
+            const ordersSnap = await db.collection(COLLECTIONS.ORDERS).where('userId', '==', userId).orderBy('createdAt', 'desc').get();
+            
+            if (ordersSnap.empty) {
+                ordersList.innerHTML = '<p style="color:#999;text-align:center;">У пользователя нет заказов.</p>';
+            } else {
+                ordersList.innerHTML = '';
+                ordersSnap.forEach(doc => {
+                    const order = doc.data();
+                    const item = document.createElement('div');
+                    item.className = 'order-item';
+                    item.style.cursor = 'default';
+                    item.innerHTML = `
+                        <div class="order-header">
+                             <span class="order-id">Заказ от ${new Date(order.createdAt).toLocaleDateString()}</span>
+                             <span class="order-status status-${order.status}">${getStatusText(order.status)}</span>
+                        </div>`;
+                    ordersList.appendChild(item);
+                });
+            }
+
+            document.getElementById('userDetailModal').style.display = 'flex';
+        }
         
         async function showAddAdminModal() { 
             const list = document.getElementById('adminUsersList');
@@ -2568,6 +2697,7 @@ Instagram: @${orderData.instagram}
         function showAddBlockModal() { document.getElementById('addBlockModal').style.display = 'flex'; }
         function closeAddBlockModal() { document.getElementById('addBlockModal').style.display = 'none'; }
         function closeAddAdminModal() { document.getElementById('addAdminModal').style.display = 'none'; }
+        function closeUserDetailModal() { document.getElementById('userDetailModal').style.display = 'none'; } // [!] ИЗМЕНЕНИЕ 2: НОВАЯ ФУНКЦИЯ
         
         function setupPhoneMask(inputId) {
             const phoneInput = document.getElementById(inputId);
@@ -2616,7 +2746,9 @@ Instagram: @${orderData.instagram}
             handleCityChange, submitAddressAndShowDateTime, updateTimeSlots, submitOrder, saveProfile,
             closeModal, closeErrorModal, closeRejectionModal, closeOrderHistory, closeEditProfile,
             closeContactModal, showAddBlockModal, closeAddBlockModal, showAddAdminModal, closeAddAdminModal,
-            closeOrderDetailModal
+            closeOrderDetailModal,
+            // [!] ЭКСПОРТ НОВЫХ ФУНКЦИЙ
+            updateOrderStatus, showUserDetailModal, closeUserDetailModal
         };
     })();
     </script>
