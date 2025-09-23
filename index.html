@@ -2082,6 +2082,7 @@ Instagram: @${orderData.instagram}
         }
 
         // [!] ИЗМЕНЕНИЕ 2: ФУНКЦИЯ ОБНОВЛЕНА ДЛЯ КЛИКАБЕЛЬНОСТИ
+              // [!] ИСПРАВЛЕННАЯ ФУНКЦИЯ
         async function updateUsersList() {
             const list = document.getElementById('usersList');
             list.innerHTML = '<div class="loading-indicator">Загрузка пользователей...</div>';
@@ -2104,7 +2105,8 @@ Instagram: @${orderData.instagram}
                     const el = document.createElement('div');
                     el.className = 'user-item';
                     el.dataset.search = `${reg.firstName} ${reg.phone} ${reg.instagramLogin}`.toLowerCase();
-                    el.onclick = () => showUserDetailModal(user.userId); // Добавляем клик
+                    
+                    // СНАЧАЛА УСТАНАВЛИВАЕМ HTML-СОДЕРЖИМОЕ
                     el.innerHTML = `
                         <div class="user-details">
                             <span class="user-name-phone">${reg.firstName} (${reg.phone})</span>
@@ -2115,11 +2117,23 @@ Instagram: @${orderData.instagram}
                             </div>
                         </div>
                         <div class="user-controls">
-                           <button class="btn-danger-icon" onclick="event.stopPropagation(); app.removeUser('${user.userId}', '${reg.firstName}')">🗑️</button>
+                           <button class="btn-danger-icon">🗑️</button>
                         </div>`;
+
+                    // ПОТОМ НАЗНАЧАЕМ ОБРАБОТЧИКИ КЛИКОВ
+                    // 1. Клик по всей строке для открытия деталей
+                    el.addEventListener('click', () => showUserDetailModal(user.userId));
+                    
+                    // 2. Клик по кнопке удаления с остановкой "всплытия" события
+                    const deleteBtn = el.querySelector('.btn-danger-icon');
+                    deleteBtn.addEventListener('click', (event) => {
+                        event.stopPropagation(); // Это важно, чтобы не открылось окно деталей при удалении
+                        removeUser(user.userId, reg.firstName);
+                    });
+
                     list.appendChild(el);
                 });
-            } catch (error) {
+            } catch (error)
                 console.error("Error fetching users:", error);
                 list.innerHTML = '<p style="color:red;text-align:center;padding:20px;">Ошибка загрузки</p>';
             }
