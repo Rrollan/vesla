@@ -578,6 +578,9 @@
             cursor: pointer; 
             transition: background 0.3s ease;
         }
+        .user-item.blocked {
+            border-left: 4px solid #dc3545;
+        }
 
         .user-item:hover {
             background: #404040;
@@ -608,6 +611,12 @@
         .user-admin-badge {
             font-size: 12px;
             color: #28a745;
+            font-weight: bold;
+        }
+        
+        .user-blocked-badge {
+            font-size: 12px;
+            color: #dc3545;
             font-weight: bold;
         }
 
@@ -708,6 +717,16 @@
             margin: 20px 0;
             text-align: center;
         }
+        .blocked-message {
+             background: #dc3545;
+             color: white;
+             padding: 20px;
+             border-radius: 15px;
+             margin-bottom: 20px;
+             text-align: left;
+             line-height: 1.5;
+        }
+
 
         .admin-panel {
             position: fixed;
@@ -1146,7 +1165,8 @@
                 </div>
             </div>
 
-            <div id="statusPanel" class="action-card" style="display: none; border-color: #00b4d8; text-align: left;"></div>
+             <div id="blockedPanel" class="blocked-message" style="display: none;"></div>
+             <div id="statusPanel" class="action-card" style="display: none; border-color: #00b4d8; text-align: left;"></div>
 
             <div class="dashboard-actions">
                 <div class="action-card" onclick="app.startCollaboration()">
@@ -1186,6 +1206,7 @@
                 <button class="crm-tab" onclick="app.showCrmTab('orders', this)">Заказы</button>
                 <button class="crm-tab" onclick="app.showCrmTab('users', this)">Пользователи</button>
                 <button class="crm-tab" onclick="app.showCrmTab('blocks', this)">Блокировки</button>
+                <button class="crm-tab" onclick="app.showCrmTab('broadcast', this)">Рассылка</button>
                 <button class="crm-tab" onclick="app.showCrmTab('admins', this)">Админы</button>
             </div>
 
@@ -1217,6 +1238,7 @@
             </div>
             
             <div id="crmAnalytics" class="crm-content">
+                <h3 style="text-align: center; margin-bottom: 20px;">Ключевые показатели</h3>
                 <div class="analytics-slider">
                     <div class="analytics-wrapper">
                         <div class="analytics-slide">
@@ -1235,6 +1257,12 @@
                              <div class="chart-container">
                                 <h3>Уровни блогеров</h3>
                                 <canvas id="bloggerLevelChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="analytics-slide">
+                             <div class="chart-container">
+                                <h3>Распределение подписчиков</h3>
+                                <canvas id="followersDistributionChart"></canvas>
                             </div>
                         </div>
                     </div>
@@ -1257,6 +1285,24 @@
                 <div class="blocked-slots" id="blockedSlotsList"></div>
             </div>
 
+             <div id="crmBroadcast" class="crm-content">
+                <div class="form-header">
+                    <h2>Массовая рассылка</h2>
+                    <p class="subtitle">Отправьте сообщение всем пользователям бота</p>
+                </div>
+                <div class="form-group">
+                    <label for="broadcastMessage">Текст сообщения</label>
+                    <textarea id="broadcastMessage" rows="6" placeholder="Введите ваше сообщение здесь..."></textarea>
+                </div>
+                <button class="btn-primary" onclick="app.sendBroadcast()">Отправить рассылку</button>
+                <div class="telegram-info" style="margin-top: 20px;">
+                     <h4 style="color: #00b4d8; margin-bottom: 10px;">⚙️ Как это работает?</h4>
+                     <p style="color: #ccc; font-size: 14px; line-height: 1.5;">
+                         Эта функция требует настройки на сервере (например, через Firebase Cloud Functions). При нажатии на кнопку, сообщение сохраняется в базу данных. Серверный скрипт должен будет подхватить это сообщение и разослать его всем пользователям, у которых есть привязка к Telegram.
+                     </p>
+                </div>
+            </div>
+
             <div id="crmAdmins" class="crm-content">
                 <button class="btn-primary" onclick="app.showAddAdminModal()" style="margin-bottom: 20px;">+ Добавить администратора</button>
                 <div id="adminsList"></div>
@@ -1270,17 +1316,17 @@
                 <h2>Выберите набор</h2>
             </div>
 
-            <div class="set-item" onclick="app.selectSet(this, 'set1')">
+            <div class="set-item" data-set-name="Набор 1 'Классик'" onclick="app.selectSet(this, 'set1')">
                 <div class="set-title">Набор 1 "Классик"</div>
                 <div class="set-description">32 роллы: Филадельфия классик (8шт), Калифорния с крабом (8шт), Лосось терияки (8шт), Тунец спайси (8шт)</div>
             </div>
 
-            <div class="set-item" onclick="app.selectSet(this, 'set2')">
+            <div class="set-item" data-set-name="Набор 2 'Премиум'" onclick="app.selectSet(this, 'set2')">
                 <div class="set-title">Набор 2 "Премиум"</div>
                 <div class="set-description">28 роллов: Филадельфия с лососем (8шт), Дракон (6шт), Радуга (8шт), Темпура микс (6шт)</div>
             </div>
 
-            <div class="set-item" onclick="app.selectSet(this, 'set3')">
+            <div class="set-item" data-set-name="Набор 3 'Микс'" onclick="app.selectSet(this, 'set3')">
                 <div class="set-title">Набор 3 "Микс"</div>
                 <div class="set-description">40 роллов: Ассорти из лучших роллов недели + бонусные маки (8шт)</div>
             </div>
@@ -1447,7 +1493,8 @@
                     </select>
                 </div>
                 <button class="btn-primary" onclick="app.updateOrderStatus()">Сохранить статус</button>
-                <button class="btn-secondary" onclick="app.closeOrderDetailModal()" style="margin-top: 20px;">Закрыть</button>
+                 <button class="btn-danger" id="markNoReportBtn" style="margin-top:10px;">Отчет не сдан</button>
+                <button class="btn-secondary" onclick="app.closeOrderDetailModal()" style="margin-top: 10px;">Закрыть</button>
             </div>
         </div>
 
@@ -1589,7 +1636,8 @@ const app = (function() {
         USERS: 'users',
         ORDERS: 'orders',
         ADMINS: 'admins',
-        BLOCKED_SLOTS: 'blockedSlots'
+        BLOCKED_SLOTS: 'blockedSlots',
+        BROADCASTS: 'broadcasts'
     };
     const SCREENS = {
         WELCOME: 'welcomeScreen',
@@ -1611,11 +1659,12 @@ const app = (function() {
     let migrationUser = null;
     let currentOrderData = {};
     let isCurrentUserAdmin = false;
-    let cityChart, ordersTrendChart, bloggerLevelChart;
+    let cityChart, ordersTrendChart, bloggerLevelChart, followersDistributionChart;
     let currentEditingOrderId = null;
+    let userListenerUnsubscribe = null;
 
     let currentSlide = 0;
-    const totalSlides = 3;
+    const totalSlides = 4;
     
     function generateOrderNumber(city, date, firestoreId) {
         const cityCodes = {
@@ -1641,7 +1690,7 @@ const app = (function() {
         const BOT_TOKEN = '8227812944:AAFy8ydOkUeCj3Qkjg7_Xsq6zyQpcUyMShY';
         const CHAT_ID = '1345815453';
 
-        const message = `*Новая заявка на бартер*
+        let message = `*Новая заявка на бартер*
 
 📝 *Заказ:* \`${orderData.orderNumber}\`
 
@@ -1651,7 +1700,13 @@ const app = (function() {
 Instagram: @${orderData.instagram}
 Подписчики: ${orderData.followersCount.toLocaleString('ru-RU')}
 Средние просмотры: ${orderData.avgViews.toLocaleString('ru-RU')}
-Уровень: ${determineBloggerLevel(orderData.followersCount).text}
+Уровень: ${determineBloggerLevel(orderData.followersCount).text}`;
+        
+        if (orderData.setName) {
+            message += `\n🍱 *Выбранный набор:* ${orderData.setName}`;
+        }
+
+        message += `
 
 🗓 *Дата и время доставки:*
 Дата: ${orderData.date}
@@ -1712,6 +1767,25 @@ Instagram: @${orderData.instagram}
         } catch (error) {
             console.error('Error initializing Telegram:', error);
         }
+    }
+    
+    function attachUserListener(userId) {
+        if (userListenerUnsubscribe) {
+            userListenerUnsubscribe();
+        }
+        userListenerUnsubscribe = db.collection(COLLECTIONS.USERS).doc(userId)
+            .onSnapshot((doc) => {
+                console.log("User data updated in real-time.");
+                if (doc.exists) {
+                    userData = { userId: doc.id, ...doc.data() };
+                    updateDashboard();
+                } else {
+                    console.log("User document deleted.");
+                    logout();
+                }
+            }, (error) => {
+                console.error("Error with real-time listener: ", error);
+            });
     }
 
     function hashPassword(password) {
@@ -1852,8 +1926,10 @@ Instagram: @${orderData.instagram}
             }
             
             userData = existingUser;
+            currentUserId = existingUser.userId;
             await saveUser(currentUserId, { lastActivity: new Date().toISOString() });
             await checkAndSetAdminStatus();
+            attachUserListener(currentUserId);
             return true;
         }
         return false;
@@ -1880,7 +1956,8 @@ Instagram: @${orderData.instagram}
             const dayBlockDoc = db.collection(COLLECTIONS.BLOCKED_SLOTS).doc(dayBlockId).get();
             const [timeBlock, dayBlock] = await Promise.all([timeBlockDoc, dayBlockDoc]);
             return timeBlock.exists || dayBlock.exists;
-        } catch (error) {
+        } catch (error)
+        {
             console.error("Error checking blocked slot:", error);
             return true;
         }
@@ -1896,7 +1973,7 @@ Instagram: @${orderData.instagram}
 
     function showDashboard() {
         showScreen(SCREENS.DASHBOARD);
-        updateDashboard();
+        // updateDashboard is now called by the real-time listener
         document.getElementById('adminPanel').style.display = isCurrentUserAdmin ? 'block' : 'none';
     }
 
@@ -1933,6 +2010,7 @@ Instagram: @${orderData.instagram}
             case 'users': updateUsersList(); break;
             case 'blocks': updateBlockedSlotsList(); break;
             case 'admins': updateAdminsList(); break;
+            case 'broadcast': break; // No data to load initially
         }
     }
     
@@ -1968,14 +2046,13 @@ Instagram: @${orderData.instagram}
             
             const existingUser = await findUserByCredentials(phone, instagram, password);
             if (existingUser) {
-                userData = existingUser;
                 currentUserId = existingUser.userId;
-                if (telegramUser && !userData.telegramId) {
-                    userData.telegramId = telegramUser.id;
+                if (telegramUser && !existingUser.telegramId) {
+                    await saveUser(currentUserId, { telegramId: telegramUser.id, merge: true });
                 }
-                userData.lastActivity = new Date().toISOString();
-                await saveUser(currentUserId, userData);
+                await saveUser(currentUserId, { lastActivity: new Date().toISOString() });
                 await checkAndSetAdminStatus();
+                attachUserListener(currentUserId);
                 showDashboard();
             } else {
                 showError('Неверные данные', 'Проверьте правильность введенных данных или пройдите регистрацию');
@@ -1999,10 +2076,10 @@ Instagram: @${orderData.instagram}
                 
                 await saveUser(migrationUser.userId, migrationUser);
                 
-                userData = migrationUser;
                 currentUserId = migrationUser.userId;
                 migrationUser = null;
                 await checkAndSetAdminStatus();
+                attachUserListener(currentUserId);
                 showDashboard();
             }
         });
@@ -2034,25 +2111,38 @@ Instagram: @${orderData.instagram}
             const bloggerData = determineBloggerLevel(followersCount);
             if (!currentUserId) currentUserId = (telegramUser ? 'tg_' + telegramUser.id : db.collection(COLLECTIONS.USERS).doc().id);
             
-            userData = {
+            const newUser = {
                 registration: { firstName, phone, instagramLogin, followersCount, avgViews, password: hashPassword(password) },
                 level: bloggerData.level,
                 orders: [],
                 telegramId: telegramUser ? telegramUser.id : null,
                 registrationDate: new Date().toISOString(),
-                lastActivity: new Date().toISOString()
+                lastActivity: new Date().toISOString(),
+                isBlocked: false,
+                blockReason: '',
+                strikes: 0
             };
 
-            await saveUser(currentUserId, userData);
+            await saveUser(currentUserId, newUser);
             await checkAndSetAdminStatus();
+            attachUserListener(currentUserId);
             showDashboard();
         });
     }
 
     function updateDashboard() {
-        if (!userData.registration) return;
+        if (!userData || !userData.registration) return;
         const { firstName, followersCount, avgViews } = userData.registration;
         const levelInfo = determineBloggerLevel(followersCount);
+        
+        const blockedPanel = document.getElementById('blockedPanel');
+        if (userData.isBlocked) {
+            blockedPanel.innerHTML = `<h4>🔒 Ваш аккаунт заблокирован</h4><p>${userData.blockReason || 'Для получения дополнительной информации свяжитесь с администратором.'}</p>`;
+            blockedPanel.style.display = 'block';
+        } else {
+            blockedPanel.style.display = 'none';
+        }
+
 
         document.getElementById('userName').textContent = firstName;
         
@@ -2070,13 +2160,15 @@ Instagram: @${orderData.instagram}
 
         const statusPanel = document.getElementById('statusPanel');
         if (userData.orders && userData.orders.length > 0) {
-            const latestOrder = userData.orders.sort((a, b) => new Date(b.createdAt || b.date) - new Date(a.createdAt || a.date))[0];
+            const latestOrder = [...userData.orders].sort((a, b) => new Date(b.createdAt || b.date) - new Date(a.createdAt || a.date))[0];
             let statusMessage = '';
             
-            if (latestOrder.status === 'confirmed') {
-                statusMessage = '✅ <strong>Ваш заказ подтвержден!</strong> Ожидайте доставку.';
+            if (latestOrder.status === 'new') {
+                statusMessage = `⏳ <strong>Ваш заказ #${latestOrder.orderNumber.split('-')[2]} в обработке.</strong> Ожидайте подтверждения.`;
+            } else if (latestOrder.status === 'confirmed') {
+                statusMessage = `✅ <strong>Ваш заказ #${latestOrder.orderNumber.split('-')[2]} подтвержден!</strong> Ожидайте доставку.`;
             } else if (latestOrder.status === 'delivered') {
-                statusMessage = '⚠️ <strong>Не забудьте сдать отчет</strong> по последнему заказу.';
+                statusMessage = `⚠️ <strong>Не забудьте сдать отчет</strong> по заказу #${latestOrder.orderNumber.split('-')[2]}.`;
             }
 
             if (statusMessage) {
@@ -2190,13 +2282,19 @@ Instagram: @${orderData.instagram}
             renderChart('cityChart', 'bar', Object.keys(cityCounts), Object.values(cityCounts), 'Заказы по городам', cityChart);
 
             const levelCounts = { 'Микроблогер': 0, 'Макроблогер тип A': 0, 'Макроблогер тип B': 0 };
+            const followerRanges = { '1-5k': 0, '5-10k': 0, '10-20k': 0, '20k+': 0 };
             usersSnap.forEach(doc => {
-                const levelText = determineBloggerLevel(doc.data().registration?.followersCount || 0).text;
-                if (levelCounts.hasOwnProperty(levelText)) {
-                    levelCounts[levelText]++;
-                }
+                const followers = doc.data().registration?.followersCount || 0;
+                const levelText = determineBloggerLevel(followers).text;
+                if (levelCounts.hasOwnProperty(levelText)) levelCounts[levelText]++;
+
+                if (followers <= 5000) followerRanges['1-5k']++;
+                else if (followers <= 10000) followerRanges['5-10k']++;
+                else if (followers <= 20000) followerRanges['10-20k']++;
+                else followerRanges['20k+']++;
             });
             renderChart('bloggerLevelChart', 'doughnut', Object.keys(levelCounts), Object.values(levelCounts), 'Уровни блогеров', bloggerLevelChart);
+            renderChart('followersDistributionChart', 'pie', Object.keys(followerRanges), Object.values(followerRanges), 'Подписчики', followersDistributionChart);
 
         } catch(e) { console.error("Analytics error:", e) }
     }
@@ -2207,15 +2305,29 @@ Instagram: @${orderData.instagram}
         
         if (chartInstance) chartInstance.destroy();
 
-        const chartColors = {
-            backgroundColor: ['#00b4d8', '#ff6b35', '#28a745', '#ffc107', '#6f42c1'],
-            borderColor: '#4a4a4a'
-        };
+        const chartColors = [
+            'rgba(0, 180, 216, 0.7)',
+            'rgba(255, 107, 53, 0.7)',
+            'rgba(40, 167, 69, 0.7)',
+            'rgba(255, 193, 7, 0.7)',
+            'rgba(111, 66, 193, 0.7)'
+        ];
+        const chartBorderColors = [
+            'rgba(0, 180, 216, 1)',
+            'rgba(255, 107, 53, 1)',
+            'rgba(40, 167, 69, 1)',
+            'rgba(255, 193, 7, 1)',
+            'rgba(111, 66, 193, 1)'
+        ];
+
+        const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+        gradient.addColorStop(0, 'rgba(0, 180, 216, 0.5)');
+        gradient.addColorStop(1, 'rgba(0, 180, 216, 0)');
 
         const chartOptions = {
             responsive: true,
             maintainAspectRatio: false,
-            scales: type === 'line' || type === 'bar' ? { 
+            scales: (type === 'line' || type === 'bar') ? { 
                 y: { beginAtZero: true, ticks: { color: '#fff', stepSize: 1 } }, 
                 x: { ticks: { color: '#fff' } } 
             } : {},
@@ -2232,10 +2344,11 @@ Instagram: @${orderData.instagram}
                 datasets: [{
                     label: label,
                     data: data,
-                    backgroundColor: type === 'doughnut' ? chartColors.backgroundColor : '#00b4d8',
-                    borderColor: type === 'line' ? '#ff6b35' : chartColors.borderColor,
-                    borderWidth: 2,
-                    tension: 0.1
+                    backgroundColor: (type === 'doughnut' || type === 'pie' || type === 'bar') ? chartColors : (type === 'line' ? gradient : '#00b4d8'),
+                    borderColor: (type === 'doughnut' || type === 'pie' || type === 'bar') ? chartBorderColors : '#ff6b35',
+                    borderWidth: (type === 'doughnut' || type === 'pie' || type === 'bar') ? 1 : 2,
+                    tension: 0.3,
+                    fill: type === 'line'
                 }]
             },
             options: chartOptions
@@ -2244,6 +2357,7 @@ Instagram: @${orderData.instagram}
         if (canvasId === 'cityChart') cityChart = newChartInstance;
         else if (canvasId === 'ordersTrendChart') ordersTrendChart = newChartInstance;
         else if (canvasId === 'bloggerLevelChart') bloggerLevelChart = newChartInstance;
+        else if (canvasId === 'followersDistributionChart') followersDistributionChart = newChartInstance;
     }
 
 
@@ -2306,33 +2420,31 @@ Instagram: @${orderData.instagram}
                 const isUserAdmin = adminIds.has(String(user.telegramId));
 
                 const el = document.createElement('div');
-                el.className = 'user-item';
+                el.className = `user-item ${user.isBlocked ? 'blocked' : ''}`;
                 el.dataset.search = `${reg.firstName} ${reg.phone} ${reg.instagramLogin}`.toLowerCase();
                 
+                let badges = '';
+                if(isUserAdmin) badges += '<span class="user-admin-badge">Администратор</span>';
+                if(user.isBlocked) badges += `<span class="user-blocked-badge" style="margin-left: 5px;">Заблокирован (${user.strikes || 0} стр.)</span>`;
+
                 el.innerHTML = `
                     <div class="user-details">
                         <span class="user-name-phone">${reg.firstName} (${reg.phone})</span>
                         <div style="font-size: 14px; color: #ccc;">
                             Instagram: ${reg.instagramLogin}<br>
                             Подписчики: ${reg.followersCount.toLocaleString('ru-RU')} | Просмотры: ${reg.avgViews.toLocaleString('ru-RU')}
-                            ${isUserAdmin ? '<br><strong style="color: #28a745;">Администратор</strong>' : ''}
+                            ${badges ? `<div style="margin-top:5px;">${badges}</div>` : ''}
                         </div>
                     </div>
                     <div class="user-controls">
-                       <button class="btn-danger-icon">🗑️</button>
+                       ${user.isBlocked 
+                            ? `<button class="btn-primary btn-small" onclick="event.stopPropagation(); app.toggleUserBlock('${user.userId}', false)">Разблок.</button>`
+                            : `<button class="btn-danger btn-small" onclick="event.stopPropagation(); app.toggleUserBlock('${user.userId}', true)">Блок.</button>`
+                       }
+                       <button class="btn-danger-icon" onclick="event.stopPropagation(); app.removeUser('${user.userId}', '${reg.firstName}')">🗑️</button>
                     </div>`;
 
-                el.addEventListener('click', (event) => {
-                    if (event.target.tagName.toLowerCase() === 'button') return;
-                    showUserDetailModal(user.userId)
-                });
-                
-                const deleteBtn = el.querySelector('.btn-danger-icon');
-                deleteBtn.addEventListener('click', (event) => {
-                    event.stopPropagation();
-                    removeUser(user.userId, reg.firstName);
-                });
-
+                el.addEventListener('click', () => showUserDetailModal(user.userId));
                 list.appendChild(el);
             });
         } catch (error) {
@@ -2397,17 +2509,21 @@ Instagram: @${orderData.instagram}
         
         const newStatus = document.getElementById('orderStatusSelect').value;
         try {
-            await db.collection(COLLECTIONS.ORDERS).doc(currentEditingOrderId).update({ status: newStatus });
+            const orderRef = db.collection(COLLECTIONS.ORDERS).doc(currentEditingOrderId);
+            await orderRef.update({ status: newStatus });
             
-            const orderDoc = await db.collection(COLLECTIONS.ORDERS).doc(currentEditingOrderId).get();
+            // This is now handled by the real-time listener on the user document
+            const orderDoc = await orderRef.get();
             const orderData = orderDoc.data();
-            const userToUpdate = await loadUser(orderData.userId);
+            const userRef = db.collection(COLLECTIONS.USERS).doc(orderData.userId);
+            const userDoc = await userRef.get();
+            const userDataFromDB = userDoc.data();
 
-            if (userToUpdate && userToUpdate.orders) {
-                const orderIndex = userToUpdate.orders.findIndex(o => o.id === currentEditingOrderId);
+            if (userDataFromDB && userDataFromDB.orders) {
+                const orderIndex = userDataFromDB.orders.findIndex(o => o.id === currentEditingOrderId);
                 if (orderIndex > -1) {
-                    userToUpdate.orders[orderIndex].status = newStatus;
-                    await db.collection(COLLECTIONS.USERS).doc(orderData.userId).update({ orders: userToUpdate.orders });
+                    userDataFromDB.orders[orderIndex].status = newStatus;
+                    await userRef.update({ orders: userDataFromDB.orders });
                 }
             }
             
@@ -2467,6 +2583,23 @@ Instagram: @${orderData.instagram}
         }
     }
     
+    async function toggleUserBlock(userId, shouldBlock) {
+        const reason = shouldBlock ? prompt("Укажите причину блокировки (можно оставить пустым):", "") : '';
+        if (shouldBlock && reason === null) return; // User cancelled prompt
+
+        try {
+            await db.collection(COLLECTIONS.USERS).doc(userId).update({
+                isBlocked: shouldBlock,
+                blockReason: shouldBlock ? reason : ''
+            });
+            showSuccessMessage(`Пользователь ${shouldBlock ? 'заблокирован' : 'разблокирован'}.`);
+            updateUsersList();
+        } catch (e) {
+            showError('Ошибка', 'Не удалось обновить статус пользователя.');
+            console.error(e);
+        }
+    }
+    
     async function removeUser(userId, userName) {
         if(confirm(`Вы уверены, что хотите удалить пользователя ${userName}? Это действие необратимо.`)) {
             try {
@@ -2518,7 +2651,71 @@ Instagram: @${orderData.instagram}
         }
     }
     
+    async function markNoReport(orderId) {
+        if (!confirm('Вы уверены, что отчет по этому заказу не был сдан? Это действие добавит штрафной балл пользователю.')) return;
+        
+        try {
+            const orderDoc = await db.collection(COLLECTIONS.ORDERS).doc(orderId).get();
+            if (!orderDoc.exists) return showError('Ошибка', 'Заказ не найден.');
+
+            const orderData = orderDoc.data();
+            const userId = orderData.userId;
+            const userRef = db.collection(COLLECTIONS.USERS).doc(userId);
+
+            await db.runTransaction(async (transaction) => {
+                const userDoc = await transaction.get(userRef);
+                if (!userDoc.exists) throw "User not found!";
+                
+                const currentStrikes = userDoc.data().strikes || 0;
+                const newStrikes = currentStrikes + 1;
+                
+                const updates = { strikes: newStrikes };
+                
+                if (newStrikes >= 3) {
+                    updates.isBlocked = true;
+                    updates.blockReason = `Автоматическая блокировка: ${newStrikes} несданных отчета.`;
+                }
+                
+                transaction.update(userRef, updates);
+                // Also mark the order to prevent double-striking
+                transaction.update(db.collection(COLLECTIONS.ORDERS).doc(orderId), { reportMissed: true });
+            });
+            
+            showSuccessMessage('Штрафной балл добавлен. Пользователь уведомлен.');
+            closeOrderDetailModal();
+
+        } catch (error) {
+            console.error('Error marking no report:', error);
+            showError('Ошибка', 'Не удалось обработать действие.');
+        }
+    }
+
+    async function sendBroadcast() {
+        const message = document.getElementById('broadcastMessage').value.trim();
+        if (!message) return showError('Ошибка', 'Сообщение не может быть пустым.');
+
+        if (!confirm('Вы уверены, что хотите отправить это сообщение всем пользователям?')) return;
+
+        try {
+            await db.collection(COLLECTIONS.BROADCASTS).add({
+                text: message,
+                createdAt: new Date().toISOString(),
+                sentBy: telegramUser ? telegramUser.id : 'unknown',
+                status: 'pending'
+            });
+            showSuccessMessage('Сообщение для рассылки создано! Оно будет отправлено в фоновом режиме.');
+            document.getElementById('broadcastMessage').value = '';
+        } catch(e) {
+            console.error(e);
+            showError('Ошибка', 'Не удалось создать рассылку.');
+        }
+    }
+
     function startCollaboration() {
+        if(userData.isBlocked) {
+            showError('Доступ запрещен', 'Вы не можете создавать новые заказы, так как ваш аккаунт заблокирован. Свяжитесь с администратором.');
+            return;
+        }
         currentOrderData = {};
         if (userData.level === 'micro') {
             showSetSelection();
@@ -2536,6 +2733,7 @@ Instagram: @${orderData.instagram}
         document.querySelectorAll('.set-item').forEach(item => item.classList.remove('selected'));
         element.classList.add('selected');
         currentOrderData.set = setId;
+        currentOrderData.setName = element.dataset.setName;
         document.getElementById('nextFromSet').disabled = false;
     }
     
@@ -2652,13 +2850,14 @@ Instagram: @${orderData.instagram}
                 instagram: userData.registration.instagramLogin,
                 phone: userData.registration.phone,
                 status: 'new',
-                createdAt: new Date().toISOString()
+                createdAt: new Date().toISOString(),
+                reportMissed: false
             };
             
             newOrder.set = newOrder.set ?? null;
             
-            userData.orders = userData.orders || [];
-            userData.orders.push({ 
+            const userOrders = userData.orders || [];
+            userOrders.push({ 
                 id: orderId, 
                 date: newOrder.date,
                 orderNumber: newOrder.orderNumber, 
@@ -2669,7 +2868,7 @@ Instagram: @${orderData.instagram}
             
             const batch = db.batch();
             batch.set(db.collection(COLLECTIONS.ORDERS).doc(orderId), newOrder);
-            batch.update(db.collection(COLLECTIONS.USERS).doc(currentUserId), { orders: userData.orders });
+            batch.update(db.collection(COLLECTIONS.USERS).doc(currentUserId), { orders: userOrders });
             await batch.commit();
 
             const screenshotInput = document.getElementById('orderScreenshot');
@@ -2751,24 +2950,18 @@ Instagram: @${orderData.instagram}
             }
             
             await db.collection(COLLECTIONS.USERS).doc(currentUserId).update(updates);
-
-            userData.registration.firstName = newFirstName;
-            userData.registration.phone = newPhone;
-            userData.registration.instagramLogin = newInstagram;
-            userData.registration.followersCount = newFollowers;
-            userData.registration.avgViews = newViews;
-            userData.level = updates.level;
-            if (updates['registration.password']) {
-                userData.registration.password = updates['registration.password'];
-            }
+            // No need to update local userData, real-time listener will do it.
             
-            updateDashboard();
             closeEditProfile();
             showSuccessMessage('Профиль успешно обновлен!');
         });
     }
 
     function logout() {
+        if (userListenerUnsubscribe) {
+            userListenerUnsubscribe();
+            userListenerUnsubscribe = null;
+        }
         userData = {};
         currentUserId = null;
         telegramUser = null;
@@ -2811,13 +3004,23 @@ Instagram: @${orderData.instagram}
             <strong>Этаж:</strong> ${order.floor || '-'}<br>
             <strong>Телефон получателя:</strong> ${order.recipientPhone}<br>
             <strong>Дата и время:</strong> ${order.date} в ${order.time}<br>
-            <strong>Набор:</strong> ${order.set ? order.set.replace('set', 'Набор ') : 'Заказ макроблогера'}<br>
+            <strong>Набор:</strong> ${order.setName || (order.set ? order.set.replace('set', 'Набор ') : 'Заказ макроблогера')}<br>
             <strong>Комментарий:</strong> ${order.comment || '-'}<br>
             <strong>Статус:</strong> <span class="order-status status-${order.status}" style="display:inline-block;">${getStatusText(order.status)}</span>
         `;
         
         document.getElementById('orderStatusSelect').value = order.status;
         
+        const noReportBtn = document.getElementById('markNoReportBtn');
+        noReportBtn.onclick = () => markNoReport(order.id);
+        if (order.reportMissed) {
+            noReportBtn.disabled = true;
+            noReportBtn.textContent = 'Штраф уже применен';
+        } else {
+            noReportBtn.disabled = false;
+            noReportBtn.textContent = 'Отчет не сдан';
+        }
+
         document.getElementById('deleteOrderBtn').onclick = () => removeOrder(order.id);
         document.getElementById('orderDetailModal').style.display = 'flex';
     }
@@ -2827,50 +3030,52 @@ Instagram: @${orderData.instagram}
     }
 
     async function showUserDetailModal(userId) {
-        if (!userId) {
-            console.error("User ID is missing");
-            return;
+        if (!userId) return;
+        try {
+            const user = await loadUser(userId);
+            if (!user || !user.registration) return showError('Ошибка', 'Пользователь не найден или данные некорректны.');
+
+            const reg = user.registration;
+            const body = document.getElementById('userDetailBody');
+            const ordersList = document.getElementById('userOrdersHistoryCrm');
+            
+            document.getElementById('userDetailTitle').textContent = reg.firstName;
+            body.innerHTML = `
+                <strong>Телефон:</strong> ${reg.phone}<br>
+                <strong>Instagram:</strong> @${reg.instagramLogin}<br>
+                <strong>Подписчики:</strong> ${reg.followersCount.toLocaleString('ru-RU')}<br>
+                <strong>Просмотры:</strong> ${reg.avgViews.toLocaleString('ru-RU')}<br>
+                <strong>Уровень:</strong> ${determineBloggerLevel(reg.followersCount).text}<br>
+                <strong>Статус:</strong> ${user.isBlocked ? `<strong style="color:#dc3545">Заблокирован</strong>` : `<strong style="color:#28a745">Активен</strong>`}<br>
+                <strong>Штрафы:</strong> ${user.strikes || 0}
+            `;
+
+            ordersList.innerHTML = '<div class="loading-indicator">Загрузка заказов...</div>';
+            const ordersSnap = await db.collection(COLLECTIONS.ORDERS).where('userId', '==', userId).orderBy('createdAt', 'desc').get();
+            
+            if (ordersSnap.empty) {
+                ordersList.innerHTML = '<p style="color:#999;text-align:center;">У пользователя нет заказов.</p>';
+            } else {
+                ordersList.innerHTML = '';
+                ordersSnap.forEach(doc => {
+                    const order = doc.data();
+                    const item = document.createElement('div');
+                    item.className = 'order-item';
+                    item.style.cursor = 'default';
+                    item.innerHTML = `
+                        <div class="order-header">
+                             <span class="order-id">${order.orderNumber}</span>
+                             <span class="order-status status-${order.status}">${getStatusText(order.status)}</span>
+                        </div>`;
+                    ordersList.appendChild(item);
+                });
+            }
+
+            document.getElementById('userDetailModal').style.display = 'flex';
+        } catch(e) {
+            console.error("Failed to show user details:", e);
+            showError("Ошибка", "Не удалось загрузить данные пользователя.");
         }
-        const user = await loadUser(userId);
-        if (!user) return showError('Ошибка', 'Пользователь не найден');
-
-        const reg = user.registration;
-        if (!reg) return showError('Ошибка', 'У пользователя отсутствуют регистрационные данные.');
-
-        const body = document.getElementById('userDetailBody');
-        const ordersList = document.getElementById('userOrdersHistoryCrm');
-        
-        document.getElementById('userDetailTitle').textContent = reg.firstName;
-        body.innerHTML = `
-            <strong>Телефон:</strong> ${reg.phone}<br>
-            <strong>Instagram:</strong> @${reg.instagramLogin}<br>
-            <strong>Подписчики:</strong> ${reg.followersCount.toLocaleString('ru-RU')}<br>
-            <strong>Просмотры:</strong> ${reg.avgViews.toLocaleString('ru-RU')}<br>
-            <strong>Уровень:</strong> ${determineBloggerLevel(reg.followersCount).text}
-        `;
-
-        ordersList.innerHTML = '<div class="loading-indicator">Загрузка заказов...</div>';
-        const ordersSnap = await db.collection(COLLECTIONS.ORDERS).where('userId', '==', userId).orderBy('createdAt', 'desc').get();
-        
-        if (ordersSnap.empty) {
-            ordersList.innerHTML = '<p style="color:#999;text-align:center;">У пользователя нет заказов.</p>';
-        } else {
-            ordersList.innerHTML = '';
-            ordersSnap.forEach(doc => {
-                const order = doc.data();
-                const item = document.createElement('div');
-                item.className = 'order-item';
-                item.style.cursor = 'default';
-                item.innerHTML = `
-                    <div class="order-header">
-                         <span class="order-id">${order.orderNumber}</span>
-                         <span class="order-status status-${order.status}">${getStatusText(order.status)}</span>
-                    </div>`;
-                ordersList.appendChild(item);
-            });
-        }
-
-        document.getElementById('userDetailModal').style.display = 'flex';
     }
     
     async function showAddAdminModal() { 
@@ -2978,7 +3183,7 @@ Instagram: @${orderData.instagram}
         showRegistration, showLogin, showWelcomeScreen, submitLogin, submitRegistration, 
         submitMigration, showDashboard, logout, startCollaboration, showOrderHistory, editProfile,
         contactAdmin, showCRM, showCrmTab, filterOrders, filterUsers, filterAdminUsers,
-        removeBlock, removeAdmin, removeUser,
+        removeBlock, removeAdmin, removeUser, toggleUserBlock, sendBroadcast,
         addBlock, addAdmin, selectSet, showSetSelection, showAddressForm, showDateTimeSelection, showInstructions,
         handleCityChange, submitAddressAndShowDateTime, updateTimeSlots, submitOrder, saveProfile,
         closeModal, closeErrorModal, closeRejectionModal, closeOrderHistory, closeEditProfile,
