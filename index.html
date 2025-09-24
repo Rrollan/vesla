@@ -2618,7 +2618,7 @@ const app = (function() {
         }
     }
 
-      async function updateOrderStatus(button) {
+    async function updateOrderStatus(button) {
         await withLoading(button, async () => {
             if (!currentEditingOrderId) return;
 
@@ -2634,11 +2634,11 @@ const app = (function() {
                 const batch = db.batch();
                 batch.update(orderRef, { status: newStatus });
 
-                let userDataFromDB = null; // <-- ИСПРАВЛЕНИЕ: Объявляем переменную здесь
+                let userDataFromDB = null;
 
                 const userDoc = await userRef.get();
                 if (userDoc.exists) {
-                    userDataFromDB = userDoc.data(); // <-- Присваиваем значение
+                    userDataFromDB = userDoc.data();
                     const orders = userDataFromDB.orders || [];
                     const orderIndex = orders.findIndex(o => o.id === currentEditingOrderId);
                     if (orderIndex > -1) {
@@ -2649,8 +2649,7 @@ const app = (function() {
 
                 await batch.commit();
 
-                // Отправка уведомлений
-                if (userDataFromDB && userDataFromDB.telegramId) { // <-- Теперь переменная доступна
+                if (userDataFromDB && userDataFromDB.telegramId) {
                     if (newStatus === 'confirmed') {
                         const message = `✅ Ваш заказ №${orderData.orderNumber} подтвержден! Ожидайте доставку ${orderData.date} в ${orderData.time}.`;
                         await sendTelegramNotification(userDataFromDB.telegramId, message);
@@ -3464,6 +3463,44 @@ const app = (function() {
             const updatedTags = tags.filter(t => t !== tagToRemove);
             transaction.update(userRef, { tags: updatedTags });
             renderTags(updatedTags);
+        });
+    }
+    
+    function showReportModal(orderId, orderNumber) {
+        currentReportingOrderId = orderId;
+        document.getElementById('reportModalTitle').textContent = `Сдать отчет по заказу ${orderNumber}`;
+        document.getElementById('reportLink').value = '';
+        document.getElementById('reportModal').style.display = 'flex';
+    }
+
+    async function submitReport(button) {
+        await withLoading(button, async() => {
+            const reportLink = document.getElementById('reportLink').value.trim();
+            if (!reportLink || !reportLink.startsWith('http')) {
+                return showError('Ошибка', 'Пожалуйста, введите корректную ссылку.');
+            }
+
+            const orderRef = db.collection(COLLECTIONS.ORDERS).doc(currentReportingOrderId);
+            const userRef = db.collection(COLLECTIONS.USERS).doc(currentUserId);
+            
+            const batch = db.batch();
+            batch.update(orderRef, { status: 'awaiting_review', reportLink: reportLink });
+            
+            const userDoc = await userRef.get();
+            if (userDoc.exists) {
+                const userDataFromDB = userDoc.data();
+                const orders = userDataFromDB.orders || [];
+                const orderIndex = orders.findIndex(o => o.id === currentReportingOrderId);
+                if (orderIndex > -1) {
+                    orders[orderIndex].status = 'awaiting_review';
+                    batch.update(userRef, { orders: orders });
+                }
+            }
+
+            await batch.commit();
+
+            closeReportModal();
+            showSuccessMessage('Отчет успешно отправлен на проверку!');
         });
     }
 
