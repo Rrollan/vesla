@@ -1,0 +1,6 @@
+// .firebaserc
+{
+  "projects": {
+    "default": "vesla-barter" 
+  }
+}
