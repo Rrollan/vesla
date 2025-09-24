@@ -601,6 +601,7 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            cursor: pointer; 
             transition: background 0.3s ease;
         }
         .user-item.blocked {
@@ -625,6 +626,12 @@
         .user-name-phone {
             font-weight: 600;
             color: #00b4d8;
+        }
+        
+        .user-rating {
+            font-size: 14px;
+            font-weight: bold;
+            color: #ffc107;
         }
 
         .user-controls {
@@ -689,6 +696,31 @@
         .modal-body strong {
             color: #fff;
         }
+        
+        /* Теги */
+        .tags-container {
+            margin: 15px 0;
+        }
+        .tag {
+            display: inline-block;
+            background-color: #00b4d8;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 12px;
+            margin: 2px;
+        }
+        .tag .remove-tag {
+            margin-left: 8px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .add-tag-form {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
 
         .success-icon {
             font-size: 60px;
@@ -1231,6 +1263,7 @@
                 <button class="crm-tab" onclick="app.showCrmTab('analytics', this)">Аналитика</button>
                 <button class="crm-tab" onclick="app.showCrmTab('orders', this)">Заказы</button>
                 <button class="crm-tab" onclick="app.showCrmTab('users', this)">Пользователи</button>
+                <button class="crm-tab" onclick="app.showCrmTab('schedule', this)">Расписание</button>
                 <button class="crm-tab" onclick="app.showCrmTab('blocks', this)">Блокировки</button>
                 <button class="crm-tab" onclick="app.showCrmTab('broadcast', this)">Рассылка</button>
                 <button class="crm-tab" onclick="app.showCrmTab('admins', this)">Админы</button>
@@ -1306,6 +1339,15 @@
                 <div id="usersList"></div>
             </div>
 
+             <div id="crmSchedule" class="crm-content">
+                 <div class="form-header">
+                    <h2>Управление расписанием</h2>
+                    <p class="subtitle">Укажите доступные часы для доставки в формате "10:00-14:00" или "10:00-12:00, 14:00-18:00".<br>Оставьте поле пустым, чтобы сделать день недоступным.</p>
+                </div>
+                <div id="scheduleContainer"></div>
+                <button class="btn-primary" onclick="app.saveSchedule(this)">Сохранить расписание</button>
+            </div>
+
             <div id="crmBlocks" class="crm-content">
                 <button class="btn-primary" onclick="app.showAddBlockModal()" style="margin-bottom: 20px;">+ Добавить блокировку</button>
                 <div class="blocked-slots" id="blockedSlotsList"></div>
@@ -1317,14 +1359,18 @@
                     <p class="subtitle">Отправьте сообщение всем пользователям бота</p>
                 </div>
                 <div class="form-group">
+                    <label for="broadcastTagFilter">Фильтр по тегам (оставьте пустым для отправки всем)</label>
+                    <input type="text" id="broadcastTagFilter" placeholder="Например: фуд-блогер">
+                </div>
+                <div class="form-group">
                     <label for="broadcastMessage">Текст сообщения</label>
                     <textarea id="broadcastMessage" rows="6" placeholder="Введите ваше сообщение здесь..."></textarea>
                 </div>
-                <button class="btn-primary" onclick="app.sendBroadcast()">Отправить рассылку</button>
+                <button class="btn-primary" onclick="app.sendBroadcast(this)">Отправить рассылку</button>
                 <div class="telegram-info" style="margin-top: 20px;">
-                     <h4 style="color: #00b4d8; margin-bottom: 10px;">⚙️ Как это работает?</h4>
+                     <h4 style="color: #00b4d8; margin-bottom: 10px;">⚙️ Важно!</h4>
                      <p style="color: #ccc; font-size: 14px; line-height: 1.5;">
-                         Эта функция требует настройки на сервере (например, через Firebase Cloud Functions). При нажатии на кнопку, сообщение сохраняется в базу данных. Серверный скрипт должен будет подхватить это сообщение и разослать его всем пользователям, у которых есть привязка к Telegram.
+                         Эта функция требует настройки на сервере (например, через Firebase Cloud Functions). Сейчас нажатие кнопки только создает "задачу" на рассылку. Реальная отправка сообщений должна быть реализована отдельно на стороне сервера для безопасности и надежности.
                      </p>
                 </div>
             </div>
@@ -1524,8 +1570,30 @@
                          <option value="rejected">Отчет отклонен</option>
                     </select>
                 </div>
-                <button class="btn-primary" onclick="app.updateOrderStatus()">Сохранить статус</button>
+                <button class="btn-primary" onclick="app.updateOrderStatus(this)">Сохранить статус</button>
                 <button class="btn-secondary" onclick="app.closeOrderDetailModal()" style="margin-top: 10px;">Закрыть</button>
+            </div>
+        </div>
+        
+        <div id="userDetailModal" class="modal">
+            <div class="modal-content" style="max-width: 400px;">
+                <div class="modal-header">
+                     <h2 id="userDetailTitle">Карточка пользователя</h2>
+                </div>
+                <div id="userDetailBody" class="modal-body"></div>
+                
+                <hr style="border-color: #4a4a4a; margin: 20px 0;">
+                
+                <div style="text-align: left;">
+                    <label>Теги:</label>
+                    <div id="userTagsContainer" class="tags-container"></div>
+                    <div class="add-tag-form">
+                        <input type="text" id="newTagInput" placeholder="Добавить тег..." style="flex: 1;">
+                        <button class="btn-primary btn-small" onclick="app.addUserTag()">+</button>
+                    </div>
+                </div>
+
+                <button class="btn-secondary" onclick="app.closeUserDetailModal()" style="margin-top: 20px;">Закрыть</button>
             </div>
         </div>
 
@@ -1668,7 +1736,8 @@ const app = (function() {
         ORDERS: 'orders',
         ADMINS: 'admins',
         BLOCKED_SLOTS: 'blockedSlots',
-        BROADCASTS: 'broadcasts'
+        BROADCASTS: 'broadcasts',
+        SCHEDULES: 'schedules'
     };
     const SCREENS = {
         WELCOME: 'welcomeScreen',
@@ -1693,11 +1762,14 @@ const app = (function() {
     let cityChart, ordersTrendChart, bloggerLevelChart, followersDistributionChart;
     let currentEditingOrderId = null;
     let currentReportingOrderId = null;
+    let currentUserDetailId = null;
     let userListenerUnsubscribe = null;
 
     let currentSlide = 0;
     const totalSlides = 4;
     
+    const CITIES = ["Павлодар", "Петропавловск", "Кокшетау", "Костанай", "Усть-Каменогорск"];
+
     function generateOrderNumber(city, date, firestoreId) {
         const cityCodes = {
             'Павлодар': 'PVL',
@@ -1718,70 +1790,25 @@ const app = (function() {
     }
 
 
-    async function sendTelegramNotification(orderData, screenshotFile) {
+    async function sendTelegramNotification(chatId, message) {
+        if (!chatId) return;
         const BOT_TOKEN = '8227812944:AAFy8ydOkUeCj3Qkjg7_Xsq6zyQpcUyMShY';
-        const CHAT_ID = '1345815453';
-
-        let message = `*Новая заявка на бартер*
-
-📝 *Заказ:* \`${orderData.orderNumber}\`
-
-👤 *Блогер:*
-Имя: ${orderData.userName}
-Телефон: \`${orderData.phone}\`
-Instagram: @${orderData.instagram}
-Подписчики: ${orderData.followersCount.toLocaleString('ru-RU')}
-Средние просмотры: ${orderData.avgViews.toLocaleString('ru-RU')}
-Уровень: ${determineBloggerLevel(orderData.followersCount).text}`;
-        
-        if (orderData.setName) {
-            message += `\n🍱 *Выбранный набор:* ${orderData.setName}`;
-        }
-
-        message += `
-
-🗓 *Дата и время доставки:*
-Дата: ${orderData.date}
-Время: ${orderData.time}
-
-📍 *Доставка:*
-Город: ${orderData.city}
-Адрес: ${orderData.street}
-Подъезд: ${orderData.entrance || 'не указан'}
-Этаж: ${orderData.floor || 'не указан'}
-Телефон получателя: \`${orderData.recipientPhone}\``;
-        
+        const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
         try {
-            if (screenshotFile) {
-                const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`;
-                const formData = new FormData();
-                formData.append('chat_id', CHAT_ID);
-                formData.append('photo', screenshotFile);
-                formData.append('caption', message);
-                formData.append('parse_mode', 'Markdown');
-
-                const response = await fetch(url, { method: 'POST', body: formData });
-                const result = await response.json();
-                if (!result.ok) throw new Error(result.description);
-
-            } else {
-                const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
-                const response = await fetch(url, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        chat_id: CHAT_ID,
-                        text: message,
-                        parse_mode: 'Markdown'
-                    })
-                });
-                const result = await response.json();
-                if (!result.ok) throw new Error(result.description);
-            }
-            console.log('Уведомление в Telegram успешно отправлено!');
-
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    chat_id: chatId,
+                    text: message,
+                    parse_mode: 'Markdown'
+                })
+            });
+            const result = await response.json();
+            if (!result.ok) throw new Error(result.description);
+            console.log(`Уведомление в Telegram для ${chatId} успешно отправлено!`);
         } catch (error) {
-            console.error('Ошибка отправки уведомления в Telegram:', error);
+            console.error(`Ошибка отправки уведомления в Telegram для ${chatId}:`, error);
         }
     }
 
@@ -2039,6 +2066,7 @@ Instagram: @${orderData.instagram}
                 break;
             case 'orders': updateOrdersList(); break;
             case 'users': updateUsersList(); break;
+            case 'schedule': loadSchedule(); break;
             case 'blocks': updateBlockedSlotsList(); break;
             case 'admins': updateAdminsList(); break;
             case 'broadcast': break;
@@ -2151,7 +2179,8 @@ Instagram: @${orderData.instagram}
                 lastActivity: new Date().toISOString(),
                 isBlocked: false,
                 blockReason: '',
-                strikes: 0
+                strikes: 0,
+                tags: []
             };
 
             await saveUser(currentUserId, newUser);
@@ -2456,6 +2485,31 @@ Instagram: @${orderData.instagram}
         }
     }
     
+    function calculateBloggerRating(user) {
+        const dataSource = user.registration || user;
+        const followers = dataSource.followersCount || 0;
+        const views = dataSource.avgViews || 0;
+        const strikes = user.strikes || 0;
+
+        // Веса для каждого параметра
+        const followersWeight = 2.5;
+        const viewsWeight = 4.5;
+        const strikePenalty = 1.5;
+
+        // Используем логарифмы для нормализации больших чисел
+        const followersScore = followers > 0 ? Math.log10(followers) * followersWeight : 0;
+        const viewsScore = views > 0 ? Math.log10(views) * viewsWeight : 0;
+        
+        let totalScore = followersScore + viewsScore - (strikes * strikePenalty);
+        
+        // Нормализуем к шкале от 1 до 10
+        // Предположим, что максимальный теорет. рейтинг ~25-30
+        let rating = (totalScore / 25) * 10;
+        rating = Math.max(1, Math.min(10, rating)); // Ограничиваем от 1 до 10
+        
+        return rating.toFixed(1);
+    }
+    
     async function updateUsersList() {
         const list = document.getElementById('usersList');
         list.innerHTML = '<div class="loading-indicator">Загрузка пользователей...</div>';
@@ -2474,10 +2528,12 @@ Instagram: @${orderData.instagram}
                 if (!reg.firstName) return;
 
                 const isUserAdmin = adminIds.has(String(user.telegramId));
+                const rating = calculateBloggerRating(user);
 
                 const el = document.createElement('div');
                 el.className = `user-item ${user.isBlocked ? 'blocked' : ''}`;
                 el.dataset.search = `${reg.firstName} ${reg.phone} ${reg.instagramLogin}`.toLowerCase();
+                el.onclick = () => showUserDetailModal(user.userId);
                 
                 let badges = '';
                 if(isUserAdmin) badges += '<span class="user-admin-badge">Администратор</span>';
@@ -2485,7 +2541,10 @@ Instagram: @${orderData.instagram}
 
                 el.innerHTML = `
                     <div class="user-details">
-                        <span class="user-name-phone">${reg.firstName} (${reg.phone})</span>
+                        <div class="user-header" style="margin-bottom: 5px;">
+                           <span class="user-name-phone">${reg.firstName} (${reg.phone})</span>
+                           <span class="user-rating">⭐ ${rating}</span>
+                        </div>
                         <div style="font-size: 14px; color: #ccc;">
                             Instagram: ${reg.instagramLogin}<br>
                             Подписчики: ${(reg.followersCount || 0).toLocaleString('ru-RU')} | Просмотры: ${(reg.avgViews || 0).toLocaleString('ru-RU')}
@@ -2559,7 +2618,8 @@ Instagram: @${orderData.instagram}
         }
     }
 
-    async function updateOrderStatus() {
+    async function updateOrderStatus(button) {
+      await withLoading(button, async () => {
         if (!currentEditingOrderId) return;
         
         const newStatus = document.getElementById('orderStatusSelect').value;
@@ -2587,6 +2647,17 @@ Instagram: @${orderData.instagram}
 
             await batch.commit();
             
+            // Отправка уведомлений
+            if (userDataFromDB.telegramId) {
+                if (newStatus === 'confirmed') {
+                    const message = `✅ Ваш заказ №${orderData.orderNumber} подтвержден! Ожидайте доставку ${orderData.date} в ${orderData.time}.`;
+                    await sendTelegramNotification(userDataFromDB.telegramId, message);
+                } else if (newStatus === 'completed') {
+                    const message = `🎉 Спасибо за отчет! Сотрудничество по заказу №${orderData.orderNumber} успешно завершено.`;
+                    await sendTelegramNotification(userDataFromDB.telegramId, message);
+                }
+            }
+            
             showSuccessMessage('Статус обновлен!');
             closeOrderDetailModal();
             updateOrdersList();
@@ -2594,6 +2665,7 @@ Instagram: @${orderData.instagram}
             console.error("Error updating order status: ", error);
             showError('Ошибка', 'Не удалось обновить статус заказа.');
         }
+     });
     }
 
     function filter(inputId, listSelector, itemSelector) {
@@ -2661,13 +2733,38 @@ Instagram: @${orderData.instagram}
     }
     
     async function removeUser(userId, userName) {
-        if(confirm(`Вы уверены, что хотите удалить пользователя ${userName}? Это действие необратимо.`)) {
+        if (confirm(`ВНИМАНИЕ! Вы уверены, что хотите удалить пользователя ${userName}? Все связанные с ним заказы также будут удалены. Это действие необратимо.`)) {
             try {
-                await db.collection(COLLECTIONS.USERS).doc(userId).delete();
-                showSuccessMessage(`Пользователь ${userName} удален.`);
+                const userRef = db.collection(COLLECTIONS.USERS).doc(userId);
+                const userDoc = await userRef.get();
+                
+                if (!userDoc.exists) {
+                     showError('Ошибка', 'Пользователь уже удален или не существует.');
+                     updateUsersList();
+                     return;
+                }
+
+                const ordersToDelete = userDoc.data().orders || [];
+                
+                const batch = db.batch();
+                
+                // 1. Удаляем самого пользователя
+                batch.delete(userRef);
+                
+                // 2. Добавляем в пакет удаление всех его заказов из коллекции 'orders'
+                ordersToDelete.forEach(order => {
+                    const orderRef = db.collection(COLLECTIONS.ORDERS).doc(order.id);
+                    batch.delete(orderRef);
+                });
+                
+                // Выполняем все удаления одновременно
+                await batch.commit();
+                
+                showSuccessMessage(`Пользователь ${userName} и все его заказы были удалены.`);
                 updateUsersList();
-            } catch(e) {
-                showError('Ошибка', 'Не удалось удалить пользователя.');
+
+            } catch (e) {
+                showError('Ошибка', 'Не удалось удалить пользователя и его данные.');
                 console.error(e);
             }
         }
@@ -2698,18 +2795,48 @@ Instagram: @${orderData.instagram}
     }
     
     async function removeOrder(orderId) {
-         if (confirm('Вы уверены, что хотите удалить этот заказ?')) {
+        if (confirm('Вы уверены, что хотите удалить этот заказ? Это действие необратимо.')) {
             try {
-                await db.collection(COLLECTIONS.ORDERS).doc(orderId).delete();
+                const orderRef = db.collection(COLLECTIONS.ORDERS).doc(orderId);
+                const orderDoc = await orderRef.get();
+
+                if (!orderDoc.exists) {
+                    showError('Ошибка', 'Заказ уже удален или не существует.');
+                    updateOrdersList();
+                    return;
+                }
+                
+                const userId = orderDoc.data().userId;
+                const userRef = db.collection(COLLECTIONS.USERS).doc(userId);
+
+                // Используем пакетную операцию для гарантии целостности
+                const batch = db.batch();
+                
+                // 1. Удаляем сам заказ из коллекции 'orders'
+                batch.delete(orderRef);
+
+                // 2. Обновляем массив заказов у пользователя
+                const userDoc = await userRef.get();
+                if (userDoc.exists) {
+                    const currentOrders = userDoc.data().orders || [];
+                    const updatedOrders = currentOrders.filter(o => o.id !== orderId);
+                    batch.update(userRef, { orders: updatedOrders });
+                }
+
+                // Выполняем обе операции одновременно
+                await batch.commit();
+
                 closeOrderDetailModal();
-                updateOrdersList();
-                showSuccessMessage('Заказ удален.');
-            } catch(e) {
-                console.error("Error removing order: ", e);
-                showError('Ошибка', 'Не удалось удалить заказ.');
+                updateOrdersList(); // Обновляем список в UI
+                showSuccessMessage('Заказ полностью удален.');
+
+            } catch (e) {
+                console.error("Error completely removing order: ", e);
+                showError('Ошибка', 'Не удалось полностью удалить заказ.');
             }
         }
     }
+
     
     async function markNoReport(orderId) {
         if (!confirm('Вы уверены, что отчет по этому заказу не был сдан? Это действие добавит штрафной балл пользователю.')) return;
@@ -2737,10 +2864,10 @@ Instagram: @${orderData.instagram}
                 }
                 
                 transaction.update(userRef, updates);
-                transaction.update(db.collection(COLLECTIONS.ORDERS).doc(orderId), { reportMissed: true });
+                transaction.update(db.collection(COLLECTIONS.ORDERS).doc(orderId), { reportMissed: true, status: 'completed' });
             });
             
-            showSuccessMessage('Штрафной балл добавлен.');
+            showSuccessMessage('Штрафной балл добавлен, заказ закрыт.');
             closeOrderDetailModal();
             updateUsersList(); 
 
@@ -2750,25 +2877,34 @@ Instagram: @${orderData.instagram}
         }
     }
 
-    async function sendBroadcast() {
+    async function sendBroadcast(button) {
+     await withLoading(button, async () => {
         const message = document.getElementById('broadcastMessage').value.trim();
+        const tag = document.getElementById('broadcastTagFilter').value.trim();
         if (!message) return showError('Ошибка', 'Сообщение не может быть пустым.');
 
-        if (!confirm('Вы уверены, что хотите отправить это сообщение всем пользователям?')) return;
+        let confirmationMessage = tag 
+            ? `Вы уверены, что хотите отправить это сообщение пользователям с тегом "${tag}"?`
+            : 'Вы уверены, что хотите отправить это сообщение ВСЕМ пользователям?';
+
+        if (!confirm(confirmationMessage)) return;
 
         try {
             await db.collection(COLLECTIONS.BROADCASTS).add({
                 text: message,
+                tag: tag || null,
                 createdAt: new Date().toISOString(),
                 sentBy: telegramUser ? telegramUser.id : 'unknown',
                 status: 'pending'
             });
             showSuccessMessage('Сообщение для рассылки создано! Оно будет отправлено в фоновом режиме.');
             document.getElementById('broadcastMessage').value = '';
+            document.getElementById('broadcastTagFilter').value = '';
         } catch(e) {
             console.error(e);
             showError('Ошибка', 'Не удалось создать рассылку.');
         }
+     });
     }
 
     function startCollaboration() {
@@ -2839,8 +2975,30 @@ Instagram: @${orderData.instagram}
         }
         currentOrderData.date = dateValue;
         
-        const timeSlots = ['12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00'];
         const city = document.getElementById('city').value;
+        
+        const scheduleDoc = await db.collection(COLLECTIONS.SCHEDULES).doc(city).get();
+        const scheduleData = scheduleDoc.exists ? scheduleDoc.data() : {};
+        
+        const dayOfWeek = new Date(dateValue).getDay(); // 0=Sun, 1=Mon...
+        const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+        const dayKey = days[dayOfWeek];
+        const daySchedule = scheduleData[dayKey] || '';
+
+        const timeSlots = [];
+        if (daySchedule) {
+            const ranges = daySchedule.split(',');
+            ranges.forEach(range => {
+                const [start, end] = range.trim().split('-');
+                if (start && end) {
+                    let startHour = parseInt(start.split(':')[0]);
+                    let endHour = parseInt(end.split(':')[0]);
+                    for(let h = startHour; h < endHour; h++) {
+                        timeSlots.push(`${String(h).padStart(2, '0')}:00`);
+                    }
+                }
+            });
+        }
         
         const now = new Date();
         const todayStr = now.toISOString().split('T')[0];
@@ -2914,7 +3072,8 @@ Instagram: @${orderData.instagram}
                 phone: dataSource.phone,
                 status: 'new',
                 createdAt: new Date().toISOString(),
-                reportMissed: false
+                reportMissed: false,
+                reportLink: null
             };
             
             newOrder.set = newOrder.set ?? null;
@@ -2937,8 +3096,8 @@ Instagram: @${orderData.instagram}
             const screenshotInput = document.getElementById('orderScreenshot');
             const screenshotFile = screenshotInput.files && screenshotInput.files.length > 0 ? screenshotInput.files[0] : null;
 
-            sendTelegramNotification(newOrder, screenshotFile);
-            
+            // TODO: Implement file upload to Firebase Storage if screenshotFile exists
+
             showSuccessModal();
         });
     }
@@ -3035,7 +3194,7 @@ Instagram: @${orderData.instagram}
     // --- Модальные окна ---
     function showSuccessModal() {
         document.getElementById('successTitle').textContent = 'Заказ оформлен!';
-        document.getElementById('successMessage').textContent = 'Через 24 часа после доставки вам придет напоминание об отчете';
+        document.getElementById('successMessage').textContent = 'Когда заказ будет доставлен, здесь появится кнопка для сдачи отчета.';
         document.getElementById('successModal').style.display = 'flex';
     }
     function showSuccessMessage(message) {
@@ -3099,44 +3258,6 @@ Instagram: @${orderData.instagram}
         document.getElementById('orderDetailModal').style.display = 'flex';
     }
 
-    function showReportModal(orderId, orderNumber) {
-        currentReportingOrderId = orderId;
-        document.getElementById('reportModalTitle').textContent = `Сдать отчет по заказу ${orderNumber}`;
-        document.getElementById('reportLink').value = '';
-        document.getElementById('reportModal').style.display = 'flex';
-    }
-
-    async function submitReport(button) {
-        await withLoading(button, async() => {
-            const reportLink = document.getElementById('reportLink').value.trim();
-            if (!reportLink || !reportLink.startsWith('http')) {
-                return showError('Ошибка', 'Пожалуйста, введите корректную ссылку.');
-            }
-
-            const orderRef = db.collection(COLLECTIONS.ORDERS).doc(currentReportingOrderId);
-            const userRef = db.collection(COLLECTIONS.USERS).doc(currentUserId);
-            
-            const batch = db.batch();
-            batch.update(orderRef, { status: 'awaiting_review', reportLink: reportLink });
-            
-            const userDoc = await userRef.get();
-            if (userDoc.exists) {
-                const userDataFromDB = userDoc.data();
-                const orders = userDataFromDB.orders || [];
-                const orderIndex = orders.findIndex(o => o.id === currentReportingOrderId);
-                if (orderIndex > -1) {
-                    orders[orderIndex].status = 'awaiting_review';
-                    batch.update(userRef, { orders: orders });
-                }
-            }
-
-            await batch.commit();
-
-            closeReportModal();
-            showSuccessMessage('Отчет успешно отправлен на проверку!');
-        });
-    }
-    
     async function showAddAdminModal() { 
         const list = document.getElementById('adminUsersList');
         list.innerHTML = '<div class="loading-indicator">Загрузка пользователей...</div>';
@@ -3192,6 +3313,10 @@ Instagram: @${orderData.instagram}
         document.getElementById('reportModal').style.display = 'none';
         currentReportingOrderId = null;
     }
+    function closeUserDetailModal() {
+        document.getElementById('userDetailModal').style.display = 'none';
+        currentUserDetailId = null;
+    }
 
     function toggleBlockTime() {
         const type = document.getElementById('blockType').value;
@@ -3235,6 +3360,111 @@ Instagram: @${orderData.instagram}
         }
     }
 
+    // --- Функции для расписания ---
+    async function loadSchedule() {
+        const container = document.getElementById('scheduleContainer');
+        container.innerHTML = '<div class="loading-indicator">Загрузка расписания...</div>';
+        
+        const days = { monday: "Понедельник", tuesday: "Вторник", wednesday: "Среда", thursday: "Четверг", friday: "Пятница", saturday: "Суббота", sunday: "Воскресенье" };
+        let html = '';
+
+        for (const city of CITIES) {
+            html += `<h3 style="color: #00b4d8; margin-top: 20px; margin-bottom: 10px;">${city}</h3>`;
+            const scheduleDoc = await db.collection(COLLECTIONS.SCHEDULES).doc(city).get();
+            const scheduleData = scheduleDoc.exists ? scheduleDoc.data() : {};
+            
+            for (const dayKey in days) {
+                html += `
+                    <div class="form-group">
+                        <label for="schedule_${city}_${dayKey}">${days[dayKey]}</label>
+                        <input type="text" id="schedule_${city}_${dayKey}" value="${scheduleData[dayKey] || ''}" placeholder="12:00-18:00">
+                    </div>`;
+            }
+        }
+        container.innerHTML = html;
+    }
+
+    async function saveSchedule(button) {
+        await withLoading(button, async() => {
+            const batch = db.batch();
+            for (const city of CITIES) {
+                const scheduleRef = db.collection(COLLECTIONS.SCHEDULES).doc(city);
+                const scheduleData = {};
+                const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+                days.forEach(dayKey => {
+                    const input = document.getElementById(`schedule_${city}_${dayKey}`);
+                    scheduleData[dayKey] = input.value.trim();
+                });
+                batch.set(scheduleRef, scheduleData);
+            }
+            await batch.commit();
+            showSuccessMessage("Расписание успешно сохранено!");
+        });
+    }
+
+    // --- Функции для тегов ---
+    async function showUserDetailModal(userId) {
+        currentUserDetailId = userId;
+        const userDoc = await db.collection(COLLECTIONS.USERS).doc(userId).get();
+        if (!userDoc.exists) return showError('Ошибка', 'Пользователь не найден');
+        
+        const user = userDoc.data();
+        const reg = user.registration || user;
+        
+        document.getElementById('userDetailTitle').textContent = reg.firstName;
+        document.getElementById('userDetailBody').innerHTML = `
+            <strong>Телефон:</strong> ${reg.phone}<br>
+            <strong>Instagram:</strong> @${reg.instagramLogin}<br>
+            <strong>Рейтинг:</strong> ⭐ ${calculateBloggerRating(user)}
+        `;
+        renderTags(user.tags || []);
+        document.getElementById('userDetailModal').style.display = 'flex';
+    }
+
+    function renderTags(tags) {
+        const container = document.getElementById('userTagsContainer');
+        container.innerHTML = '';
+        tags.forEach(tag => {
+            const tagEl = document.createElement('span');
+            tagEl.className = 'tag';
+            tagEl.innerHTML = `${tag} <span class="remove-tag" onclick="app.removeUserTag('${tag}')">×</span>`;
+            container.appendChild(tagEl);
+        });
+    }
+
+    async function addUserTag() {
+        const input = document.getElementById('newTagInput');
+        const newTag = input.value.trim().toLowerCase();
+        if (!newTag || !currentUserDetailId) return;
+
+        const userRef = db.collection(COLLECTIONS.USERS).doc(currentUserDetailId);
+        await db.runTransaction(async (transaction) => {
+            const userDoc = await transaction.get(userRef);
+            if (!userDoc.exists) throw "User not found";
+            const tags = userDoc.data().tags || [];
+            if (!tags.includes(newTag)) {
+                tags.push(newTag);
+                transaction.update(userRef, { tags: tags });
+                renderTags(tags);
+            }
+        });
+        input.value = '';
+    }
+
+    async function removeUserTag(tagToRemove) {
+        if (!tagToRemove || !currentUserDetailId) return;
+
+        const userRef = db.collection(COLLECTIONS.USERS).doc(currentUserDetailId);
+        await db.runTransaction(async (transaction) => {
+            const userDoc = await transaction.get(userRef);
+            if (!userDoc.exists) throw "User not found";
+            const tags = userDoc.data().tags || [];
+            const updatedTags = tags.filter(t => t !== tagToRemove);
+            transaction.update(userRef, { tags: updatedTags });
+            renderTags(updatedTags);
+        });
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
         setupPhoneMask('loginPhone');
         setupPhoneMask('phone');
@@ -3256,7 +3486,8 @@ Instagram: @${orderData.instagram}
         closeModal, closeErrorModal, closeRejectionModal, closeOrderHistory, closeEditProfile,
         closeContactModal, showAddBlockModal, closeAddBlockModal, showAddAdminModal, closeAddAdminModal,
         closeOrderDetailModal, toggleBlockTime,
-        updateOrderStatus, showReportModal, closeReportModal, submitReport
+        updateOrderStatus, showReportModal, closeReportModal, submitReport,
+        loadSchedule, saveSchedule, showUserDetailModal, closeUserDetailModal, addUserTag, removeUserTag
     };
 })();
     </script>
