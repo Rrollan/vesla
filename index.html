@@ -1,4 +1,3 @@
-html
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -169,7 +168,7 @@ html
             color: #ff6b6b;
         }
 
-        /* НОВЫЕ СТИЛИ ДЛЯ ИКОНОК БЛОКИРОВКИ */
+        /* СТИЛИ ДЛЯ ИКОНОК БЛОКИРОВКИ */
         .btn-icon-block, .btn-icon-unblock {
              background: transparent;
              border: none;
@@ -2699,13 +2698,12 @@ Instagram: @${orderData.instagram}
                 }
                 
                 transaction.update(userRef, updates);
-                // Also mark the order to prevent double-striking
                 transaction.update(db.collection(COLLECTIONS.ORDERS).doc(orderId), { reportMissed: true });
             });
             
             showSuccessMessage('Штрафной балл добавлен.');
             closeOrderDetailModal();
-            updateUsersList(); // Refresh user list to show updated strikes/status
+            updateUsersList(); 
 
         } catch (error) {
             console.error('Error marking no report:', error);
@@ -3058,17 +3056,26 @@ Instagram: @${orderData.instagram}
             const user = await loadUser(userId);
             if (!user) throw new Error("User document not found");
 
-            const reg = user.registration || {}; // Use empty object as fallback
+            // ИСПРАВЛЕНИЕ: Безопасно извлекаем данные с помощью деструктуризации и значений по умолчанию
+            const { registration = {} } = user;
+            const {
+                firstName = 'Пользователь',
+                phone = 'не указан',
+                instagramLogin = 'не указан',
+                followersCount = 0,
+                avgViews = 0
+            } = registration;
+
             const body = document.getElementById('userDetailBody');
             const ordersList = document.getElementById('userOrdersHistoryCrm');
             
-            document.getElementById('userDetailTitle').textContent = reg.firstName || 'Пользователь';
+            document.getElementById('userDetailTitle').textContent = firstName;
             body.innerHTML = `
-                <strong>Телефон:</strong> ${reg.phone || 'не указан'}<br>
-                <strong>Instagram:</strong> @${reg.instagramLogin || 'не указан'}<br>
-                <strong>Подписчики:</strong> ${(reg.followersCount || 0).toLocaleString('ru-RU')}<br>
-                <strong>Просмотры:</strong> ${(reg.avgViews || 0).toLocaleString('ru-RU')}<br>
-                <strong>Уровень:</strong> ${determineBloggerLevel(reg.followersCount || 0).text}<br>
+                <strong>Телефон:</strong> ${phone}<br>
+                <strong>Instagram:</strong> @${instagramLogin}<br>
+                <strong>Подписчики:</strong> ${followersCount.toLocaleString('ru-RU')}<br>
+                <strong>Просмотры:</strong> ${avgViews.toLocaleString('ru-RU')}<br>
+                <strong>Уровень:</strong> ${determineBloggerLevel(followersCount).text}<br>
                 <strong>Статус:</strong> ${user.isBlocked ? `<strong style="color:#dc3545">Заблокирован</strong>` : `<strong style="color:#28a745">Активен</strong>`}<br>
                 <strong>Штрафы:</strong> ${user.strikes || 0}
             `;
