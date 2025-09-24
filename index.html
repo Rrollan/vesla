@@ -1504,7 +1504,10 @@
             <div class="modal-content" style="max-width: 400px;">
                 <div class="modal-header">
                      <h2 id="orderDetailTitle">Детали заказа</h2>
-                     <button class="btn-danger-icon" id="deleteOrderBtn" title="Удалить заказ">🗑️</button>
+                     <div style="display: flex; gap: 10px; align-items: center;">
+                        <button id="markNoReportBtn" class="btn-icon-block" title="Отметить, что отчет не сдан">🚩</button>
+                        <button class="btn-danger-icon" id="deleteOrderBtn" title="Удалить заказ">🗑️</button>
+                     </div>
                 </div>
                 <div id="orderDetailBody" class="modal-body"></div>
                 <div class="form-group" style="margin-top: 20px; text-align: left;">
@@ -1516,7 +1519,6 @@
                     </select>
                 </div>
                 <button class="btn-primary" onclick="app.updateOrderStatus()">Сохранить статус</button>
-                 <button class="btn-danger" id="markNoReportBtn" style="margin-top:10px;">Отчет не сдан</button>
                 <button class="btn-secondary" onclick="app.closeOrderDetailModal()" style="margin-top: 10px;">Закрыть</button>
             </div>
         </div>
@@ -1965,8 +1967,9 @@ Instagram: @${orderData.instagram}
     }
 
     function determineBloggerLevel(followersCount) {
-        if (followersCount <= 6000) return { level: 'micro', text: 'Микроблогер' };
-        if (followersCount <= 10500) return { level: 'macro-a', text: 'Макроблогер тип A' };
+        const count = Number(followersCount) || 0;
+        if (count <= 6000) return { level: 'micro', text: 'Микроблогер' };
+        if (count <= 10500) return { level: 'macro-a', text: 'Макроблогер тип A' };
         return { level: 'macro-b', text: 'Макроблогер тип B' };
     }
 
@@ -2917,7 +2920,7 @@ Instagram: @${orderData.instagram}
                         <span class="order-id">${order.orderNumber || 'Заказ от ' + new Date(order.createdAt || order.date).toLocaleDateString()}</span>
                         <span class="order-status status-${order.status}">${getStatusText(order.status)}</span>
                     </div>
-                    <div class="order-info">${order.set ? order.set.replace('set', 'Набор ') : 'Заказ макроблогера'}</div>`;
+                    <div class="order-info">${order.set ? order.setName : 'Заказ макроблогера'}</div>`;
                 list.appendChild(item);
             });
         }
@@ -3035,10 +3038,12 @@ Instagram: @${orderData.instagram}
         noReportBtn.onclick = () => markNoReport(order.id);
         if (order.reportMissed) {
             noReportBtn.disabled = true;
-            noReportBtn.textContent = 'Штраф уже применен';
+            noReportBtn.style.color = '#999';
+            noReportBtn.title = 'Штраф уже применен';
         } else {
             noReportBtn.disabled = false;
-            noReportBtn.textContent = 'Отчет не сдан';
+            noReportBtn.style.color = '#ffc107';
+            noReportBtn.title = 'Отметить, что отчет не сдан';
         }
 
         document.getElementById('deleteOrderBtn').onclick = () => removeOrder(order.id);
@@ -3058,9 +3063,8 @@ async function showUserDetailModal(userId) {
         const user = await loadUser(userId);
         if (!user) throw new Error(`User document with ID [${userId}] not found`);
 
-        // ИСПРАВЛЕНИЕ: Теперь код ищет и 'firstName' и 'firstName', чтобы работать с любыми данными
         const registration = user.registration || {};
-        const firstName = registration.firstName || registration.firstName || 'Пользователь';
+        const firstName = registration.firstName || 'Пользователь';
         const phone = registration.phone || 'не указан';
         const instagramLogin = registration.instagramLogin || 'не указан';
         const followersCount = registration.followersCount || 0;
