@@ -708,7 +708,8 @@
         
         /* Теги */
         .tags-container {
-            margin: 15px 0;
+            margin-top: 10px;
+            min-height: 30px;
         }
         .tag {
             display: inline-block;
@@ -727,7 +728,7 @@
         .add-tag-form {
             display: flex;
             gap: 10px;
-            margin-top: 10px;
+            margin-top: 15px;
         }
 
 
@@ -928,6 +929,16 @@
             text-align: center;
             background: rgba(0, 180, 216, 0.1);
             border-radius: 10px;
+            margin: 20px 0;
+        }
+        
+        .empty-state {
+            color: #999;
+            font-size: 14px;
+            padding: 40px 20px;
+            text-align: center;
+            background: #3a3a3a;
+            border-radius: 15px;
             margin: 20px 0;
         }
 
@@ -1360,7 +1371,7 @@
 
             <div id="crmBlocks" class="crm-content">
                 <button class="btn-primary" onclick="app.showAddBlockModal()" style="margin-bottom: 20px;">+ Добавить блокировку</button>
-                <div class="blocked-slots" id="blockedSlotsList"></div>
+                <div id="blockedSlotsList"></div>
             </div>
 
              <div id="crmBroadcast" class="crm-content">
@@ -1378,9 +1389,9 @@
                 </div>
                 <button class="btn-primary" onclick="app.sendBroadcast(this)">Отправить рассылку</button>
                 <div class="telegram-info" style="margin-top: 20px;">
-                     <h4 style="color: #00b4d8; margin-bottom: 10px;">⚙️ Важно!</h4>
+                     <h4 style="color: #ffc107; margin-bottom: 10px;">⚠️ Внимание!</h4>
                      <p style="color: #ccc; font-size: 14px; line-height: 1.5;">
-                         Эта функция требует настройки на сервере (например, через Firebase Cloud Functions). Сейчас нажатие кнопки только создает "задачу" на рассылку. Реальная отправка сообщений должна быть реализована отдельно на стороне сервера для безопасности и надежности.
+                         Эта функция отправляет сообщения напрямую из вашего браузера. Не закрывайте вкладку до завершения рассылки. Для больших списков пользователей рекомендуется использовать серверное решение.
                      </p>
                 </div>
             </div>
@@ -1596,11 +1607,11 @@
                 
                 <div style="text-align: left;">
                     <label>Теги:</label>
-                    <div id="userTagsContainer" class="tags-container"></div>
-                    <div class="add-tag-form">
-                        <input type="text" id="newTagInput" placeholder="Добавить тег..." style="flex: 1;">
+                     <div class="add-tag-form">
+                        <input type="text" id="newTagInput" placeholder="Добавить тег..." style="flex: 1; margin-bottom: 0;">
                         <button class="btn-primary btn-small" onclick="app.addUserTag()">+</button>
                     </div>
+                    <div id="userTagsContainer" class="tags-container"></div>
                 </div>
 
                 <button class="btn-secondary" onclick="app.closeUserDetailModal()" style="margin-top: 20px;">Закрыть</button>
@@ -1728,6 +1739,10 @@
     <script>
 const app = (function() {
 
+    // ВАЖНО: Храните токен здесь только для тестирования. 
+    // Для реального проекта этот токен ДОЛЖЕН быть на сервере.
+    const TELEGRAM_BOT_TOKEN = '8227812944:AAFy8ydOkUeCj3Qkjg7_Xsq6zyQpcUyMShY';
+    
     const firebaseConfig = {
         apiKey: "AIzaSyATmIapS6SJi7KnvKrJp5sfD9VMXxKMCgA",
         authDomain: "vesla-barter.firebaseapp.com",
@@ -1746,7 +1761,6 @@ const app = (function() {
         ORDERS: 'orders',
         ADMINS: 'admins',
         BLOCKED_SLOTS: 'blockedSlots',
-        BROADCASTS: 'broadcasts',
         SCHEDULES: 'schedules'
     };
     const SCREENS = {
@@ -1799,11 +1813,9 @@ const app = (function() {
         return `${cityCode}-${day}${month}${year}-${shortId}`;
     }
 
-
     async function sendTelegramNotification(chatId, message) {
         if (!chatId) return;
-        const BOT_TOKEN = '8227812944:AAFy8ydOkUeCj3Qkjg7_Xsq6zyQpcUyMShY';
-        const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
+        const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
         try {
             const response = await fetch(url, {
                 method: 'POST',
@@ -1819,11 +1831,11 @@ const app = (function() {
             console.log(`Уведомление в Telegram для ${chatId} успешно отправлено!`);
         } catch (error) {
             console.error(`Ошибка отправки уведомления в Telegram для ${chatId}:`, error);
+            // Важно: не прерываем выполнение, просто логируем ошибку
         }
     }
     
     async function sendAdminNotification(orderData, screenshotFile) {
-        const BOT_TOKEN = '8227812944:AAFy8ydOkUeCj3Qkjg7_Xsq6zyQpcUyMShY';
         const ADMIN_CHAT_ID = '1345815453';
 
         let message = `*Новая заявка на бартер*
@@ -1857,7 +1869,7 @@ Instagram: @${orderData.instagram}
         
         try {
             if (screenshotFile) {
-                const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`;
+                const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto`;
                 const formData = new FormData();
                 formData.append('chat_id', ADMIN_CHAT_ID);
                 formData.append('photo', screenshotFile);
@@ -2525,7 +2537,11 @@ Instagram: @${orderData.instagram}
         list.innerHTML = '<div class="loading-indicator">Загрузка заказов...</div>';
         try {
             const snapshot = await db.collection(COLLECTIONS.ORDERS).orderBy('createdAt', 'desc').get();
-            list.innerHTML = snapshot.empty ? '<p style="text-align:center;padding:20px;color:#999;">Заказов нет.</p>' : '';
+            if (snapshot.empty) {
+                list.innerHTML = '<div class="empty-state">Пока нет ни одного заказа.</div>';
+                return;
+            }
+            list.innerHTML = '';
             snapshot.forEach(doc => {
                 const order = { id: doc.id, ...doc.data() };
                 const statusInfo = getStatusInfo(order.status);
@@ -2557,21 +2573,17 @@ Instagram: @${orderData.instagram}
         const views = dataSource.avgViews || 0;
         const strikes = user.strikes || 0;
 
-        // Веса для каждого параметра
         const followersWeight = 2.5;
         const viewsWeight = 4.5;
         const strikePenalty = 1.5;
 
-        // Используем логарифмы для нормализации больших чисел
         const followersScore = followers > 0 ? Math.log10(followers) * followersWeight : 0;
         const viewsScore = views > 0 ? Math.log10(views) * viewsWeight : 0;
         
         let totalScore = followersScore + viewsScore - (strikes * strikePenalty);
         
-        // Нормализуем к шкале от 1 до 10
-        // Предположим, что максимальный теорет. рейтинг ~25-30
         let rating = (totalScore / 25) * 10;
-        rating = Math.max(1, Math.min(10, rating)); // Ограничиваем от 1 до 10
+        rating = Math.max(1, Math.min(10, rating));
         
         return rating.toFixed(1);
     }
@@ -2587,7 +2599,11 @@ Instagram: @${orderData.instagram}
 
             const adminIds = new Set(adminsSnapshot.docs.map(doc => doc.id));
             
-            list.innerHTML = usersSnapshot.empty ? '<p style="text-align:center;padding:20px;color:#999;">Пользователей нет.</p>' : '';
+            if (usersSnapshot.empty) {
+                list.innerHTML = '<div class="empty-state">Еще никто не зарегистрировался.</div>';
+                return;
+            }
+            list.innerHTML = '';
             usersSnapshot.forEach(doc => {
                 const user = { userId: doc.id, ...doc.data() };
                 const reg = user.registration || user;
@@ -2638,7 +2654,11 @@ Instagram: @${orderData.instagram}
         list.innerHTML = '<div class="loading-indicator">Загрузка...</div>';
         try {
             const snapshot = await db.collection(COLLECTIONS.BLOCKED_SLOTS).get();
-            list.innerHTML = snapshot.empty ? '<p style="text-align:center;padding:20px;color:#999;">Блокировок нет.</p>' : '';
+            if (snapshot.empty) {
+                list.innerHTML = '<div class="empty-state">Нет активных блокировок.</div>';
+                return;
+            }
+            list.innerHTML = '';
             snapshot.forEach(doc => {
                 const block = { id: doc.id, ...doc.data() };
                 const el = document.createElement('div');
@@ -2664,7 +2684,11 @@ Instagram: @${orderData.instagram}
         list.innerHTML = '<div class="loading-indicator">Загрузка...</div>';
         try {
             const snapshot = await db.collection(COLLECTIONS.ADMINS).get();
-            list.innerHTML = snapshot.empty ? '<p style="text-align:center;padding:20px;color:#999;">Админов нет.</p>' : '';
+             if (snapshot.empty) {
+                list.innerHTML = '<div class="empty-state">Нет назначенных администраторов.</div>';
+                return;
+            }
+            list.innerHTML = '';
             snapshot.forEach(doc => {
                 const admin = { id: doc.id, ...doc.data() };
                 const el = document.createElement('div');
@@ -2700,11 +2724,9 @@ Instagram: @${orderData.instagram}
                 const batch = db.batch();
                 batch.update(orderRef, { status: newStatus });
 
-                let userDataFromDB = null;
-
                 const userDoc = await userRef.get();
                 if (userDoc.exists) {
-                    userDataFromDB = userDoc.data();
+                    const userDataFromDB = userDoc.data();
                     const orders = userDataFromDB.orders || [];
                     const orderIndex = orders.findIndex(o => o.id === currentEditingOrderId);
                     if (orderIndex > -1) {
@@ -2715,13 +2737,14 @@ Instagram: @${orderData.instagram}
 
                 await batch.commit();
 
-                if (userDataFromDB && userDataFromDB.telegramId) {
+                if (userDoc.exists && userDoc.data().telegramId) {
+                    const bloggerTelegramId = userDoc.data().telegramId;
                     if (newStatus === 'confirmed') {
                         const message = `✅ Ваш заказ №${orderData.orderNumber} подтвержден! Ожидайте доставку ${orderData.date} в ${orderData.time}.`;
-                        await sendTelegramNotification(userDataFromDB.telegramId, message);
+                        await sendTelegramNotification(bloggerTelegramId, message);
                     } else if (newStatus === 'completed') {
                         const message = `🎉 Спасибо за отчет! Сотрудничество по заказу №${orderData.orderNumber} успешно завершено.`;
-                        await sendTelegramNotification(userDataFromDB.telegramId, message);
+                        await sendTelegramNotification(bloggerTelegramId, message);
                     }
                 }
 
@@ -2735,16 +2758,25 @@ Instagram: @${orderData.instagram}
         });
     }
 
-    function filter(inputId, listSelector, itemSelector) {
+    function filter(inputId, listSelector, itemSelector, emptyStateSelector) {
         const query = document.getElementById(inputId).value.toLowerCase();
+        let visibleCount = 0;
         document.querySelectorAll(`${listSelector} ${itemSelector}`).forEach(item => {
             const searchableText = item.dataset.search || '';
-            item.style.display = searchableText.includes(query) ? '' : 'none';
+            const isVisible = searchableText.includes(query);
+            item.style.display = isVisible ? '' : 'none';
+            if(isVisible) visibleCount++;
         });
+
+        const emptyState = document.querySelector(`${listSelector} ${emptyStateSelector}`);
+        if(emptyState) {
+            emptyState.style.display = visibleCount === 0 ? 'block' : 'none';
+        }
     }
-    function filterOrders() { filter('orderSearch', '#ordersList', '.order-item'); }
-    function filterUsers() { filter('userSearch', '#usersList', '.user-item'); }
-    function filterAdminUsers() { filter('adminUserSearch', '#adminUsersList', '.user-item'); }
+
+    function filterOrders() { filter('orderSearch', '#ordersList', '.order-item', '.empty-state'); }
+    function filterUsers() { filter('userSearch', '#usersList', '.user-item', '.empty-state'); }
+    function filterAdminUsers() { filter('adminUserSearch', '#adminUsersList', '.user-item', '.empty-state'); }
     
     async function addBlock(button) {
         await withLoading(button, async () => {
@@ -2815,16 +2847,13 @@ Instagram: @${orderData.instagram}
                 
                 const batch = db.batch();
                 
-                // 1. Удаляем самого пользователя
                 batch.delete(userRef);
                 
-                // 2. Добавляем в пакет удаление всех его заказов из коллекции 'orders'
                 ordersToDelete.forEach(order => {
                     const orderRef = db.collection(COLLECTIONS.ORDERS).doc(order.id);
                     batch.delete(orderRef);
                 });
                 
-                // Выполняем все удаления одновременно
                 await batch.commit();
                 
                 showSuccessMessage(`Пользователь ${userName} и все его заказы были удалены.`);
@@ -2876,13 +2905,9 @@ Instagram: @${orderData.instagram}
                 const userId = orderDoc.data().userId;
                 const userRef = db.collection(COLLECTIONS.USERS).doc(userId);
 
-                // Используем пакетную операцию для гарантии целостности
                 const batch = db.batch();
-                
-                // 1. Удаляем сам заказ из коллекции 'orders'
                 batch.delete(orderRef);
 
-                // 2. Обновляем массив заказов у пользователя
                 const userDoc = await userRef.get();
                 if (userDoc.exists) {
                     const currentOrders = userDoc.data().orders || [];
@@ -2890,11 +2915,10 @@ Instagram: @${orderData.instagram}
                     batch.update(userRef, { orders: updatedOrders });
                 }
 
-                // Выполняем обе операции одновременно
                 await batch.commit();
 
                 closeOrderDetailModal();
-                updateOrdersList(); // Обновляем список в UI
+                updateOrdersList();
                 showSuccessMessage('Заказ полностью удален.');
 
             } catch (e) {
@@ -2915,24 +2939,31 @@ Instagram: @${orderData.instagram}
             const orderData = orderDoc.data();
             const userId = orderData.userId;
             const userRef = db.collection(COLLECTIONS.USERS).doc(userId);
+            const batch = db.batch();
 
-            await db.runTransaction(async (transaction) => {
-                const userDoc = await transaction.get(userRef);
-                if (!userDoc.exists) throw "User not found!";
-                
-                const currentStrikes = userDoc.data().strikes || 0;
-                const newStrikes = currentStrikes + 1;
-                
-                const updates = { strikes: newStrikes };
-                
-                if (newStrikes >= 3) {
-                    updates.isBlocked = true;
-                    updates.blockReason = `Автоматическая блокировка: ${newStrikes} несданных отчета.`;
-                }
-                
-                transaction.update(userRef, updates);
-                transaction.update(db.collection(COLLECTIONS.ORDERS).doc(orderId), { reportMissed: true, status: 'completed' });
-            });
+            const userDoc = await userRef.get();
+            if(!userDoc.exists) throw "User not found!";
+            
+            const currentStrikes = userDoc.data().strikes || 0;
+            const newStrikes = currentStrikes + 1;
+            
+            const updates = { strikes: newStrikes };
+            if (newStrikes >= 3) {
+                updates.isBlocked = true;
+                updates.blockReason = `Автоматическая блокировка: ${newStrikes} несданных отчета.`;
+            }
+            batch.update(userRef, updates);
+
+            const orders = userDoc.data().orders || [];
+            const orderIndex = orders.findIndex(o => o.id === orderId);
+            if(orderIndex > -1) {
+                orders[orderIndex].status = 'completed';
+                batch.update(userRef, { orders: orders });
+            }
+
+            batch.update(orderRef, { reportMissed: true, status: 'completed' });
+            
+            await batch.commit();
             
             showSuccessMessage('Штрафной балл добавлен, заказ закрыт.');
             closeOrderDetailModal();
@@ -2945,33 +2976,74 @@ Instagram: @${orderData.instagram}
     }
 
     async function sendBroadcast(button) {
-     await withLoading(button, async () => {
         const message = document.getElementById('broadcastMessage').value.trim();
         const tag = document.getElementById('broadcastTagFilter').value.trim();
         if (!message) return showError('Ошибка', 'Сообщение не может быть пустым.');
 
         let confirmationMessage = tag 
-            ? `Вы уверены, что хотите отправить это сообщение пользователям с тегом "${tag}"?`
-            : 'Вы уверены, что хотите отправить это сообщение ВСЕМ пользователям?';
+            ? `Вы уверены, что хотите НАЧАТЬ рассылку пользователям с тегом "${tag}"? Не закрывайте эту вкладку до завершения.`
+            : 'Вы уверены, что хотите НАЧАТЬ рассылку ВСЕМ пользователям? Не закрывайте эту вкладку до завершения.';
 
         if (!confirm(confirmationMessage)) return;
 
+        const originalText = button.innerHTML;
+        button.disabled = true;
+
         try {
-            await db.collection(COLLECTIONS.BROADCASTS).add({
-                text: message,
-                tag: tag || null,
-                createdAt: new Date().toISOString(),
-                sentBy: telegramUser ? telegramUser.id : 'unknown',
-                status: 'pending'
+            let usersQuery = db.collection(COLLECTIONS.USERS);
+            if (tag) {
+                usersQuery = usersQuery.where("tags", "array-contains", tag);
+            }
+
+            const usersSnapshot = await usersQuery.get();
+            if (usersSnapshot.empty) {
+                showError('Не найдено', 'Пользователи с таким тегом не найдены.');
+                button.disabled = false;
+                return;
+            }
+
+            const usersToSend = [];
+            usersSnapshot.forEach(doc => {
+                const user = doc.data();
+                if (user.telegramId) {
+                    usersToSend.push(user.telegramId);
+                }
             });
-            showSuccessMessage('Сообщение для рассылки создано! Оно будет отправлено в фоновом режиме.');
+
+            if (usersToSend.length === 0) {
+                 showError('Не найдено', 'Не найдено пользователей с привязанным Telegram ID.');
+                 button.disabled = false;
+                 return;
+            }
+
+            let successCount = 0;
+            const totalCount = usersToSend.length;
+            
+            for (let i = 0; i < totalCount; i++) {
+                const chatId = usersToSend[i];
+                button.innerHTML = `Отправка... ${i + 1} / ${totalCount}`;
+                
+                try {
+                    await sendTelegramNotification(chatId, message);
+                    successCount++;
+                } catch (e) {
+                    console.error(`Не удалось отправить сообщение пользователю ${chatId}:`, e);
+                }
+                
+                await new Promise(resolve => setTimeout(resolve, 500));
+            }
+
+            showSuccessMessage(`Рассылка завершена. Успешно отправлено ${successCount} из ${totalCount} сообщений.`);
+
+        } catch (e) {
+            console.error("Ошибка при рассылке:", e);
+            showError('Ошибка', 'Не удалось выполнить рассылку.');
+        } finally {
+            button.disabled = false;
+            button.innerHTML = originalText;
             document.getElementById('broadcastMessage').value = '';
             document.getElementById('broadcastTagFilter').value = '';
-        } catch(e) {
-            console.error(e);
-            showError('Ошибка', 'Не удалось создать рассылку.');
         }
-     });
     }
 
     function startCollaboration() {
@@ -3171,12 +3243,12 @@ Instagram: @${orderData.instagram}
     
     function showOrderHistory() {
         const list = document.getElementById('orderHistoryList');
-        list.innerHTML = '';
         const sortedOrders = (userData.orders || []).sort((a, b) => new Date(b.createdAt || b.date) - new Date(a.createdAt || a.date));
         
         if (sortedOrders.length === 0) {
-            list.innerHTML = '<p style="color:#999;text-align:center;">У вас еще не было заказов.</p>';
+            list.innerHTML = '<div class="empty-state">У вас еще не было заказов.</div>';
         } else {
+            list.innerHTML = '';
             sortedOrders.forEach(order => {
                 const statusInfo = getStatusInfo(order.status);
                 const item = document.createElement('div');
@@ -3337,6 +3409,10 @@ Instagram: @${orderData.instagram}
         
         const adminIds = new Set(adminsSnapshot.docs.map(doc => doc.id));
         
+         if (usersSnapshot.empty) {
+            list.innerHTML = '<div class="empty-state">Нет пользователей для назначения.</div>';
+            return;
+        }
         list.innerHTML = '';
         usersSnapshot.forEach(doc => {
             const user = { userId: doc.id, ...doc.data() };
@@ -3467,7 +3543,6 @@ Instagram: @${orderData.instagram}
         }
         formsContainer.innerHTML = formsHtml;
         
-        // Activate first tab
         const firstTab = tabsContainer.querySelector('.schedule-city-tab');
         if(firstTab) firstTab.click();
     }
