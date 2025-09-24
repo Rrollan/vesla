@@ -1,3 +1,4 @@
+html
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -162,9 +163,32 @@
             font-size: 20px;
             cursor: pointer;
             padding: 5px;
+            transition: color 0.2s;
         }
         .btn-danger-icon:hover {
             color: #ff6b6b;
+        }
+
+        /* НОВЫЕ СТИЛИ ДЛЯ ИКОНОК БЛОКИРОВКИ */
+        .btn-icon-block, .btn-icon-unblock {
+             background: transparent;
+             border: none;
+             font-size: 20px;
+             cursor: pointer;
+             padding: 5px;
+             transition: color 0.2s;
+        }
+        .btn-icon-block {
+            color: #ffc107;
+        }
+        .btn-icon-block:hover {
+            color: #ffdd7a;
+        }
+        .btn-icon-unblock {
+            color: #28a745;
+        }
+        .btn-icon-unblock:hover {
+            color: #34ce57;
         }
 
 
@@ -1925,7 +1949,6 @@ Instagram: @${orderData.instagram}
                 return false;
             }
             
-            userData = existingUser;
             currentUserId = existingUser.userId;
             await saveUser(currentUserId, { lastActivity: new Date().toISOString() });
             await checkAndSetAdminStatus();
@@ -2438,10 +2461,10 @@ Instagram: @${orderData.instagram}
                     </div>
                     <div class="user-controls">
                        ${user.isBlocked 
-                            ? `<button class="btn-primary btn-small" onclick="event.stopPropagation(); app.toggleUserBlock('${user.userId}', false)">Разблок.</button>`
-                            : `<button class="btn-danger btn-small" onclick="event.stopPropagation(); app.toggleUserBlock('${user.userId}', true)">Блок.</button>`
+                            ? `<button class="btn-icon-unblock" title="Разблокировать" onclick="event.stopPropagation(); app.toggleUserBlock('${user.userId}', false)">🔓</button>`
+                            : `<button class="btn-icon-block" title="Заблокировать" onclick="event.stopPropagation(); app.toggleUserBlock('${user.userId}', true)">🔒</button>`
                        }
-                       <button class="btn-danger-icon" onclick="event.stopPropagation(); app.removeUser('${user.userId}', '${reg.firstName}')">🗑️</button>
+                       <button class="btn-danger-icon" title="Удалить" onclick="event.stopPropagation(); app.removeUser('${user.userId}', '${reg.firstName}')">🗑️</button>
                     </div>`;
 
                 el.addEventListener('click', () => showUserDetailModal(user.userId));
@@ -2512,7 +2535,6 @@ Instagram: @${orderData.instagram}
             const orderRef = db.collection(COLLECTIONS.ORDERS).doc(currentEditingOrderId);
             await orderRef.update({ status: newStatus });
             
-            // This is now handled by the real-time listener on the user document
             const orderDoc = await orderRef.get();
             const orderData = orderDoc.data();
             const userRef = db.collection(COLLECTIONS.USERS).doc(orderData.userId);
@@ -2681,8 +2703,9 @@ Instagram: @${orderData.instagram}
                 transaction.update(db.collection(COLLECTIONS.ORDERS).doc(orderId), { reportMissed: true });
             });
             
-            showSuccessMessage('Штрафной балл добавлен. Пользователь уведомлен.');
+            showSuccessMessage('Штрафной балл добавлен.');
             closeOrderDetailModal();
+            updateUsersList(); // Refresh user list to show updated strikes/status
 
         } catch (error) {
             console.error('Error marking no report:', error);
@@ -3033,19 +3056,19 @@ Instagram: @${orderData.instagram}
         if (!userId) return;
         try {
             const user = await loadUser(userId);
-            if (!user || !user.registration) return showError('Ошибка', 'Пользователь не найден или данные некорректны.');
+            if (!user) throw new Error("User document not found");
 
-            const reg = user.registration;
+            const reg = user.registration || {}; // Use empty object as fallback
             const body = document.getElementById('userDetailBody');
             const ordersList = document.getElementById('userOrdersHistoryCrm');
             
-            document.getElementById('userDetailTitle').textContent = reg.firstName;
+            document.getElementById('userDetailTitle').textContent = reg.firstName || 'Пользователь';
             body.innerHTML = `
-                <strong>Телефон:</strong> ${reg.phone}<br>
-                <strong>Instagram:</strong> @${reg.instagramLogin}<br>
-                <strong>Подписчики:</strong> ${reg.followersCount.toLocaleString('ru-RU')}<br>
-                <strong>Просмотры:</strong> ${reg.avgViews.toLocaleString('ru-RU')}<br>
-                <strong>Уровень:</strong> ${determineBloggerLevel(reg.followersCount).text}<br>
+                <strong>Телефон:</strong> ${reg.phone || 'не указан'}<br>
+                <strong>Instagram:</strong> @${reg.instagramLogin || 'не указан'}<br>
+                <strong>Подписчики:</strong> ${(reg.followersCount || 0).toLocaleString('ru-RU')}<br>
+                <strong>Просмотры:</strong> ${(reg.avgViews || 0).toLocaleString('ru-RU')}<br>
+                <strong>Уровень:</strong> ${determineBloggerLevel(reg.followersCount || 0).text}<br>
                 <strong>Статус:</strong> ${user.isBlocked ? `<strong style="color:#dc3545">Заблокирован</strong>` : `<strong style="color:#28a745">Активен</strong>`}<br>
                 <strong>Штрафы:</strong> ${user.strikes || 0}
             `;
