@@ -1606,11 +1606,14 @@
                 <hr style="border-color: #4a4a4a; margin: 20px 0;">
                 
                 <div style="text-align: left;">
-                    <label>Теги:</label>
-                     <div class="add-tag-form">
-                        <input type="text" id="newTagInput" placeholder="Добавить тег..." style="flex: 1; margin-bottom: 0;">
-                        <button class="btn-primary btn-small" onclick="app.addUserTag()">+</button>
+                    <div class="form-group">
+                        <label for="newTagInput">Добавить тег</label>
+                        <div class="add-tag-form">
+                            <input type="text" id="newTagInput" placeholder="Например: фуд-блогер" style="flex: 1; margin:0;">
+                            <button class="btn-primary btn-small" onclick="app.addUserTag()" style="margin:0;">+</button>
+                        </div>
                     </div>
+                    <label>Добавленные теги:</label>
                     <div id="userTagsContainer" class="tags-container"></div>
                 </div>
 
@@ -1761,6 +1764,7 @@ const app = (function() {
         ORDERS: 'orders',
         ADMINS: 'admins',
         BLOCKED_SLOTS: 'blockedSlots',
+        BROADCASTS: 'broadcasts',
         SCHEDULES: 'schedules'
     };
     const SCREENS = {
@@ -1812,6 +1816,7 @@ const app = (function() {
         
         return `${cityCode}-${day}${month}${year}-${shortId}`;
     }
+
 
     async function sendTelegramNotification(chatId, message) {
         if (!chatId) return;
@@ -2563,7 +2568,7 @@ Instagram: @${orderData.instagram}
             });
         } catch (error) {
             console.error("Error fetching orders:", error);
-            list.innerHTML = '<p style="color:red;text-align:center;padding:20px;">Ошибка загрузки</p>';
+            list.innerHTML = '<div class="empty-state">Ошибка загрузки заказов.</div>';
         }
     }
     
@@ -2645,7 +2650,7 @@ Instagram: @${orderData.instagram}
             });
         } catch (error) {
             console.error("Error fetching users:", error);
-            list.innerHTML = '<p style="color:red;text-align:center;padding:20px;">Ошибка загрузки</p>';
+            list.innerHTML = '<div class="empty-state">Ошибка загрузки пользователей.</div>';
         }
     }
     
@@ -2675,7 +2680,7 @@ Instagram: @${orderData.instagram}
             });
         } catch (error) {
             console.error("Error fetching blocks:", error);
-            list.innerHTML = '<p style="color:red;text-align:center;padding:20px;">Ошибка загрузки</p>';
+            list.innerHTML = '<div class="empty-state">Ошибка загрузки блокировок.</div>';
         }
     }
     
@@ -2704,7 +2709,7 @@ Instagram: @${orderData.instagram}
             });
         } catch (error) {
             console.error("Error fetching admins:", error);
-            list.innerHTML = '<p style="color:red;text-align:center;padding:20px;">Ошибка загрузки</p>';
+            list.innerHTML = '<div class="empty-state">Ошибка загрузки администраторов.</div>';
         }
     }
 
@@ -2733,21 +2738,20 @@ Instagram: @${orderData.instagram}
                         orders[orderIndex].status = newStatus;
                         batch.update(userRef, { orders: orders });
                     }
-                }
 
-                await batch.commit();
-
-                if (userDoc.exists && userDoc.data().telegramId) {
-                    const bloggerTelegramId = userDoc.data().telegramId;
-                    if (newStatus === 'confirmed') {
-                        const message = `✅ Ваш заказ №${orderData.orderNumber} подтвержден! Ожидайте доставку ${orderData.date} в ${orderData.time}.`;
-                        await sendTelegramNotification(bloggerTelegramId, message);
-                    } else if (newStatus === 'completed') {
-                        const message = `🎉 Спасибо за отчет! Сотрудничество по заказу №${orderData.orderNumber} успешно завершено.`;
-                        await sendTelegramNotification(bloggerTelegramId, message);
+                    if (userDataFromDB.telegramId) {
+                        if (newStatus === 'confirmed') {
+                            const message = `✅ Ваш заказ №${orderData.orderNumber} подтвержден! Ожидайте доставку ${orderData.date} в ${orderData.time}.`;
+                            await sendTelegramNotification(userDataFromDB.telegramId, message);
+                        } else if (newStatus === 'completed') {
+                            const message = `🎉 Спасибо за отчет! Сотрудничество по заказу №${orderData.orderNumber} успешно завершено.`;
+                            await sendTelegramNotification(userDataFromDB.telegramId, message);
+                        }
                     }
                 }
 
+                await batch.commit();
+                
                 showSuccessMessage('Статус обновлен!');
                 closeOrderDetailModal();
                 updateOrdersList();
@@ -2833,36 +2837,38 @@ Instagram: @${orderData.instagram}
     
     async function removeUser(userId, userName) {
         if (confirm(`ВНИМАНИЕ! Вы уверены, что хотите удалить пользователя ${userName}? Все связанные с ним заказы также будут удалены. Это действие необратимо.`)) {
-            try {
-                const userRef = db.collection(COLLECTIONS.USERS).doc(userId);
-                const userDoc = await userRef.get();
-                
-                if (!userDoc.exists) {
-                     showError('Ошибка', 'Пользователь уже удален или не существует.');
-                     updateUsersList();
-                     return;
+            await withLoading(document.querySelector('.user-item .btn-danger-icon'), async () => {
+                try {
+                    const userRef = db.collection(COLLECTIONS.USERS).doc(userId);
+                    const userDoc = await userRef.get();
+                    
+                    if (!userDoc.exists) {
+                         showError('Ошибка', 'Пользователь уже удален или не существует.');
+                         updateUsersList();
+                         return;
+                    }
+
+                    const ordersToDelete = userDoc.data().orders || [];
+                    
+                    const batch = db.batch();
+                    
+                    batch.delete(userRef);
+                    
+                    ordersToDelete.forEach(order => {
+                        const orderRef = db.collection(COLLECTIONS.ORDERS).doc(order.id);
+                        batch.delete(orderRef);
+                    });
+                    
+                    await batch.commit();
+                    
+                    showSuccessMessage(`Пользователь ${userName} и все его заказы были удалены.`);
+                    updateUsersList();
+
+                } catch (e) {
+                    showError('Ошибка', 'Не удалось удалить пользователя и его данные.');
+                    console.error(e);
                 }
-
-                const ordersToDelete = userDoc.data().orders || [];
-                
-                const batch = db.batch();
-                
-                batch.delete(userRef);
-                
-                ordersToDelete.forEach(order => {
-                    const orderRef = db.collection(COLLECTIONS.ORDERS).doc(order.id);
-                    batch.delete(orderRef);
-                });
-                
-                await batch.commit();
-                
-                showSuccessMessage(`Пользователь ${userName} и все его заказы были удалены.`);
-                updateUsersList();
-
-            } catch (e) {
-                showError('Ошибка', 'Не удалось удалить пользователя и его данные.');
-                console.error(e);
-            }
+            });
         }
     }
 
@@ -2892,39 +2898,41 @@ Instagram: @${orderData.instagram}
     
     async function removeOrder(orderId) {
         if (confirm('Вы уверены, что хотите удалить этот заказ? Это действие необратимо.')) {
-            try {
-                const orderRef = db.collection(COLLECTIONS.ORDERS).doc(orderId);
-                const orderDoc = await orderRef.get();
+            await withLoading(document.getElementById('deleteOrderBtn'), async () => {
+                try {
+                    const orderRef = db.collection(COLLECTIONS.ORDERS).doc(orderId);
+                    const orderDoc = await orderRef.get();
 
-                if (!orderDoc.exists) {
-                    showError('Ошибка', 'Заказ уже удален или не существует.');
-                    updateOrdersList();
-                    return;
+                    if (!orderDoc.exists) {
+                        showError('Ошибка', 'Заказ уже удален или не существует.');
+                        updateOrdersList();
+                        return;
+                    }
+                    
+                    const userId = orderDoc.data().userId;
+                    const userRef = db.collection(COLLECTIONS.USERS).doc(userId);
+
+                    const batch = db.batch();
+                    batch.delete(orderRef);
+
+                    const userDoc = await userRef.get();
+                    if (userDoc.exists) {
+                        const currentOrders = userDoc.data().orders || [];
+                        const updatedOrders = currentOrders.filter(o => o.id !== orderId);
+                        batch.update(userRef, { orders: updatedOrders });
+                    }
+
+                    await batch.commit();
+
+                    closeOrderDetailModal();
+                    updateOrdersList(); 
+                    showSuccessMessage('Заказ полностью удален.');
+
+                } catch (e) {
+                    console.error("Error completely removing order: ", e);
+                    showError('Ошибка', 'Не удалось полностью удалить заказ.');
                 }
-                
-                const userId = orderDoc.data().userId;
-                const userRef = db.collection(COLLECTIONS.USERS).doc(userId);
-
-                const batch = db.batch();
-                batch.delete(orderRef);
-
-                const userDoc = await userRef.get();
-                if (userDoc.exists) {
-                    const currentOrders = userDoc.data().orders || [];
-                    const updatedOrders = currentOrders.filter(o => o.id !== orderId);
-                    batch.update(userRef, { orders: updatedOrders });
-                }
-
-                await batch.commit();
-
-                closeOrderDetailModal();
-                updateOrdersList();
-                showSuccessMessage('Заказ полностью удален.');
-
-            } catch (e) {
-                console.error("Error completely removing order: ", e);
-                showError('Ошибка', 'Не удалось полностью удалить заказ.');
-            }
+            });
         }
     }
 
@@ -2932,52 +2940,56 @@ Instagram: @${orderData.instagram}
     async function markNoReport(orderId) {
         if (!confirm('Вы уверены, что отчет по этому заказу не был сдан? Это действие добавит штрафной балл пользователю.')) return;
         
-        try {
-            const orderDoc = await db.collection(COLLECTIONS.ORDERS).doc(orderId).get();
-            if (!orderDoc.exists) return showError('Ошибка', 'Заказ не найден.');
+        await withLoading(document.getElementById('markNoReportBtn'), async () => {
+            try {
+                const orderRef = db.collection(COLLECTIONS.ORDERS).doc(orderId);
+                const orderDoc = await orderRef.get();
+                if (!orderDoc.exists) return showError('Ошибка', 'Заказ не найден.');
 
-            const orderData = orderDoc.data();
-            const userId = orderData.userId;
-            const userRef = db.collection(COLLECTIONS.USERS).doc(userId);
-            const batch = db.batch();
+                const orderData = orderDoc.data();
+                const userId = orderData.userId;
+                const userRef = db.collection(COLLECTIONS.USERS).doc(userId);
+                
+                const batch = db.batch();
 
-            const userDoc = await userRef.get();
-            if(!userDoc.exists) throw "User not found!";
-            
-            const currentStrikes = userDoc.data().strikes || 0;
-            const newStrikes = currentStrikes + 1;
-            
-            const updates = { strikes: newStrikes };
-            if (newStrikes >= 3) {
-                updates.isBlocked = true;
-                updates.blockReason = `Автоматическая блокировка: ${newStrikes} несданных отчета.`;
+                const userDoc = await userRef.get();
+                if(!userDoc.exists) throw "User not found!";
+                
+                const currentStrikes = userDoc.data().strikes || 0;
+                const newStrikes = currentStrikes + 1;
+                
+                const updates = { strikes: newStrikes };
+                if (newStrikes >= 3) {
+                    updates.isBlocked = true;
+                    updates.blockReason = `Автоматическая блокировка: ${newStrikes} несданных отчета.`;
+                }
+                batch.update(userRef, updates);
+                
+                const orders = userDoc.data().orders || [];
+                const orderIndex = orders.findIndex(o => o.id === orderId);
+                if(orderIndex > -1) {
+                    orders[orderIndex].status = 'completed';
+                    batch.update(userRef, { orders: orders });
+                }
+
+                batch.update(orderRef, { reportMissed: true, status: 'completed' });
+                
+                await batch.commit();
+                
+                showSuccessMessage('Штрафной балл добавлен, заказ закрыт.');
+                closeOrderDetailModal();
+                updateUsersList(); 
+
+            } catch (error) {
+                console.error('Error marking no report:', error);
+                showError('Ошибка', 'Не удалось обработать действие.');
             }
-            batch.update(userRef, updates);
-
-            const orders = userDoc.data().orders || [];
-            const orderIndex = orders.findIndex(o => o.id === orderId);
-            if(orderIndex > -1) {
-                orders[orderIndex].status = 'completed';
-                batch.update(userRef, { orders: orders });
-            }
-
-            batch.update(orderRef, { reportMissed: true, status: 'completed' });
-            
-            await batch.commit();
-            
-            showSuccessMessage('Штрафной балл добавлен, заказ закрыт.');
-            closeOrderDetailModal();
-            updateUsersList(); 
-
-        } catch (error) {
-            console.error('Error marking no report:', error);
-            showError('Ошибка', 'Не удалось обработать действие.');
-        }
+        });
     }
 
     async function sendBroadcast(button) {
         const message = document.getElementById('broadcastMessage').value.trim();
-        const tag = document.getElementById('broadcastTagFilter').value.trim();
+        const tag = document.getElementById('broadcastTagFilter').value.trim().toLowerCase();
         if (!message) return showError('Ошибка', 'Сообщение не может быть пустым.');
 
         let confirmationMessage = tag 
@@ -3011,7 +3023,7 @@ Instagram: @${orderData.instagram}
             });
 
             if (usersToSend.length === 0) {
-                 showError('Не найдено', 'Не найдено пользователей с привязанным Telegram ID.');
+                 showError('Не найдено', 'У найденных пользователей нет привязанного Telegram ID.');
                  button.disabled = false;
                  return;
             }
@@ -3587,6 +3599,10 @@ Instagram: @${orderData.instagram}
     function renderTags(tags) {
         const container = document.getElementById('userTagsContainer');
         container.innerHTML = '';
+        if(tags.length === 0) {
+            container.innerHTML = `<p style="font-size: 12px; color: #999;">Тегов пока нет.</p>`;
+            return;
+        }
         tags.forEach(tag => {
             const tagEl = document.createElement('span');
             tagEl.className = 'tag';
