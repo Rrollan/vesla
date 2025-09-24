@@ -2971,7 +2971,6 @@ Instagram: @${orderData.instagram}
             }
             
             await db.collection(COLLECTIONS.USERS).doc(currentUserId).update(updates);
-            // No need to update local userData, real-time listener will do it.
             
             closeEditProfile();
             showSuccessMessage('Профиль успешно обновлен!');
@@ -3054,9 +3053,8 @@ Instagram: @${orderData.instagram}
         if (!userId) return;
         try {
             const user = await loadUser(userId);
-            if (!user) throw new Error("User document not found");
+            if (!user) throw new Error(`User document with ID [${userId}] not found`);
 
-            // ИСПРАВЛЕНИЕ: Безопасно извлекаем данные с помощью деструктуризации и значений по умолчанию
             const { registration = {} } = user;
             const {
                 firstName = 'Пользователь',
@@ -3103,7 +3101,7 @@ Instagram: @${orderData.instagram}
 
             document.getElementById('userDetailModal').style.display = 'flex';
         } catch(e) {
-            console.error("Failed to show user details:", e);
+            console.error(`Failed to show user details for ID [${userId}]:`, e);
             showError("Ошибка", "Не удалось загрузить данные пользователя.");
         }
     }
