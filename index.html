@@ -2618,54 +2618,56 @@ const app = (function() {
         }
     }
 
-    async function updateOrderStatus(button) {
-      await withLoading(button, async () => {
-        if (!currentEditingOrderId) return;
-        
-        const newStatus = document.getElementById('orderStatusSelect').value;
-        try {
-            const orderRef = db.collection(COLLECTIONS.ORDERS).doc(currentEditingOrderId);
-            const orderDoc = await orderRef.get();
-            if (!orderDoc.exists) throw new Error("Order not found");
+      async function updateOrderStatus(button) {
+        await withLoading(button, async () => {
+            if (!currentEditingOrderId) return;
 
-            const orderData = orderDoc.data();
-            const userRef = db.collection(COLLECTIONS.USERS).doc(orderData.userId);
+            const newStatus = document.getElementById('orderStatusSelect').value;
+            try {
+                const orderRef = db.collection(COLLECTIONS.ORDERS).doc(currentEditingOrderId);
+                const orderDoc = await orderRef.get();
+                if (!orderDoc.exists) throw new Error("Order not found");
 
-            const batch = db.batch();
-            batch.update(orderRef, { status: newStatus });
-            
-            const userDoc = await userRef.get();
-            if (userDoc.exists) {
-                const userDataFromDB = userDoc.data();
-                const orders = userDataFromDB.orders || [];
-                const orderIndex = orders.findIndex(o => o.id === currentEditingOrderId);
-                if (orderIndex > -1) {
-                    orders[orderIndex].status = newStatus;
-                    batch.update(userRef, { orders: orders });
+                const orderData = orderDoc.data();
+                const userRef = db.collection(COLLECTIONS.USERS).doc(orderData.userId);
+
+                const batch = db.batch();
+                batch.update(orderRef, { status: newStatus });
+
+                let userDataFromDB = null; // <-- ИСПРАВЛЕНИЕ: Объявляем переменную здесь
+
+                const userDoc = await userRef.get();
+                if (userDoc.exists) {
+                    userDataFromDB = userDoc.data(); // <-- Присваиваем значение
+                    const orders = userDataFromDB.orders || [];
+                    const orderIndex = orders.findIndex(o => o.id === currentEditingOrderId);
+                    if (orderIndex > -1) {
+                        orders[orderIndex].status = newStatus;
+                        batch.update(userRef, { orders: orders });
+                    }
                 }
-            }
 
-            await batch.commit();
-            
-            // Отправка уведомлений
-            if (userDataFromDB.telegramId) {
-                if (newStatus === 'confirmed') {
-                    const message = `✅ Ваш заказ №${orderData.orderNumber} подтвержден! Ожидайте доставку ${orderData.date} в ${orderData.time}.`;
-                    await sendTelegramNotification(userDataFromDB.telegramId, message);
-                } else if (newStatus === 'completed') {
-                    const message = `🎉 Спасибо за отчет! Сотрудничество по заказу №${orderData.orderNumber} успешно завершено.`;
-                    await sendTelegramNotification(userDataFromDB.telegramId, message);
+                await batch.commit();
+
+                // Отправка уведомлений
+                if (userDataFromDB && userDataFromDB.telegramId) { // <-- Теперь переменная доступна
+                    if (newStatus === 'confirmed') {
+                        const message = `✅ Ваш заказ №${orderData.orderNumber} подтвержден! Ожидайте доставку ${orderData.date} в ${orderData.time}.`;
+                        await sendTelegramNotification(userDataFromDB.telegramId, message);
+                    } else if (newStatus === 'completed') {
+                        const message = `🎉 Спасибо за отчет! Сотрудничество по заказу №${orderData.orderNumber} успешно завершено.`;
+                        await sendTelegramNotification(userDataFromDB.telegramId, message);
+                    }
                 }
+
+                showSuccessMessage('Статус обновлен!');
+                closeOrderDetailModal();
+                updateOrdersList();
+            } catch (error) {
+                console.error("Error updating order status: ", error);
+                showError('Ошибка', 'Не удалось обновить статус заказа.');
             }
-            
-            showSuccessMessage('Статус обновлен!');
-            closeOrderDetailModal();
-            updateOrdersList();
-        } catch (error) {
-            console.error("Error updating order status: ", error);
-            showError('Ошибка', 'Не удалось обновить статус заказа.');
-        }
-     });
+        });
     }
 
     function filter(inputId, listSelector, itemSelector) {
