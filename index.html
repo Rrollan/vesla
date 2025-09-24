@@ -1,3 +1,4 @@
+html
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -1998,7 +1999,6 @@ Instagram: @${orderData.instagram}
 
     function showDashboard() {
         showScreen(SCREENS.DASHBOARD);
-        // updateDashboard is now called by the real-time listener
         document.getElementById('adminPanel').style.display = isCurrentUserAdmin ? 'block' : 'none';
     }
 
@@ -2035,7 +2035,7 @@ Instagram: @${orderData.instagram}
             case 'users': updateUsersList(); break;
             case 'blocks': updateBlockedSlotsList(); break;
             case 'admins': updateAdminsList(); break;
-            case 'broadcast': break; // No data to load initially
+            case 'broadcast': break;
         }
     }
     
@@ -2156,8 +2156,10 @@ Instagram: @${orderData.instagram}
     }
 
     function updateDashboard() {
-        if (!userData || !userData.registration) return;
-        const { firstName, followersCount, avgViews } = userData.registration;
+        const dataSource = userData.registration || userData;
+        if (!dataSource || !dataSource.firstName) return;
+
+        const { firstName, followersCount, avgViews } = dataSource;
         const levelInfo = determineBloggerLevel(followersCount);
         
         const blockedPanel = document.getElementById('blockedPanel');
@@ -2180,8 +2182,8 @@ Instagram: @${orderData.instagram}
         }
 
         document.getElementById('userLevel').textContent = levelInfo.text;
-        document.getElementById('followersDisplay').textContent = followersCount.toLocaleString('ru-RU');
-        document.getElementById('viewsDisplay').textContent = avgViews.toLocaleString('ru-RU');
+        document.getElementById('followersDisplay').textContent = (followersCount || 0).toLocaleString('ru-RU');
+        document.getElementById('viewsDisplay').textContent = (avgViews || 0).toLocaleString('ru-RU');
 
         const statusPanel = document.getElementById('statusPanel');
         if (userData.orders && userData.orders.length > 0) {
@@ -2309,7 +2311,9 @@ Instagram: @${orderData.instagram}
             const levelCounts = { 'Микроблогер': 0, 'Макроблогер тип A': 0, 'Макроблогер тип B': 0 };
             const followerRanges = { '1-5k': 0, '5-10k': 0, '10-20k': 0, '20k+': 0 };
             usersSnap.forEach(doc => {
-                const followers = doc.data().registration?.followersCount || 0;
+                const userDocData = doc.data();
+                const dataSource = userDocData.registration || userDocData;
+                const followers = dataSource.followersCount || 0;
                 const levelText = determineBloggerLevel(followers).text;
                 if (levelCounts.hasOwnProperty(levelText)) levelCounts[levelText]++;
 
@@ -2439,8 +2443,8 @@ Instagram: @${orderData.instagram}
             list.innerHTML = usersSnapshot.empty ? '<p style="text-align:center;padding:20px;color:#999;">Пользователей нет.</p>' : '';
             usersSnapshot.forEach(doc => {
                 const user = { userId: doc.id, ...doc.data() };
-                const reg = user.registration;
-                if (!reg) return;
+                const reg = user.registration || user;
+                if (!reg.firstName) return;
 
                 const isUserAdmin = adminIds.has(String(user.telegramId));
 
@@ -2457,7 +2461,7 @@ Instagram: @${orderData.instagram}
                         <span class="user-name-phone">${reg.firstName} (${reg.phone})</span>
                         <div style="font-size: 14px; color: #ccc;">
                             Instagram: ${reg.instagramLogin}<br>
-                            Подписчики: ${reg.followersCount.toLocaleString('ru-RU')} | Просмотры: ${reg.avgViews.toLocaleString('ru-RU')}
+                            Подписчики: ${(reg.followersCount || 0).toLocaleString('ru-RU')} | Просмотры: ${(reg.avgViews || 0).toLocaleString('ru-RU')}
                             ${badges ? `<div style="margin-top:5px;">${badges}</div>` : ''}
                         </div>
                     </div>
@@ -2741,7 +2745,8 @@ Instagram: @${orderData.instagram}
             return;
         }
         currentOrderData = {};
-        if (userData.level === 'micro') {
+        const dataSource = userData.registration || userData;
+        if (dataSource.level === 'micro') {
             showSetSelection();
         } else {
             showAddressForm();
@@ -2749,7 +2754,8 @@ Instagram: @${orderData.instagram}
     }
 
     function handleCityChange() {
-        const isMacro = userData.level !== 'micro';
+        const dataSource = userData.registration || userData;
+        const isMacro = dataSource.level !== 'micro';
         document.getElementById('orderScreenshotGroup').style.display = isMacro ? 'block' : 'none';
     }
 
@@ -2848,8 +2854,8 @@ Instagram: @${orderData.instagram}
             showError('Ошибка', 'Пожалуйста, заполните все обязательные поля: город, улица, телефон.');
             return false;
         }
-
-        const isMacro = userData.level !== 'micro';
+        const dataSource = userData.registration || userData;
+        const isMacro = dataSource.level !== 'micro';
         const screenshotInput = document.getElementById('orderScreenshot');
         if (isMacro && (!screenshotInput.files || screenshotInput.files.length === 0)) {
             showError('Требуется скриншот', 'Для макроблогеров необходимо загрузить скриншот заказа.');
@@ -2862,17 +2868,18 @@ Instagram: @${orderData.instagram}
     async function submitOrder(button) {
         await withLoading(button, async () => {
             const orderId = db.collection(COLLECTIONS.ORDERS).doc().id;
+            const dataSource = userData.registration || userData;
             
             const newOrder = {
                 ...currentOrderData,
                 id: orderId,
                 orderNumber: generateOrderNumber(currentOrderData.city, currentOrderData.date, orderId),
                 userId: currentUserId,
-                userName: userData.registration.firstName,
-                avgViews: userData.registration.avgViews,
-                followersCount: userData.registration.followersCount,
-                instagram: userData.registration.instagramLogin,
-                phone: userData.registration.phone,
+                userName: dataSource.firstName,
+                avgViews: dataSource.avgViews,
+                followersCount: dataSource.followersCount,
+                instagram: dataSource.instagramLogin,
+                phone: dataSource.phone,
                 status: 'new',
                 createdAt: new Date().toISOString(),
                 reportMissed: false
@@ -2920,7 +2927,7 @@ Instagram: @${orderData.instagram}
                         <span class="order-id">${order.orderNumber || 'Заказ от ' + new Date(order.createdAt || order.date).toLocaleDateString()}</span>
                         <span class="order-status status-${order.status}">${getStatusText(order.status)}</span>
                     </div>
-                    <div class="order-info">${order.set ? order.setName : 'Заказ макроблогера'}</div>`;
+                    <div class="order-info">${order.setName || 'Заказ макроблогера'}</div>`;
                 list.appendChild(item);
             });
         }
@@ -2928,7 +2935,7 @@ Instagram: @${orderData.instagram}
     }
 
     function editProfile() {
-        const reg = userData.registration;
+        const reg = userData.registration || userData;
         document.getElementById('editFirstName').value = reg.firstName;
         document.getElementById('editPhone').value = reg.phone;
         document.getElementById('editInstagram').value = reg.instagramLogin;
@@ -2940,7 +2947,7 @@ Instagram: @${orderData.instagram}
 
     async function saveProfile(button) {
         await withLoading(button, async () => {
-            const reg = userData.registration;
+            const reg = userData.registration || userData;
             const newPhone = document.getElementById('editPhone').value.trim();
             const newInstagram = document.getElementById('editInstagram').value.trim().toLowerCase();
             const newFirstName = document.getElementById('editFirstName').value.trim();
@@ -3054,63 +3061,64 @@ Instagram: @${orderData.instagram}
         currentEditingOrderId = null;
     }
 
-async function showUserDetailModal(userId) {
-    if (!userId) {
-        console.error("User ID is missing, cannot show details.");
-        return;
-    }
-    try {
-        const user = await loadUser(userId);
-        if (!user) throw new Error(`User document with ID [${userId}] not found`);
-
-        const registration = user.registration || {};
-        const firstName = registration.firstName || 'Пользователь';
-        const phone = registration.phone || 'не указан';
-        const instagramLogin = registration.instagramLogin || 'не указан';
-        const followersCount = registration.followersCount || 0;
-        const avgViews = registration.avgViews || 0;
-
-        const body = document.getElementById('userDetailBody');
-        const ordersList = document.getElementById('userOrdersHistoryCrm');
-        
-        document.getElementById('userDetailTitle').textContent = firstName;
-        body.innerHTML = `
-            <strong>Телефон:</strong> ${phone}<br>
-            <strong>Instagram:</strong> @${instagramLogin}<br>
-            <strong>Подписчики:</strong> ${followersCount.toLocaleString('ru-RU')}<br>
-            <strong>Просмотры:</strong> ${avgViews.toLocaleString('ru-RU')}<br>
-            <strong>Уровень:</strong> ${determineBloggerLevel(followersCount).text}<br>
-            <strong>Статус:</strong> ${user.isBlocked ? `<strong style="color:#dc3545">Заблокирован</strong>` : `<strong style="color:#28a745">Активен</strong>`}<br>
-            <strong>Штрафы:</strong> ${user.strikes || 0}
-        `;
-
-        ordersList.innerHTML = '<div class="loading-indicator">Загрузка заказов...</div>';
-        const ordersSnap = await db.collection(COLLECTIONS.ORDERS).where('userId', '==', userId).orderBy('createdAt', 'desc').get();
-        
-        if (ordersSnap.empty) {
-            ordersList.innerHTML = '<p style="color:#999;text-align:center;">У пользователя нет заказов.</p>';
-        } else {
-            ordersList.innerHTML = '';
-            ordersSnap.forEach(doc => {
-                const order = doc.data();
-                const item = document.createElement('div');
-                item.className = 'order-item';
-                item.style.cursor = 'default';
-                item.innerHTML = `
-                    <div class="order-header">
-                         <span class="order-id">${order.orderNumber}</span>
-                         <span class="order-status status-${order.status}">${getStatusText(order.status)}</span>
-                    </div>`;
-                ordersList.appendChild(item);
-            });
+    async function showUserDetailModal(userId) {
+        if (!userId) {
+            console.error("User ID is missing, cannot show details.");
+            return;
         }
+        try {
+            const user = await loadUser(userId);
+            if (!user) throw new Error(`User document with ID [${userId}] not found`);
 
-        document.getElementById('userDetailModal').style.display = 'flex';
-    } catch(e) {
-        console.error(`Failed to show user details for ID [${userId}]:`, e);
-        showError("Ошибка", "Не удалось загрузить данные пользователя.");
+            const dataSource = user.registration || user;
+            
+            const firstName = dataSource.firstName || 'Пользователь';
+            const phone = dataSource.phone || 'не указан';
+            const instagramLogin = dataSource.instagramLogin || 'не указан';
+            const followersCount = dataSource.followersCount || 0;
+            const avgViews = dataSource.avgViews || 0;
+
+            const body = document.getElementById('userDetailBody');
+            const ordersList = document.getElementById('userOrdersHistoryCrm');
+            
+            document.getElementById('userDetailTitle').textContent = firstName;
+            body.innerHTML = `
+                <strong>Телефон:</strong> ${phone}<br>
+                <strong>Instagram:</strong> @${instagramLogin}<br>
+                <strong>Подписчики:</strong> ${followersCount.toLocaleString('ru-RU')}<br>
+                <strong>Просмотры:</strong> ${avgViews.toLocaleString('ru-RU')}<br>
+                <strong>Уровень:</strong> ${determineBloggerLevel(followersCount).text}<br>
+                <strong>Статус:</strong> ${user.isBlocked ? `<strong style="color:#dc3545">Заблокирован</strong>` : `<strong style="color:#28a745">Активен</strong>`}<br>
+                <strong>Штрафы:</strong> ${user.strikes || 0}
+            `;
+
+            ordersList.innerHTML = '<div class="loading-indicator">Загрузка заказов...</div>';
+            const ordersSnap = await db.collection(COLLECTIONS.ORDERS).where('userId', '==', userId).orderBy('createdAt', 'desc').get();
+            
+            if (ordersSnap.empty) {
+                ordersList.innerHTML = '<p style="color:#999;text-align:center;">У пользователя нет заказов.</p>';
+            } else {
+                ordersList.innerHTML = '';
+                ordersSnap.forEach(doc => {
+                    const order = doc.data();
+                    const item = document.createElement('div');
+                    item.className = 'order-item';
+                    item.style.cursor = 'default';
+                    item.innerHTML = `
+                        <div class="order-header">
+                             <span class="order-id">${order.orderNumber}</span>
+                             <span class="order-status status-${order.status}">${getStatusText(order.status)}</span>
+                        </div>`;
+                    ordersList.appendChild(item);
+                });
+            }
+
+            document.getElementById('userDetailModal').style.display = 'flex';
+        } catch(e) {
+            console.error(`Failed to show user details for ID [${userId}]:`, e);
+            showError("Ошибка", "Не удалось загрузить данные пользователя.");
+        }
     }
-}
     
     async function showAddAdminModal() { 
         const list = document.getElementById('adminUsersList');
@@ -3127,21 +3135,22 @@ async function showUserDetailModal(userId) {
         list.innerHTML = '';
         usersSnapshot.forEach(doc => {
             const user = { userId: doc.id, ...doc.data() };
-            if (!user.registration || !user.telegramId) return;
+            const reg = user.registration || user;
+            if (!reg.firstName || !user.telegramId) return;
 
             const isAlreadyAdmin = adminIds.has(String(user.telegramId));
             
             const el = document.createElement('div');
             el.className = 'user-item';
-            el.dataset.search = `${user.registration.firstName} ${user.registration.instagramLogin}`.toLowerCase();
+            el.dataset.search = `${reg.firstName} ${reg.instagramLogin}`.toLowerCase();
             el.innerHTML = `
                 <div>
-                    <strong>${user.registration.firstName}</strong>
-                    <div style="font-size: 12px; color: #999;">@${user.registration.instagramLogin}</div>
+                    <strong>${reg.firstName}</strong>
+                    <div style="font-size: 12px; color: #999;">@${reg.instagramLogin}</div>
                 </div>
                 ${isAlreadyAdmin 
                     ? '<span class="user-admin-badge">Уже админ</span>'
-                    : `<button class="btn-primary btn-small" onclick="app.addAdmin('${user.userId}', '${user.registration.firstName}')">Назначить</button>`
+                    : `<button class="btn-primary btn-small" onclick="app.addAdmin('${user.userId}', '${reg.firstName}')">Назначить</button>`
                 }`;
             list.appendChild(el);
         });
