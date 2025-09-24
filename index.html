@@ -1822,8 +1822,10 @@ const app = (function() {
         }
     }
     
-    async function sendAdminNotification(orderData) {
+    async function sendAdminNotification(orderData, screenshotFile) {
+        const BOT_TOKEN = '8227812944:AAFy8ydOkUeCj3Qkjg7_Xsq6zyQpcUyMShY';
         const ADMIN_CHAT_ID = '1345815453';
+
         let message = `*Новая заявка на бартер*
 
 📝 *Заказ:* \`${orderData.orderNumber}\`
@@ -1834,7 +1836,13 @@ const app = (function() {
 Instagram: @${orderData.instagram}
 Подписчики: ${orderData.followersCount.toLocaleString('ru-RU')}
 Средние просмотры: ${orderData.avgViews.toLocaleString('ru-RU')}
-Уровень: ${determineBloggerLevel(orderData.followersCount).text}
+Уровень: ${determineBloggerLevel(orderData.followersCount).text}`;
+        
+        if (orderData.setName) {
+            message += `\n🍱 *Выбранный набор:* ${orderData.setName}`;
+        }
+
+        message += `
 
 🗓 *Дата и время доставки:*
 Дата: ${orderData.date}
@@ -1847,11 +1855,27 @@ Instagram: @${orderData.instagram}
 Этаж: ${orderData.floor || 'не указан'}
 Телефон получателя: \`${orderData.recipientPhone}\``;
         
-        if (orderData.setName) {
-            message += `\n🍱 *Выбранный набор:* ${orderData.setName}`;
+        try {
+            if (screenshotFile) {
+                const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`;
+                const formData = new FormData();
+                formData.append('chat_id', ADMIN_CHAT_ID);
+                formData.append('photo', screenshotFile);
+                formData.append('caption', message);
+                formData.append('parse_mode', 'Markdown');
+
+                const response = await fetch(url, { method: 'POST', body: formData });
+                const result = await response.json();
+                if (!result.ok) throw new Error(result.description);
+
+            } else {
+                await sendTelegramNotification(ADMIN_CHAT_ID, message);
+            }
+            console.log('Уведомление администратору успешно отправлено!');
+
+        } catch (error) {
+            console.error('Ошибка отправки уведомления администратору:', error);
         }
-        
-        await sendTelegramNotification(ADMIN_CHAT_ID, message);
     }
 
     function initTelegram() {
@@ -3136,7 +3160,10 @@ Instagram: @${orderData.instagram}
             batch.update(db.collection(COLLECTIONS.USERS).doc(currentUserId), { orders: userOrders });
             await batch.commit();
 
-            await sendAdminNotification(newOrder);
+            const screenshotInput = document.getElementById('orderScreenshot');
+            const screenshotFile = screenshotInput.files && screenshotInput.files.length > 0 ? screenshotInput.files[0] : null;
+
+            await sendAdminNotification(newOrder, screenshotFile);
             
             showSuccessModal();
         });
