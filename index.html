@@ -3049,62 +3049,64 @@ Instagram: @${orderData.instagram}
         currentEditingOrderId = null;
     }
 
-    async function showUserDetailModal(userId) {
-        if (!userId) return;
-        try {
-            const user = await loadUser(userId);
-            if (!user) throw new Error(`User document with ID [${userId}] not found`);
-
-            const { registration = {} } = user;
-            const {
-                firstName = 'Пользователь',
-                phone = 'не указан',
-                instagramLogin = 'не указан',
-                followersCount = 0,
-                avgViews = 0
-            } = registration;
-
-            const body = document.getElementById('userDetailBody');
-            const ordersList = document.getElementById('userOrdersHistoryCrm');
-            
-            document.getElementById('userDetailTitle').textContent = firstName;
-            body.innerHTML = `
-                <strong>Телефон:</strong> ${phone}<br>
-                <strong>Instagram:</strong> @${instagramLogin}<br>
-                <strong>Подписчики:</strong> ${followersCount.toLocaleString('ru-RU')}<br>
-                <strong>Просмотры:</strong> ${avgViews.toLocaleString('ru-RU')}<br>
-                <strong>Уровень:</strong> ${determineBloggerLevel(followersCount).text}<br>
-                <strong>Статус:</strong> ${user.isBlocked ? `<strong style="color:#dc3545">Заблокирован</strong>` : `<strong style="color:#28a745">Активен</strong>`}<br>
-                <strong>Штрафы:</strong> ${user.strikes || 0}
-            `;
-
-            ordersList.innerHTML = '<div class="loading-indicator">Загрузка заказов...</div>';
-            const ordersSnap = await db.collection(COLLECTIONS.ORDERS).where('userId', '==', userId).orderBy('createdAt', 'desc').get();
-            
-            if (ordersSnap.empty) {
-                ordersList.innerHTML = '<p style="color:#999;text-align:center;">У пользователя нет заказов.</p>';
-            } else {
-                ordersList.innerHTML = '';
-                ordersSnap.forEach(doc => {
-                    const order = doc.data();
-                    const item = document.createElement('div');
-                    item.className = 'order-item';
-                    item.style.cursor = 'default';
-                    item.innerHTML = `
-                        <div class="order-header">
-                             <span class="order-id">${order.orderNumber}</span>
-                             <span class="order-status status-${order.status}">${getStatusText(order.status)}</span>
-                        </div>`;
-                    ordersList.appendChild(item);
-                });
-            }
-
-            document.getElementById('userDetailModal').style.display = 'flex';
-        } catch(e) {
-            console.error(`Failed to show user details for ID [${userId}]:`, e);
-            showError("Ошибка", "Не удалось загрузить данные пользователя.");
-        }
+async function showUserDetailModal(userId) {
+    if (!userId) {
+        console.error("User ID is missing, cannot show details.");
+        return;
     }
+    try {
+        const user = await loadUser(userId);
+        if (!user) throw new Error(`User document with ID [${userId}] not found`);
+
+        // ИСПРАВЛЕНИЕ: Теперь код ищет и 'firstName' и 'firstName', чтобы работать с любыми данными
+        const registration = user.registration || {};
+        const firstName = registration.firstName || registration.firstName || 'Пользователь';
+        const phone = registration.phone || 'не указан';
+        const instagramLogin = registration.instagramLogin || 'не указан';
+        const followersCount = registration.followersCount || 0;
+        const avgViews = registration.avgViews || 0;
+
+        const body = document.getElementById('userDetailBody');
+        const ordersList = document.getElementById('userOrdersHistoryCrm');
+        
+        document.getElementById('userDetailTitle').textContent = firstName;
+        body.innerHTML = `
+            <strong>Телефон:</strong> ${phone}<br>
+            <strong>Instagram:</strong> @${instagramLogin}<br>
+            <strong>Подписчики:</strong> ${followersCount.toLocaleString('ru-RU')}<br>
+            <strong>Просмотры:</strong> ${avgViews.toLocaleString('ru-RU')}<br>
+            <strong>Уровень:</strong> ${determineBloggerLevel(followersCount).text}<br>
+            <strong>Статус:</strong> ${user.isBlocked ? `<strong style="color:#dc3545">Заблокирован</strong>` : `<strong style="color:#28a745">Активен</strong>`}<br>
+            <strong>Штрафы:</strong> ${user.strikes || 0}
+        `;
+
+        ordersList.innerHTML = '<div class="loading-indicator">Загрузка заказов...</div>';
+        const ordersSnap = await db.collection(COLLECTIONS.ORDERS).where('userId', '==', userId).orderBy('createdAt', 'desc').get();
+        
+        if (ordersSnap.empty) {
+            ordersList.innerHTML = '<p style="color:#999;text-align:center;">У пользователя нет заказов.</p>';
+        } else {
+            ordersList.innerHTML = '';
+            ordersSnap.forEach(doc => {
+                const order = doc.data();
+                const item = document.createElement('div');
+                item.className = 'order-item';
+                item.style.cursor = 'default';
+                item.innerHTML = `
+                    <div class="order-header">
+                         <span class="order-id">${order.orderNumber}</span>
+                         <span class="order-status status-${order.status}">${getStatusText(order.status)}</span>
+                    </div>`;
+                ordersList.appendChild(item);
+            });
+        }
+
+        document.getElementById('userDetailModal').style.display = 'flex';
+    } catch(e) {
+        console.error(`Failed to show user details for ID [${userId}]:`, e);
+        showError("Ошибка", "Не удалось загрузить данные пользователя.");
+    }
+}
     
     async function showAddAdminModal() { 
         const list = document.getElementById('adminUsersList');
