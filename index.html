@@ -397,6 +397,9 @@
             transition: all 0.3s ease;
             position: relative;
         }
+        .report-action-card {
+            border-color: #ffc107;
+        }
 
         .action-card:hover {
             border-color: #00b4d8;
@@ -537,25 +540,25 @@
             font-weight: 600;
         }
 
-        .status-new {
-            background: #ff6b35;
-            color: white;
-        }
+        .status-new { background: #ff6b35; color: white; }
+        .status-confirmed { background: #00b4d8; color: white; }
+        .status-delivered { background: #28a745; color: white; }
+        .status-awaiting_review { background: #6f42c1; color: white; }
+        .status-completed { background: #17a2b8; color: white; }
+        .status-rejected { background: #6c757d; color: white; }
 
-        .status-confirmed {
-            background: #00b4d8;
-            color: white;
-        }
-
-        .status-delivered {
-            background: #28a745;
-            color: white;
-        }
 
         .order-info {
             font-size: 14px;
             color: #ccc;
             line-height: 1.5;
+        }
+        .report-link {
+            display: block;
+            margin-top: 10px;
+            color: #00b4d8;
+            font-weight: bold;
+            word-break: break-all;
         }
 
         /* Блокировки времени */
@@ -1189,6 +1192,7 @@
 
              <div id="blockedPanel" class="blocked-message" style="display: none;"></div>
              <div id="statusPanel" class="action-card" style="display: none; border-color: #00b4d8; text-align: left;"></div>
+             <div id="reportActionsPanel" class="dashboard-actions" style="margin-top: 20px;"></div>
 
             <div class="dashboard-actions">
                 <div class="action-card" onclick="app.startCollaboration()">
@@ -1512,13 +1516,29 @@
                 <div class="form-group" style="margin-top: 20px; text-align: left;">
                     <label for="orderStatusSelect">Изменить статус:</label>
                     <select id="orderStatusSelect" style="width: 100%;">
-                        <option value="new">Новый</option>
-                        <option value="confirmed">Подтвержден</option>
-                        <option value="delivered">Доставлен</option>
+                         <option value="new">Новый</option>
+                         <option value="confirmed">Подтвержден</option>
+                         <option value="delivered">Доставлен</option>
+                         <option value="awaiting_review">Отчет на проверке</option>
+                         <option value="completed">Завершен</option>
+                         <option value="rejected">Отчет отклонен</option>
                     </select>
                 </div>
                 <button class="btn-primary" onclick="app.updateOrderStatus()">Сохранить статус</button>
                 <button class="btn-secondary" onclick="app.closeOrderDetailModal()" style="margin-top: 10px;">Закрыть</button>
+            </div>
+        </div>
+
+        <div id="reportModal" class="modal">
+            <div class="modal-content">
+                <h2 id="reportModalTitle">Сдать отчет</h2>
+                <p class="subtitle">Вставьте ссылку на сторис или пост</p>
+                <div class="form-group" style="text-align: left;">
+                    <label for="reportLink">Ссылка на отчет *</label>
+                    <input type="text" id="reportLink" placeholder="https://instagram.com/stories/...">
+                </div>
+                <button class="btn-primary" onclick="app.submitReport(this)">Отправить</button>
+                <button class="btn-secondary" onclick="app.closeReportModal()">Отмена</button>
             </div>
         </div>
 
@@ -1672,6 +1692,7 @@ const app = (function() {
     let isCurrentUserAdmin = false;
     let cityChart, ordersTrendChart, bloggerLevelChart, followersDistributionChart;
     let currentEditingOrderId = null;
+    let currentReportingOrderId = null;
     let userListenerUnsubscribe = null;
 
     let currentSlide = 0;
@@ -2140,6 +2161,18 @@ Instagram: @${orderData.instagram}
         });
     }
 
+    function getStatusInfo(status) {
+        const statuses = {
+            'new': { text: 'Новый', className: 'status-new' },
+            'confirmed': { text: 'Подтвержден', className: 'status-confirmed' },
+            'delivered': { text: 'Доставлен', className: 'status-delivered' },
+            'awaiting_review': { text: 'На проверке', className: 'status-awaiting_review' },
+            'completed': { text: 'Завершен', className: 'status-completed' },
+            'rejected': { text: 'Отклонен', className: 'status-rejected' }
+        };
+        return statuses[status] || { text: status, className: '' };
+    }
+
     function updateDashboard() {
         const dataSource = userData.registration || userData;
         if (!dataSource || !dataSource.firstName) return;
@@ -2179,8 +2212,10 @@ Instagram: @${orderData.instagram}
                 statusMessage = `⏳ <strong>Ваш заказ #${latestOrder.orderNumber.split('-')[2]} в обработке.</strong> Ожидайте подтверждения.`;
             } else if (latestOrder.status === 'confirmed') {
                 statusMessage = `✅ <strong>Ваш заказ #${latestOrder.orderNumber.split('-')[2]} подтвержден!</strong> Ожидайте доставку.`;
-            } else if (latestOrder.status === 'delivered') {
-                statusMessage = `⚠️ <strong>Не забудьте сдать отчет</strong> по заказу #${latestOrder.orderNumber.split('-')[2]}.`;
+            } else if (latestOrder.status === 'awaiting_review') {
+                statusMessage = `🙌 <strong>Спасибо! Ваш отчет по заказу #${latestOrder.orderNumber.split('-')[2]} на проверке.</strong>`;
+            } else if (latestOrder.status === 'rejected') {
+                 statusMessage = `❌ <strong>Отчет по заказу #${latestOrder.orderNumber.split('-')[2]} отклонен.</strong> Пожалуйста, свяжитесь с администратором.`;
             }
 
             if (statusMessage) {
@@ -2191,6 +2226,22 @@ Instagram: @${orderData.instagram}
             }
         } else {
             statusPanel.style.display = 'none';
+        }
+
+        const reportPanel = document.getElementById('reportActionsPanel');
+        reportPanel.innerHTML = '';
+        const ordersToReport = (userData.orders || []).filter(order => order.status === 'delivered');
+        if(ordersToReport.length > 0) {
+            ordersToReport.forEach(order => {
+                const card = document.createElement('div');
+                card.className = 'action-card report-action-card';
+                card.onclick = () => showReportModal(order.id, order.orderNumber);
+                card.innerHTML = `
+                    <div class="action-icon">📤</div>
+                    <div class="action-title">Сдать отчет по заказу</div>
+                    <div class="action-desc">${order.orderNumber}</div>`;
+                reportPanel.appendChild(card);
+            });
         }
     }
 
@@ -2374,16 +2425,6 @@ Instagram: @${orderData.instagram}
         else if (canvasId === 'followersDistributionChart') followersDistributionChart = newChartInstance;
     }
 
-
-    function getStatusText(status) {
-        switch(status) {
-            case 'new': return 'Новый';
-            case 'confirmed': return 'Подтвержден';
-            case 'delivered': return 'Доставлен';
-            default: return status;
-        }
-    }
-
     async function updateOrdersList() {
         const list = document.getElementById('ordersList');
         list.innerHTML = '<div class="loading-indicator">Загрузка заказов...</div>';
@@ -2392,6 +2433,7 @@ Instagram: @${orderData.instagram}
             list.innerHTML = snapshot.empty ? '<p style="text-align:center;padding:20px;color:#999;">Заказов нет.</p>' : '';
             snapshot.forEach(doc => {
                 const order = { id: doc.id, ...doc.data() };
+                const statusInfo = getStatusInfo(order.status);
                 const el = document.createElement('div');
                 el.className = 'order-item';
                 el.dataset.search = `${order.userName} ${order.phone} ${order.instagram} ${order.orderNumber}`.toLowerCase();
@@ -2399,7 +2441,7 @@ Instagram: @${orderData.instagram}
                 el.innerHTML = `
                     <div class="order-header">
                         <span class="order-id">${order.orderNumber || `#${order.id.substring(0, 6)}`}</span>
-                        <span class="order-status status-${order.status}">${getStatusText(order.status)}</span>
+                        <span class="order-status ${statusInfo.className}">${statusInfo.text}</span>
                     </div>
                     <div class="order-info">
                         <strong>${order.userName}</strong> (${order.city})<br>
@@ -2523,21 +2565,27 @@ Instagram: @${orderData.instagram}
         const newStatus = document.getElementById('orderStatusSelect').value;
         try {
             const orderRef = db.collection(COLLECTIONS.ORDERS).doc(currentEditingOrderId);
-            await orderRef.update({ status: newStatus });
-            
             const orderDoc = await orderRef.get();
+            if (!orderDoc.exists) throw new Error("Order not found");
+
             const orderData = orderDoc.data();
             const userRef = db.collection(COLLECTIONS.USERS).doc(orderData.userId);
-            const userDoc = await userRef.get();
-            const userDataFromDB = userDoc.data();
 
-            if (userDataFromDB && userDataFromDB.orders) {
-                const orderIndex = userDataFromDB.orders.findIndex(o => o.id === currentEditingOrderId);
+            const batch = db.batch();
+            batch.update(orderRef, { status: newStatus });
+            
+            const userDoc = await userRef.get();
+            if (userDoc.exists) {
+                const userDataFromDB = userDoc.data();
+                const orders = userDataFromDB.orders || [];
+                const orderIndex = orders.findIndex(o => o.id === currentEditingOrderId);
                 if (orderIndex > -1) {
-                    userDataFromDB.orders[orderIndex].status = newStatus;
-                    await userRef.update({ orders: userDataFromDB.orders });
+                    orders[orderIndex].status = newStatus;
+                    batch.update(userRef, { orders: orders });
                 }
             }
+
+            await batch.commit();
             
             showSuccessMessage('Статус обновлен!');
             closeOrderDetailModal();
@@ -2904,12 +2952,13 @@ Instagram: @${orderData.instagram}
             list.innerHTML = '<p style="color:#999;text-align:center;">У вас еще не было заказов.</p>';
         } else {
             sortedOrders.forEach(order => {
+                const statusInfo = getStatusInfo(order.status);
                 const item = document.createElement('div');
                 item.className = 'order-item';
                 item.innerHTML = `
                     <div class="order-header">
                         <span class="order-id">${order.orderNumber || 'Заказ от ' + new Date(order.createdAt || order.date).toLocaleDateString()}</span>
-                        <span class="order-status status-${order.status}">${getStatusText(order.status)}</span>
+                        <span class="order-status ${statusInfo.className}">${statusInfo.text}</span>
                     </div>
                     <div class="order-info">${order.setName || 'Заказ макроблогера'}</div>`;
                 list.appendChild(item);
@@ -3006,8 +3055,16 @@ Instagram: @${orderData.instagram}
         
         const order = orderDoc.data();
         const body = document.getElementById('orderDetailBody');
+        const statusInfo = getStatusInfo(order.status);
         
         document.getElementById('orderDetailTitle').textContent = `Заказ ${order.orderNumber}`;
+        let reportHTML = '';
+        if(order.reportLink) {
+            reportHTML = `
+                <strong>Ссылка на отчет:</strong>
+                <a href="${order.reportLink}" target="_blank" class="report-link">Посмотреть отчет</a>`;
+        }
+        
         body.innerHTML = `
             <strong>Блогер:</strong> ${order.userName}<br>
             <strong>Телефон:</strong> ${order.phone}<br>
@@ -3020,7 +3077,8 @@ Instagram: @${orderData.instagram}
             <strong>Дата и время:</strong> ${order.date} в ${order.time}<br>
             <strong>Набор:</strong> ${order.setName || (order.set ? order.set.replace('set', 'Набор ') : 'Заказ макроблогера')}<br>
             <strong>Комментарий:</strong> ${order.comment || '-'}<br>
-            <strong>Статус:</strong> <span class="order-status status-${order.status}" style="display:inline-block;">${getStatusText(order.status)}</span>
+            <strong>Статус:</strong> <span class="order-status ${statusInfo.className}" style="display:inline-block;">${statusInfo.text}</span>
+            ${reportHTML}
         `;
         
         document.getElementById('orderStatusSelect').value = order.status;
@@ -3040,11 +3098,45 @@ Instagram: @${orderData.instagram}
         document.getElementById('deleteOrderBtn').onclick = () => removeOrder(order.id);
         document.getElementById('orderDetailModal').style.display = 'flex';
     }
-    function closeOrderDetailModal() { 
-        document.getElementById('orderDetailModal').style.display = 'none';
-        currentEditingOrderId = null;
+
+    function showReportModal(orderId, orderNumber) {
+        currentReportingOrderId = orderId;
+        document.getElementById('reportModalTitle').textContent = `Сдать отчет по заказу ${orderNumber}`;
+        document.getElementById('reportLink').value = '';
+        document.getElementById('reportModal').style.display = 'flex';
     }
 
+    async function submitReport(button) {
+        await withLoading(button, async() => {
+            const reportLink = document.getElementById('reportLink').value.trim();
+            if (!reportLink || !reportLink.startsWith('http')) {
+                return showError('Ошибка', 'Пожалуйста, введите корректную ссылку.');
+            }
+
+            const orderRef = db.collection(COLLECTIONS.ORDERS).doc(currentReportingOrderId);
+            const userRef = db.collection(COLLECTIONS.USERS).doc(currentUserId);
+            
+            const batch = db.batch();
+            batch.update(orderRef, { status: 'awaiting_review', reportLink: reportLink });
+            
+            const userDoc = await userRef.get();
+            if (userDoc.exists) {
+                const userDataFromDB = userDoc.data();
+                const orders = userDataFromDB.orders || [];
+                const orderIndex = orders.findIndex(o => o.id === currentReportingOrderId);
+                if (orderIndex > -1) {
+                    orders[orderIndex].status = 'awaiting_review';
+                    batch.update(userRef, { orders: orders });
+                }
+            }
+
+            await batch.commit();
+
+            closeReportModal();
+            showSuccessMessage('Отчет успешно отправлен на проверку!');
+        });
+    }
+    
     async function showAddAdminModal() { 
         const list = document.getElementById('adminUsersList');
         list.innerHTML = '<div class="loading-indicator">Загрузка пользователей...</div>';
@@ -3092,6 +3184,14 @@ Instagram: @${orderData.instagram}
     function closeEditProfile() { document.getElementById('editProfileModal').style.display = 'none'; }
     function contactAdmin() { document.getElementById('contactModal').style.display = 'flex'; }
     function closeContactModal() { document.getElementById('contactModal').style.display = 'none'; }
+    function closeOrderDetailModal() { 
+        document.getElementById('orderDetailModal').style.display = 'none';
+        currentEditingOrderId = null;
+    }
+    function closeReportModal() {
+        document.getElementById('reportModal').style.display = 'none';
+        currentReportingOrderId = null;
+    }
 
     function toggleBlockTime() {
         const type = document.getElementById('blockType').value;
@@ -3156,7 +3256,7 @@ Instagram: @${orderData.instagram}
         closeModal, closeErrorModal, closeRejectionModal, closeOrderHistory, closeEditProfile,
         closeContactModal, showAddBlockModal, closeAddBlockModal, showAddAdminModal, closeAddAdminModal,
         closeOrderDetailModal, toggleBlockTime,
-        updateOrderStatus
+        updateOrderStatus, showReportModal, closeReportModal, submitReport
     };
 })();
     </script>
