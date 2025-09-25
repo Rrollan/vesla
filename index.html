@@ -1504,7 +1504,7 @@
                 <div class="set-description">Классическая Фила, Запечённый с креветкой, Сэндвич с курицей</div>
             </div>
 
-            <button type="button" id="nextFromSet" class="btn-primary" onclick="app.showAddressForm()" disabled>Далее</button>
+            <button type="button" id="nextFromSet" class="btn-primary" onclick="app.proceedToAddressFromSet()" disabled>Далее</button>
         </div>
 
         <div id="addressScreen" class="form-screen">
@@ -2701,6 +2701,7 @@ Instagram: @${orderData.instagram}
                 }
                 if (userDoc.data().telegramId) {
                     if (newStatus === 'confirmed') await sendTelegramNotification(userDoc.data().telegramId, `✅ Ваш заказ №${orderData.orderNumber} подтвержден!`);
+                    if (newStatus === 'delivered') await sendTelegramNotification(userDoc.data().telegramId, `🚚 Ваш заказ №${orderData.orderNumber} доставлен! Скоро мы будем ждать от вас отчет.`);
                     if (newStatus === 'completed') await sendTelegramNotification(userDoc.data().telegramId, `🎉 Сотрудничество по заказу №${orderData.orderNumber} завершено.`);
                 }
             }
@@ -2970,8 +2971,17 @@ Instagram: @${orderData.instagram}
         if (bloggerLevel === 'micro') {
             showSetSelection();
         } else {
+            // Устанавливаем правильную кнопку "Назад" для макроблогеров
+            document.getElementById('backFromAddress').onclick = () => app.showDashboard();
             showAddressForm();
         }
+    }
+    
+    // Новая функция для перехода к адресу от микроблогера
+    function proceedToAddressFromSet() {
+        // Устанавливаем кнопку "Назад", чтобы она вела на выбор сета
+        document.getElementById('backFromAddress').onclick = () => app.showSetSelection();
+        showAddressForm();
     }
 
     function handleCityChange() {
@@ -3521,16 +3531,18 @@ Instagram: @${orderData.instagram}
 
     return {
         showRegistration, showLogin, showWelcomeScreen, submitLogin, submitRegistration, 
-        submitMigration, showDashboard, logout, startCollaboration, showOrderHistory, editProfile,
-        contactAdmin, showCRM, showCrmTab, filterOrders, filterUsers, filterAdminUsers,
-        removeBlock, removeAdmin, removeUser, toggleUserBlock, sendBroadcast, saveSettings,
-        addBlock, addAdmin, selectSet, showSetSelection, showAddressForm, showDateTimeSelection, showInstructions,
-        handleCityChange, submitAddressAndShowDateTime, updateTimeSlots, submitOrder, saveProfile,
-        closeModal, closeSimpleModal, closeErrorModal, closeRejectionModal, closeOrderHistory, closeEditProfile,
-        closeContactModal, showAddBlockModal, closeAddBlockModal, showAddAdminModal, closeAddAdminModal,
-        closeOrderDetailModal, toggleBlockTime, updateOrderStatus, showReportModal, closeReportModal, submitReport,
-        loadSchedule, saveSchedule, showUserDetailModal, closeUserDetailModal, addUserTag, removeUserTag, resetOrderCooldown,
-        showScheduleForCity, applyAnalyticsFilters
+        submitMigration, showDashboard, logout, startCollaboration, proceedToAddressFromSet,
+        showOrderHistory, editProfile, contactAdmin, showCRM, showCrmTab, filterOrders, 
+        filterUsers, filterAdminUsers, removeBlock, removeAdmin, removeUser, toggleUserBlock, 
+        sendBroadcast, saveSettings, addBlock, addAdmin, selectSet, showSetSelection, 
+        showAddressForm, showDateTimeSelection, showInstructions, handleCityChange, 
+        submitAddressAndShowDateTime, updateTimeSlots, submitOrder, saveProfile, closeModal, 
+        closeSimpleModal, closeErrorModal, closeRejectionModal, closeOrderHistory, 
+        closeEditProfile, closeContactModal, showAddBlockModal, closeAddBlockModal, 
+        showAddAdminModal, closeAddAdminModal, closeOrderDetailModal, toggleBlockTime, 
+        updateOrderStatus, showReportModal, closeReportModal, submitReport, loadSchedule, 
+        saveSchedule, showUserDetailModal, closeUserDetailModal, addUserTag, removeUserTag, 
+        resetOrderCooldown, showScheduleForCity, applyAnalyticsFilters
     };
 })();
     </script>
