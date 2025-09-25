@@ -400,6 +400,17 @@
         .report-action-card {
             border-color: #ffc107;
         }
+        
+        .strikes-panel {
+            background-color: rgba(255, 193, 7, 0.1);
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            text-align: center;
+            font-size: 14px;
+        }
+
 
         .action-card:hover {
             border-color: #00b4d8;
@@ -1282,6 +1293,7 @@
             </div>
 
              <div id="blockedPanel" class="blocked-message" style="display: none;"></div>
+             <div id="strikesPanel" class="strikes-panel" style="display: none;"></div>
              <div id="statusPanel" class="action-card" style="display: none; border-color: #00b4d8; text-align: left;"></div>
              <div id="cooldownPanel" class="action-card" style="display: none; background: #4a4a4a; border-color: #5a5a5a; text-align: center; cursor: default;"></div>
              <div id="loyaltyPanel" class="action-card" style="display: none; border-color: #ffc107; text-align: center; cursor: default;"></div>
@@ -1877,16 +1889,15 @@ const app = (function() {
         
         const counterRef = db.collection(COLLECTIONS.SETTINGS).doc('orderCounter');
         
-        // Транзакция для безопасного увеличения счетчика
         const newOrderNumber = await db.runTransaction(async (transaction) => {
             const counterDoc = await transaction.get(counterRef);
             let nextNumber;
             if (!counterDoc.exists) {
-                nextNumber = 101; // Начальное значение
+                nextNumber = 101;
             } else {
                 nextNumber = counterDoc.data().currentNumber + 1;
             }
-            transaction.set(counterRef, { currentNumber: nextNumber });
+            transaction.set(counterRef, { currentNumber: nextNumber }, { merge: true });
             return nextNumber;
         });
 
@@ -2337,6 +2348,14 @@ Instagram: @${orderData.instagram}
         document.getElementById('blockedPanel').style.display = userData.isBlocked ? 'block' : 'none';
         if (userData.isBlocked) {
             document.getElementById('blockedPanel').innerHTML = `<h4>🔒 Ваш аккаунт заблокирован</h4><p>${userData.blockReason || 'Свяжитесь с администратором.'}</p>`;
+        }
+
+        const strikesPanel = document.getElementById('strikesPanel');
+        if (userData.strikes && userData.strikes > 0) {
+            strikesPanel.innerHTML = `⚠️ У вас <strong>${userData.strikes}</strong> несданных отчетов. Помните: 3 штрафа приведут к блокировке.`;
+            strikesPanel.style.display = 'block';
+        } else {
+            strikesPanel.style.display = 'none';
         }
 
         document.getElementById('userName').textContent = firstName;
@@ -2864,21 +2883,33 @@ Instagram: @${orderData.instagram}
             const orderRef = db.collection(COLLECTIONS.ORDERS).doc(orderId);
             const orderDoc = await orderRef.get();
             if (!orderDoc.exists) return;
-            const userRef = db.collection(COLLECTIONS.USERS).doc(orderDoc.data().userId);
-            const batch = db.batch();
+
+            const orderData = orderDoc.data();
+            const userRef = db.collection(COLLECTIONS.USERS).doc(orderData.userId);
+            
             const userDoc = await userRef.get();
             if(!userDoc.exists) throw new Error("User not found!");
+
             const newStrikes = (userDoc.data().strikes || 0) + 1;
             const updates = { strikes: newStrikes };
             if (newStrikes >= 3) {
                 updates.isBlocked = true;
                 updates.blockReason = `Автоматическая блокировка: ${newStrikes} несданных отчета.`;
             }
+            
+            const batch = db.batch();
             batch.update(userRef, updates);
             const orders = (userDoc.data().orders || []).map(o => o.id === orderId ? {...o, status: 'completed'} : o);
             batch.update(userRef, { orders: orders });
             batch.update(orderRef, { reportMissed: true, status: 'completed' });
+            
             await batch.commit();
+            
+            if (userDoc.data().telegramId) {
+                const message = `🚩 Внимание: Вы не сдали отчет по заказу #${orderData.orderNumber} вовремя. Вам начислен 1 штрафной балл. После 3-х штрафов ваш аккаунт будет заблокирован.`;
+                await sendTelegramNotification(userDoc.data().telegramId, message);
+            }
+
             showSuccessMessage('Штрафной балл добавлен, заказ закрыт.');
             closeOrderDetailModal();
             updateUsersList(); 
@@ -3034,7 +3065,8 @@ Instagram: @${orderData.instagram}
                 instagram: dataSource.instagramLogin, 
                 phone: dataSource.phone,
                 followersCount: dataSource.followersCount, 
-                createdAt: new Date().toISOString()
+                createdAt: new Date().toISOString(),
+                reminderSent: false
             };
             
             const userOrders = userData.orders || [];
@@ -3056,7 +3088,7 @@ Instagram: @${orderData.instagram}
 
             const screenshotFile = document.getElementById('orderScreenshot').files[0] || null;
             await sendAdminNotification(newOrder, screenshotFile);
-            showSuccessModal();
+            showSuccessMessage("Ваш заказ успешно оформлен!");
         });
     }
     
@@ -3129,7 +3161,6 @@ Instagram: @${orderData.instagram}
         window.location.reload();
     }
 
-    function showSuccessModal() { document.getElementById('successModal').style.display = 'flex'; }
     function showSuccessMessage(message) {
         document.getElementById('successTitle').textContent = 'Успешно!';
         document.getElementById('successMessage').textContent = message;
@@ -3149,7 +3180,7 @@ Instagram: @${orderData.instagram}
         document.getElementById('orderDetailBody').innerHTML = `<strong>Блогер:</strong> ${order.userName}<br><strong>Город:</strong> ${order.city}<br><strong>Адрес:</strong> ${order.street}<br>`;
         document.getElementById('orderStatusSelect').value = order.status;
         document.getElementById('deleteOrderBtn').onclick = () => removeOrder(order.id);
-        document.getElementById('markNoReportBtn').onclick = () => markNoReport(order.id);
+        document.getElementById('markNoReportBtn').onclick = () => markNoReport(order.id, order.orderNumber);
         document.getElementById('markReportAcceptedBtn').onclick = () => markReportAccepted(order.id);
         document.getElementById('orderDetailModal').style.display = 'flex';
     }
@@ -3381,7 +3412,7 @@ Instagram: @${orderData.instagram}
             }
             await batch.commit();
             closeReportModal();
-            showSuccessMessage('Отчет отправлен на проверку!');
+            showSuccessMessage("Ваш отчет отправлен на проверку!");
         });
     }
     
