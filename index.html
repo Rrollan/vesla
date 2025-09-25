@@ -1170,6 +1170,16 @@
 </head>
 <body>
     <div class="container">
+        <!-- НОВЫЙ ЭКРАН: Для критических ошибок, например, потери сессии -->
+        <div id="criticalErrorScreen" class="welcome-screen" style="display: none;">
+            <div class="logo-container" style="background: #dc3545;">
+                <div class="logo-icon" style="font-size: 50px;">🔌</div>
+            </div>
+            <h1>Ошибка подключения</h1>
+            <p class="subtitle" id="criticalErrorMessage">Потеряна связь с Telegram.<br>Пожалуйста, перезагрузите приложение.</p>
+            <button class="btn-primary" onclick="window.location.reload()">Перезагрузить</button>
+        </div>
+
         <!-- Welcome, Login, Registration, Migration Screens -->
         <div id="welcomeScreen" class="welcome-screen">
             <div class="logo-container">
@@ -1839,7 +1849,7 @@ const app = (function() {
     
     const BACKEND_URL = 'https://vesla.onrender.com';
 
-    const TELEGRAM_BOT_TOKEN = '8227812944:AAFy8ydOkUeCj3Qkjg7_Xsq6zyQpcUyMShY';
+    const TELEGRAM_BOT_TOKEN = '7227812944:AAFy8ydOkUeCj3Qkjg7_Xsq6zyQpcUyMShY';
     
     const firebaseConfig = {
         apiKey: "AIzaSyATmIapS6SJi7KnvKrJp5sfD9VMXxKMCgA",
@@ -1873,7 +1883,8 @@ const app = (function() {
         SET_SELECTION: 'setSelectionScreen',
         ADDRESS: 'addressScreen',
         DATE_TIME: 'dateTimeScreen',
-        INSTRUCTIONS: 'instructionsScreen'
+        INSTRUCTIONS: 'instructionsScreen',
+        CRITICAL_ERROR: 'criticalErrorScreen'
     };
 
     let tg;
@@ -1892,6 +1903,21 @@ const app = (function() {
     const LOYALTY_THRESHOLD = 5;
     
     const CITIES = ["Павлодар", "Петропавловск", "Кокшетау", "Костанай", "Усть-Каменогорск"];
+
+    function showCriticalError(message) {
+        document.getElementById('criticalErrorMessage').innerHTML = message;
+        document.querySelectorAll('.form-screen, .dashboard, .welcome-screen, .crm-screen').forEach(s => s.style.display = 'none');
+        document.getElementById(SCREENS.CRITICAL_ERROR).style.display = 'flex';
+    }
+
+    function ensureAuthenticated() {
+        if (!currentUserId || !telegramUser) {
+            console.error("Authentication lost. Reloading...");
+            window.location.reload();
+            return false;
+        }
+        return true;
+    }
 
     async function generateOrderNumber(city) {
         const cityCodes = {'Павлодар':'PVL', 'Петропавловск':'PPK', 'Кокшетау':'KOK', 'Костанай':'KSN', 'Усть-Каменогорск':'UKK'};
@@ -1931,16 +1957,23 @@ const app = (function() {
     }
     
     async function sendAdminNotification(orderData, screenshotFile) {
-        const adminSnapshot = await db.collection(COLLECTIONS.ADMINS)
-                                      .where('receivesNotifications', '==', true)
-                                      .get();
+        // ИЗМЕНЕНИЕ: Запрос стал более гибким. Он берет всех админов, а потом фильтрует их.
+        // Это гарантирует, что админы без поля `receivesNotifications` (старые аккаунты) по умолчанию получат уведомление.
+        const adminSnapshot = await db.collection(COLLECTIONS.ADMINS).get();
 
         if (adminSnapshot.empty) {
+            console.log("В базе данных нет администраторов.");
+            return;
+        }
+        
+        const adminDocs = adminSnapshot.docs.filter(doc => doc.data().receivesNotifications !== false);
+        
+        if (adminDocs.length === 0) {
             console.log("Нет администраторов, подписанных на уведомления.");
             return;
         }
 
-        const adminChatIds = adminSnapshot.docs.map(doc => doc.id);
+        const adminChatIds = adminDocs.map(doc => doc.id);
 
         let message = `*Новая заявка на бартер*
 
@@ -1986,14 +2019,22 @@ Instagram: @${orderData.instagram}
                 tg = window.Telegram.WebApp;
                 tg.ready();
                 tg.expand();
+
+                tg.onEvent('viewportChanged', () => {
+                    if (!tg.isExpanded) return;
+                    ensureAuthenticated();
+                });
+
                 if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
                     telegramUser = tg.initDataUnsafe.user;
                     currentUserId = 'tg_' + telegramUser.id;
+                    return true;
                 }
             }
         } catch (error) {
             console.error('Error initializing Telegram:', error);
         }
+        return false;
     }
     
     function attachUserListener(userId) {
@@ -2163,17 +2204,24 @@ Instagram: @${orderData.instagram}
     }
 
     function showScreen(screenId) {
-        document.querySelectorAll('.form-screen, .dashboard, .welcome-screen, .crm-screen').forEach(s => s.style.display = 'none');
-        document.getElementById(screenId).style.display = (screenId === SCREENS.WELCOME) ? 'flex' : 'block';
+        document.querySelectorAll('.form-screen, .dashboard, .welcome-screen, .crm-screen, #criticalErrorScreen').forEach(s => s.style.display = 'none');
+        document.getElementById(screenId).style.display = (screenId === SCREENS.WELCOME || screenId === SCREENS.CRITICAL_ERROR) ? 'flex' : 'block';
     }
 
     function showDashboard() {
+        if (!ensureAuthenticated()) return;
         showScreen(SCREENS.DASHBOARD);
         document.getElementById('adminPanel').style.display = currentUserRole ? 'block' : 'none';
     }
 
     function showWelcomeScreen() { showScreen(SCREENS.WELCOME); }
-    function showRegistration() { showScreen(SCREENS.REGISTRATION); fillTelegramData(); }
+    function showRegistration() {
+        if (!telegramUser) {
+            return showCriticalError("Не удалось получить данные Telegram для регистрации. Пожалуйста, перезапустите приложение.");
+        }
+        showScreen(SCREENS.REGISTRATION); 
+        fillTelegramData();
+    }
     function showLogin() { showScreen(SCREENS.LOGIN); }
     function showSetSelection() { showScreen(SCREENS.SET_SELECTION); }
     function showAddressForm() { showScreen(SCREENS.ADDRESS); }
@@ -2181,6 +2229,7 @@ Instagram: @${orderData.instagram}
     function showInstructions() { showScreen(SCREENS.INSTRUCTIONS); }
 
     async function showCRM() {
+        if (!ensureAuthenticated()) return;
         if (!currentUserRole) {
             showError('Доступ запрещен', 'У вас нет прав для доступа к CRM.');
             return;
@@ -2207,6 +2256,7 @@ Instagram: @${orderData.instagram}
     }
 
     function showCrmTab(tabName, element) {
+        if (!ensureAuthenticated()) return;
         document.querySelectorAll('.crm-content').forEach(c => c.classList.remove('active'));
         document.querySelectorAll('.crm-tab').forEach(t => t.classList.remove('active'));
         document.getElementById('crm' + tabName.charAt(0).toUpperCase() + tabName.slice(1)).classList.add('active');
@@ -2296,6 +2346,7 @@ Instagram: @${orderData.instagram}
     }
 
     async function submitRegistration(button) {
+        if (!ensureAuthenticated()) return;
         await withLoading(button, async () => {
             const firstName = document.getElementById('firstName').value.trim();
             const phone = document.getElementById('phone').value.trim();
@@ -2314,13 +2365,13 @@ Instagram: @${orderData.instagram}
             }
 
             const bloggerData = determineBloggerLevel(followersCount);
-            if (!currentUserId) currentUserId = (telegramUser ? 'tg_' + telegramUser.id : db.collection(COLLECTIONS.USERS).doc().id);
+            const newUserId = 'tg_' + telegramUser.id;
             
             const newUser = {
                 registration: { firstName, phone, instagramLogin, followersCount, avgViews, password: null },
                 level: bloggerData.level,
                 orders: [],
-                telegramId: telegramUser ? telegramUser.id : null,
+                telegramId: telegramUser.id,
                 registrationDate: new Date().toISOString(),
                 lastActivity: new Date().toISOString(),
                 isBlocked: false,
@@ -2332,7 +2383,8 @@ Instagram: @${orderData.instagram}
                 cooldownNotified: true
             };
 
-            await saveUser(currentUserId, newUser);
+            await saveUser(newUserId, newUser);
+            currentUserId = newUserId;
             await checkAndSetUserRole();
             attachUserListener(currentUserId);
             showDashboard();
@@ -2782,18 +2834,33 @@ Instagram: @${orderData.instagram}
     }
     
     async function removeUser(userId, userName) {
-        if (confirm(`Удалить пользователя ${userName} и все его заказы? Это действие необратимо.`)) {
+        const confirmationText = 'УДАЛИТЬ';
+        const promptResult = prompt(`Это действие необратимо. Чтобы удалить пользователя ${userName}, введите "${confirmationText}" в поле ниже.`);
+        
+        if (promptResult === confirmationText) {
             const userRef = db.collection(COLLECTIONS.USERS).doc(userId);
             const userDoc = await userRef.get();
             if (!userDoc.exists) return;
+
+            const user = userDoc.data();
+            if (user.telegramId) {
+                const adminRole = await getUserRole(user.telegramId);
+                if (adminRole) {
+                    showError("Действие запрещено", "Нельзя удалить пользователя, который является сотрудником. Сначала снимите с него права в разделе 'Админы'.");
+                    return;
+                }
+            }
+
             const batch = db.batch();
             batch.delete(userRef);
-            (userDoc.data().orders || []).forEach(order => {
+            (user.orders || []).forEach(order => {
                 batch.delete(db.collection(COLLECTIONS.ORDERS).doc(order.id));
             });
             await batch.commit();
             showCrmSuccess(`Пользователь ${userName} удален.`);
             updateUsersList();
+        } else if (promptResult !== null) {
+            showError("Удаление отменено", "Текст подтверждения введен неверно.");
         }
     }
 
@@ -2970,6 +3037,7 @@ Instagram: @${orderData.instagram}
 
     async function sendBroadcast(button) {
         await withLoading(button, async () => {
+            if (!ensureAuthenticated()) return;
             const message = document.getElementById('broadcastMessage').value.trim();
             const selectedTags = Array.from(document.querySelectorAll('#broadcastTagsContainer .tag')).map(el => el.textContent.replace(' ×', ''));
             
@@ -3376,7 +3444,11 @@ Instagram: @${orderData.instagram}
 
     async function initializeApp() {
         await fetchSettings();
-        initTelegram();
+        if (!initTelegram()) {
+            showCriticalError("Приложение можно запустить только внутри Telegram.");
+            return;
+        }
+        
         if (!(await attemptTelegramAutoLogin())) {
             showWelcomeScreen();
         } else {
@@ -3598,4 +3670,3 @@ Instagram: @${orderData.instagram}
     </script>
 </body>
 </html>
-
