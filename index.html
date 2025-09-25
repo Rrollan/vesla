@@ -3508,108 +3508,144 @@ Instagram: @${orderData.instagram}
         }
     }
 
-    // --- Функции экспорта в Excel ---
+    // --- ИСПРАВЛЕННЫЕ Функции экспорта в Excel ---
     async function exportAnalyticsToExcel(button) {
          await withLoading(button, async() => {
-            const wb = XLSX.utils.book_new();
+            try {
+                if (typeof XLSX === 'undefined') throw new Error("Библиотека для экспорта не загружена.");
 
-            const startDate = document.getElementById('analyticsStartDate').value;
-            const endDate = document.getElementById('analyticsEndDate').value;
-            const city = document.getElementById('analyticsCity').value;
+                const wb = XLSX.utils.book_new();
+                const startDate = document.getElementById('analyticsStartDate').value;
+                const endDate = document.getElementById('analyticsEndDate').value;
+                const city = document.getElementById('analyticsCity').value;
 
-            let ordersQuery = db.collection(COLLECTIONS.ORDERS);
-            if (startDate) ordersQuery = ordersQuery.where('createdAt', '>=', new Date(startDate).toISOString());
-            if (endDate) ordersQuery = ordersQuery.where('createdAt', '<=', new Date(endDate).toISOString());
-            if (city && city !== 'all') ordersQuery = ordersQuery.where('city', '==', city);
+                let ordersQuery = db.collection(COLLECTIONS.ORDERS);
+                if (startDate) ordersQuery = ordersQuery.where('createdAt', '>=', new Date(startDate).toISOString());
+                if (endDate) ordersQuery = ordersQuery.where('createdAt', '<=', new Date(endDate).toISOString());
+                if (city && city !== 'all') ordersQuery = ordersQuery.where('city', '==', city);
 
-            const [ordersSnap, usersSnap] = await Promise.all([ordersQuery.get(), db.collection(COLLECTIONS.USERS).get()]);
-            
-            // 1. Динамика заказов
-            const ordersByDate = {};
-            ordersSnap.forEach(doc => {
-                const dateString = new Date(doc.data().createdAt).toISOString().split('T')[0];
-                ordersByDate[dateString] = (ordersByDate[dateString] || 0) + 1;
-            });
-            const dynamicsData = Object.keys(ordersByDate).sort().map(date => ({ 'Дата': date, 'Количество заказов': ordersByDate[date] }));
-            const dynamicsWs = XLSX.utils.json_to_sheet(dynamicsData);
-            XLSX.utils.book_append_sheet(wb, dynamicsWs, "Динамика заказов");
-            
-            // 2. Заказы по городам
-            const cityCounts = {};
-            ordersSnap.forEach(doc => { const c = doc.data().city; if (c) cityCounts[c] = (cityCounts[c] || 0) + 1; });
-            const cityData = Object.keys(cityCounts).map(c => ({ 'Город': c, 'Количество заказов': cityCounts[c] }));
-            const cityWs = XLSX.utils.json_to_sheet(cityData);
-            XLSX.utils.book_append_sheet(wb, cityWs, "Заказы по городам");
+                const [ordersSnap, usersSnap] = await Promise.all([ordersQuery.get(), db.collection(COLLECTIONS.USERS).get()]);
+                
+                // 1. Динамика заказов
+                const ordersByDate = {};
+                ordersSnap.forEach(doc => {
+                    const dateString = new Date(doc.data().createdAt).toISOString().split('T')[0];
+                    ordersByDate[dateString] = (ordersByDate[dateString] || 0) + 1;
+                });
+                const dynamicsData = Object.keys(ordersByDate).sort().map(date => ({ 'Дата': date, 'Количество заказов': ordersByDate[date] }));
+                if (dynamicsData.length > 0) {
+                    const dynamicsWs = XLSX.utils.json_to_sheet(dynamicsData);
+                    XLSX.utils.book_append_sheet(wb, dynamicsWs, "Динамика заказов");
+                }
 
-            // 3. Уровни блогеров
-            const levelCounts = { 'Микроблогер': 0, 'Макроблогер тип A': 0, 'Макроблогер тип B': 0 };
-            usersSnap.forEach(doc => { const lvl = determineBloggerLevel((doc.data().registration || doc.data()).followersCount || 0).text; if (levelCounts.hasOwnProperty(lvl)) levelCounts[lvl]++; });
-            const levelData = Object.keys(levelCounts).map(l => ({ 'Уровень': l, 'Количество': levelCounts[l] }));
-            const levelWs = XLSX.utils.json_to_sheet(levelData);
-            XLSX.utils.book_append_sheet(wb, levelWs, "Уровни блогеров");
+                // 2. Заказы по городам
+                const cityCounts = {};
+                ordersSnap.forEach(doc => { const c = doc.data().city; if (c) cityCounts[c] = (cityCounts[c] || 0) + 1; });
+                const cityData = Object.keys(cityCounts).map(c => ({ 'Город': c, 'Количество заказов': cityCounts[c] }));
+                 if (cityData.length > 0) {
+                    const cityWs = XLSX.utils.json_to_sheet(cityData);
+                    XLSX.utils.book_append_sheet(wb, cityWs, "Заказы по городам");
+                }
+                
+                // 3. Уровни блогеров
+                const levelCounts = { 'Микроблогер': 0, 'Макроблогер тип A': 0, 'Макроблогер тип B': 0 };
+                usersSnap.forEach(doc => { const lvl = determineBloggerLevel((doc.data().registration || doc.data()).followersCount || 0).text; if (levelCounts.hasOwnProperty(lvl)) levelCounts[lvl]++; });
+                const levelData = Object.keys(levelCounts).map(l => ({ 'Уровень': l, 'Количество': levelCounts[l] }));
+                if (levelData.length > 0) {
+                    const levelWs = XLSX.utils.json_to_sheet(levelData);
+                    XLSX.utils.book_append_sheet(wb, levelWs, "Уровни блогеров");
+                }
 
-            XLSX.writeFile(wb, "Аналитика_Бартер.xlsx");
+                if (wb.SheetNames.length > 0) {
+                    XLSX.writeFile(wb, "Аналитика_Бартер.xlsx");
+                } else {
+                    showError("Нет данных", "Нет данных для экспорта аналитики по выбранным фильтрам.");
+                }
+            } catch (error) {
+                console.error("Ошибка при экспорте аналитики:", error);
+                showError("Ошибка экспорта", error.message);
+            }
         });
     }
 
     async function exportOrdersToExcel(button) {
          await withLoading(button, async() => {
-            const ordersSnapshot = await db.collection(COLLECTIONS.ORDERS).orderBy('createdAt', 'desc').get();
-            if (ordersSnapshot.empty) return showError("Ошибка", "Нет заказов для экспорта.");
+            try {
+                if (typeof XLSX === 'undefined') throw new Error("Библиотека для экспорта не загружена.");
+                
+                const ordersSnapshot = await db.collection(COLLECTIONS.ORDERS).orderBy('createdAt', 'desc').get();
+                if (ordersSnapshot.empty) {
+                    showError("Нет данных", "Нет заказов для экспорта.");
+                    return;
+                }
 
-            const ordersData = ordersSnapshot.docs.map(doc => {
-                const order = doc.data();
-                return {
-                    'Номер заказа': order.orderNumber,
-                    'Статус': getStatusInfo(order.status).text,
-                    'Имя блогера': order.userName,
-                    'Instagram': order.instagram,
-                    'Телефон': order.phone,
-                    'Город': order.city,
-                    'Адрес': order.street,
-                    'Дата доставки': order.date,
-                    'Время доставки': order.time,
-                    'Выбранный сет': order.setName || 'Не указан',
-                    'Комментарий': order.comment,
-                    'Дата создания': new Date(order.createdAt).toLocaleString('ru-RU')
-                };
-            });
+                const ordersData = ordersSnapshot.docs.map(doc => {
+                    const order = doc.data();
+                    return {
+                        'Номер заказа': order.orderNumber,
+                        'Статус': getStatusInfo(order.status).text,
+                        'Имя блогера': order.userName,
+                        'Instagram': order.instagram,
+                        'Телефон': order.phone,
+                        'Город': order.city,
+                        'Адрес': order.street,
+                        'Дата доставки': order.date,
+                        'Время доставки': order.time,
+                        'Выбранный сет': order.setName || 'Не указан',
+                        'Комментарий': order.comment,
+                        'Дата создания': new Date(order.createdAt).toLocaleString('ru-RU')
+                    };
+                });
 
-            const ws = XLSX.utils.json_to_sheet(ordersData);
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "Заказы");
-            XLSX.writeFile(wb, "Все_Заказы.xlsx");
+                const ws = XLSX.utils.json_to_sheet(ordersData);
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, "Заказы");
+                XLSX.writeFile(wb, "Все_Заказы.xlsx");
+            } catch (error) {
+                console.error("Ошибка при экспорте заказов:", error);
+                showError("Ошибка экспорта", error.message);
+            }
         });
     }
 
     async function exportUsersToExcel(button) {
          await withLoading(button, async() => {
-            const usersSnapshot = await db.collection(COLLECTIONS.USERS).orderBy('registrationDate', 'desc').get();
-            if (usersSnapshot.empty) return showError("Ошибка", "Нет пользователей для экспорта.");
+            try {
+                if (typeof XLSX === 'undefined') throw new Error("Библиотека для экспорта не загружена.");
 
-            const usersData = usersSnapshot.docs.map(doc => {
-                const user = doc.data();
-                const reg = user.registration || {};
-                return {
-                    'Имя': reg.firstName,
-                    'Телефон': reg.phone,
-                    'Instagram': reg.instagramLogin,
-                    'Подписчики': reg.followersCount,
-                    'Просмотры': reg.avgViews,
-                    'Уровень': determineBloggerLevel(reg.followersCount).text,
-                    'Статус лояльности': user.loyaltyStatus || 'standard',
-                    'Штрафы': user.strikes || 0,
-                    'Заблокирован': user.isBlocked ? 'Да' : 'Нет',
-                    'Причина блокировки': user.blockReason || '',
-                    'Дата регистрации': new Date(user.registrationDate).toLocaleDateString('ru-RU'),
-                    'Теги': (user.tags || []).join(', ')
-                };
-            });
+                const usersSnapshot = await db.collection(COLLECTIONS.USERS).orderBy('registrationDate', 'desc').get();
+                if (usersSnapshot.empty) {
+                    showError("Нет данных", "Нет пользователей для экспорта.");
+                    return;
+                }
 
-            const ws = XLSX.utils.json_to_sheet(usersData);
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "Пользователи");
-            XLSX.writeFile(wb, "Все_Пользователи.xlsx");
+                const usersData = usersSnapshot.docs.map(doc => {
+                    const user = doc.data();
+                    const reg = user.registration || {};
+                    return {
+                        'Имя': reg.firstName,
+                        'Телефон': reg.phone,
+                        'Instagram': reg.instagramLogin,
+                        'Подписчики': reg.followersCount,
+                        'Просмотры': reg.avgViews,
+                        'Уровень': determineBloggerLevel(reg.followersCount).text,
+                        'Статус лояльности': user.loyaltyStatus || 'standard',
+                        'Штрафы': user.strikes || 0,
+                        'Заблокирован': user.isBlocked ? 'Да' : 'Нет',
+                        'Причина блокировки': user.blockReason || '',
+                        'Дата регистрации': new Date(user.registrationDate).toLocaleDateString('ru-RU'),
+                        'Теги': (user.tags || []).join(', ')
+                    };
+                });
+
+                const ws = XLSX.utils.json_to_sheet(usersData);
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, "Пользователи");
+                XLSX.writeFile(wb, "Все_Пользователи.xlsx");
+            } catch (error) {
+                console.error("Ошибка при экспорте пользователей:", error);
+                showError("Ошибка экспорта", error.message);
+            }
         });
     }
 
