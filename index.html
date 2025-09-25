@@ -1486,19 +1486,14 @@
                 <h2>Выберите набор</h2>
             </div>
 
-            <div class="set-item" data-set-name="Набор 1 'Классик'" onclick="app.selectSet(this, 'set1')">
-                <div class="set-title">Набор 1 "Классик"</div>
-                <div class="set-description">32 роллы: Филадельфия классик (8шт), Калифорния с крабом (8шт), Лосось терияки (8шт), Тунец спайси (8шт)</div>
+            <div class="set-item" data-set-name="Сет 1" onclick="app.selectSet(this, 'set1')">
+                <div class="set-title">Сет 1</div>
+                <div class="set-description">Филадельфия с огурцом, Гейша, Лосось с чукой и миндалём</div>
             </div>
 
-            <div class="set-item" data-set-name="Набор 2 'Премиум'" onclick="app.selectSet(this, 'set2')">
-                <div class="set-title">Набор 2 "Премиум"</div>
-                <div class="set-description">28 роллов: Филадельфия с лососем (8шт), Дракон (6шт), Радуга (8шт), Темпура микс (6шт)</div>
-            </div>
-
-            <div class="set-item" data-set-name="Набор 3 'Микс'" onclick="app.selectSet(this, 'set3')">
-                <div class="set-title">Набор 3 "Микс"</div>
-                <div class="set-description">40 роллов: Ассорти из лучших роллов недели + бонусные маки (8шт)</div>
+            <div class="set-item" data-set-name="Сет 2" onclick="app.selectSet(this, 'set2')">
+                <div class="set-title">Сет 2</div>
+                <div class="set-description">Классическая Фила, Запечённый с креветкой, Сэндвич с курицей</div>
             </div>
 
             <button type="button" id="nextFromSet" class="btn-primary" onclick="app.showAddressForm()" disabled>Далее</button>
@@ -1934,7 +1929,9 @@ const app = (function() {
 Instagram: @${orderData.instagram}
 Уровень: ${determineBloggerLevel(orderData.followersCount).text}`;
         
-        if (orderData.setName) message += `\n🍱 *Выбранный набор:* ${orderData.setName}`;
+        if (orderData.setName) {
+            message += `\n🍱 *Выбранный набор:* ${orderData.setName}`;
+        }
 
         message += `\n\n🗓 *Доставка:*
 Дата: ${orderData.date} в ${orderData.time}
@@ -2877,7 +2874,7 @@ Instagram: @${orderData.instagram}
     }
 
 
-    async function markNoReport(orderId) {
+    async function markNoReport(orderId, orderNumber) {
         if (!confirm('Отчет по заказу не сдан? Это добавит штрафной балл.')) return;
         await withLoading(document.getElementById('markNoReportBtn'), async () => {
             const orderRef = db.collection(COLLECTIONS.ORDERS).doc(orderId);
@@ -2906,7 +2903,7 @@ Instagram: @${orderData.instagram}
             await batch.commit();
             
             if (userDoc.data().telegramId) {
-                const message = `🚩 Внимание: Вы не сдали отчет по заказу #${orderData.orderNumber} вовремя. Вам начислен 1 штрафной балл. После 3-х штрафов ваш аккаунт будет заблокирован.`;
+                const message = `🚩 Внимание: Вы не сдали отчет по заказу #${orderNumber} вовремя. Вам начислен 1 штрафной балл. После 3-х штрафов ваш аккаунт будет заблокирован.`;
                 await sendTelegramNotification(userDoc.data().telegramId, message);
             }
 
@@ -2950,7 +2947,13 @@ Instagram: @${orderData.instagram}
     function startCollaboration() {
         if(userData.isBlocked) return;
         currentOrderData = {};
-        showAddressForm();
+        
+        const bloggerLevel = (userData.registration || userData).level;
+        if (bloggerLevel === 'micro') {
+            showSetSelection();
+        } else {
+            showAddressForm();
+        }
     }
 
     function handleCityChange() {
@@ -3504,3 +3507,4 @@ Instagram: @${orderData.instagram}
     </script>
 </body>
 </html>
+```
