@@ -1147,10 +1147,12 @@
 </head>
 <body>
     <div class="container">
-        <!-- Welcome, Login, Registration, Migration Screens -->
+        <!-- Welcome, Login, Registration, Migration Screens (без изменений) -->
         <div id="welcomeScreen" class="welcome-screen">
             <div class="logo-container">
-                <div class="logo-icon"><img src="logo.jpg" alt="Логотип"></div>
+                <div class="logo-icon">
+                    <img src="logo.jpg" alt="Логотип">
+                </div>
             </div>
             <h1>Бартер для блогеров</h1>
             <p class="subtitle">Эксклюзивное предложение<br>для блогеров и инфлюенсеров</p>
@@ -1158,45 +1160,173 @@
                  <button class="btn-primary" onclick="app.showRegistration()">Начать</button>
             </div>
             <div class="auto-login-info" id="autoLoginInfo" style="display: none;">
-                <div class="loading-indicator">🔄 Выполняется автоматический вход...</div>
+                <div class="loading-indicator">
+                    🔄 Выполняется автоматический вход через Telegram...
+                </div>
             </div>
         </div>
 
         <div id="loginScreen" class="form-screen">
-            <div class="form-header"><h2>Вход в аккаунт</h2></div>
+            <div class="form-header">
+                <h2>Вход в аккаунт</h2>
+                <p class="subtitle">Введите данные для входа</p>
+            </div>
+
             <form id="loginForm">
-                <div class="form-group"><label for="loginPhone">Номер телефона *</label><input type="tel" id="loginPhone" required placeholder="+7 (___) ___-__-__"></div>
-                <div class="form-group"><label for="loginInstagram">Логин Instagram *</label><input type="text" id="loginInstagram" required placeholder="@username"></div>
-                <div class="form-group"><label for="loginPassword">Пароль *</label><input type="password" id="loginPassword" required placeholder="Введите пароль"></div>
+                <div class="form-group">
+                    <label for="loginPhone">Номер телефона *</label>
+                    <input type="tel" id="loginPhone" required placeholder="+7 (___) ___-__-__">
+                </div>
+
+                <div class="form-group">
+                    <label for="loginInstagram">Логин Instagram *</label>
+                    <input type="text" id="loginInstagram" required placeholder="@username">
+                </div>
+
+                <div class="form-group">
+                    <label for="loginPassword">Пароль *</label>
+                    <input type="password" id="loginPassword" required placeholder="Введите пароль">
+                </div>
+
                 <button type="button" class="btn-primary" onclick="app.submitLogin(this)">Войти</button>
                 <button type="button" class="btn-secondary" onclick="app.showWelcomeScreen()">← Назад</button>
             </form>
+
+            <div class="telegram-info">
+                <h4 style="color: #00b4d8; margin-bottom: 10px;">💡 Автоматический вход</h4>
+                <p style="color: #ccc; font-size: 14px; line-height: 1.5;">
+                    Если вы открыли приложение через Telegram бот, система попытается найти ваш аккаунт автоматически. 
+                    Если это не сработало, введите телефон, Instagram и пароль из вашей регистрации.
+                </p>
+            </div>
         </div>
 
         <div id="registrationScreen" class="form-screen">
-            <div class="form-header"><h2>Регистрация</h2></div>
+            <div class="form-header">
+                <h2>Регистрация</h2>
+                <p class="subtitle">Заполните информацию о себе</p>
+            </div>
+
             <form id="registrationForm">
-                <div class="form-group"><label for="firstName">Имя *</label><input type="text" id="firstName" required></div>
-                <div class="form-group"><label for="phone">Номер телефона *</label><input type="tel" id="phone" required placeholder="+7 (___) ___-__-__"></div>
-                <div class="form-group"><label for="instagramLogin">Логин Instagram *</label><input type="text" id="instagramLogin" required placeholder="@username"></div>
-                <div class="form-group"><label for="password">Пароль *</label><input type="password" id="password" required placeholder="Минимум 6 символов"></div>
-                <div class="form-group"><label for="followersCount">Количество подписчиков *</label><input type="number" id="followersCount" required></div>
-                <div class="form-group"><label for="avgViews">Среднее просмотров сторис *</label><input type="number" id="avgViews" required></div>
+                <div class="form-group">
+                    <label for="firstName">Имя *</label>
+                    <input type="text" id="firstName" required placeholder="Ваше имя">
+                </div>
+
+                <div class="form-group">
+                    <label for="phone">Номер телефона *</label>
+                    <input type="tel" id="phone" required placeholder="+7 (___) ___-__-__">
+                </div>
+
+                <div class="form-group">
+                    <label for="instagramLogin">Логин Instagram *</label>
+                    <input type="text" id="instagramLogin" required placeholder="@username">
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Пароль *</label>
+                    <input type="password" id="password" required placeholder="Придумайте пароль (минимум 6 символов)">
+                    <div class="error-message" id="passwordError">Пароль должен содержать минимум 6 символов</div>
+                </div>
+
+                <div class="form-group">
+                    <label for="followersCount">Количество подписчиков *</label>
+                    <input type="number" id="followersCount" required placeholder="Например: 5000" min="1" max="10000000">
+                    <div class="error-message" id="followersError">Введите реальное количество подписчиков (от 1 до 10,000,000)</div>
+                </div>
+
+                <div class="form-group">
+                    <label for="avgViews">Среднее количество просмотров сторис *</label>
+                    <input type="number" id="avgViews" required placeholder="Например: 500" min="1" max="10000000">
+                    <div class="error-message" id="viewsError">Введите реальное количество просмотров (от 1 до 10,000,000)</div>
+                </div>
+
                 <button type="button" class="btn-primary" onclick="app.submitRegistration(this)">Зарегистрироваться</button>
                 <button type="button" class="btn-secondary" onclick="app.showWelcomeScreen()">← Назад</button>
             </form>
         </div>
 
         <div id="migrationScreen" class="form-screen">
-             <!-- ... (Код без изменений) ... -->
+            <div class="form-header">
+                <h2>Установка пароля</h2>
+                <p class="subtitle">Для вашего старого аккаунта нужно установить пароль</p>
+            </div>
+
+            <div class="migration-info">
+                <p>Мы нашли ваш аккаунт, но у него нет пароля. Пожалуйста, установите новый пароль для безопасности.</p>
+            </div>
+
+            <form id="migrationForm">
+                <div class="form-group">
+                    <label for="migrationPassword">Новый пароль *</label>
+                    <input type="password" id="migrationPassword" required placeholder="Придумайте пароль (минимум 6 символов)">
+                    <div class="error-message" id="migrationPasswordError">Пароль должен содержать минимум 6 символов</div>
+                </div>
+
+                <div class="form-group">
+                    <label for="migrationPasswordConfirm">Повторите пароль *</label>
+                    <input type="password" id="migrationPasswordConfirm" required placeholder="Повторите пароль">
+                    <div class="error-message" id="migrationPasswordConfirmError">Пароли не совпадают</div>
+                </div>
+
+                <button type="button" class="btn-primary" onclick="app.submitMigration(this)">Установить пароль</button>
+                <button type="button" class="btn-secondary" onclick="app.showWelcomeScreen()">← Назад</button>
+            </form>
         </div>
 
         <div id="dashboardScreen" class="dashboard">
-             <!-- ... (Код без изменений) ... -->
+            <div class="user-card">
+                <div class="user-avatar" id="userAvatar">👤</div>
+                <div class="user-name" id="userName"></div>
+                <div id="userLevel" class="user-level"></div>
+                <div class="user-stats">
+                    <div class="stat-item">
+                        <div class="stat-number" id="followersDisplay">0</div>
+                        <div class="stat-label">Подписчики</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number" id="viewsDisplay">0</div>
+                        <div class="stat-label">Просмотры</div>
+                    </div>
+                </div>
+            </div>
+
+             <div id="blockedPanel" class="blocked-message" style="display: none;"></div>
+             <div id="statusPanel" class="action-card" style="display: none; border-color: #00b4d8; text-align: left;"></div>
+             <div id="reportActionsPanel" class="dashboard-actions" style="margin-top: 20px;"></div>
+
+            <div class="dashboard-actions">
+                <div class="action-card" onclick="app.startCollaboration()">
+                    <div class="action-icon">🎯</div>
+                    <div class="action-title">Новое сотрудничество</div>
+                    <div class="action-desc">Оформить заказ на бартер</div>
+                </div>
+                <div class="action-card" onclick="app.showOrderHistory()">
+                    <div class="action-icon">📋</div>
+                    <div class="action-title">История заказов</div>
+                    <div class="action-desc">Просмотреть предыдущие заказы</div>
+                </div>
+                <div class="action-card" onclick="app.editProfile()">
+                    <div class="action-icon">⚙️</div>
+                    <div class="action-title">Редактировать профиль</div>
+                    <div class="action-desc">Изменить данные аккаунта</div>
+                </div>
+                <div class="action-card" onclick="app.contactAdmin()">
+                    <div class="action-icon">📞</div>
+                    <div class="action-title">Связаться с администратором</div>
+                    <div class="action-desc">Задать вопрос или получить помощь</div>
+                </div>
+            </div>
+
+            <button class="btn-secondary" onclick="app.logout()">Выйти из аккаунта</button>
         </div>
 
         <div id="crmScreen" class="crm-screen">
-            <div class="crm-header"><h2>🔧 Панель управления</h2><button class="btn-back" onclick="app.showDashboard()">← Назад</button></div>
+            <div class="crm-header">
+                <h2>🔧 Панель управления</h2>
+                <button class="btn-back" onclick="app.showDashboard()">← Назад</button>
+            </div>
+
             <div class="crm-tabs">
                 <button class="crm-tab active" data-tab="overview" onclick="app.showCrmTab('overview', this)">Обзор</button>
                 <button class="crm-tab" data-tab="analytics" onclick="app.showCrmTab('analytics', this)">Аналитика</button>
@@ -1210,69 +1340,1974 @@
 
             <div id="crmOverview" class="crm-content active">
                 <div class="crm-stats">
-                    <div class="crm-stat-card"><div class="crm-stat-number" id="totalUsers">0</div><div class="stat-label">Пользователи</div></div>
-                    <div class="crm-stat-card"><div class="crm-stat-number" id="totalOrders">0</div><div class="stat-label">Заказы</div></div>
-                    <div class="crm-stat-card"><div class="crm-stat-number" id="newOrders">0</div><div class="stat-label">Новые</div></div>
-                    <div class="crm-stat-card"><div class="crm-stat-number" id="blockedSlots">0</div><div class="stat-label">Блокировки</div></div>
+                    <div class="crm-stat-card">
+                        <div class="crm-stat-number" id="totalUsers">0</div>
+                        <div class="stat-label">Пользователи</div>
+                    </div>
+                    <div class="crm-stat-card">
+                        <div class="crm-stat-number" id="totalOrders">0</div>
+                        <div class="stat-label">Заказы</div>
+                    </div>
+                    <div class="crm-stat-card">
+                        <div class="crm-stat-number" id="newOrders">0</div>
+                        <div class="stat-label">Новые</div>
+                    </div>
+                    <div class="crm-stat-card">
+                        <div class="crm-stat-number" id="blockedSlots">0</div>
+                        <div class="stat-label">Блокировки</div>
+                    </div>
                 </div>
-                <!-- ВРЕМЕННЫЙ БЛОК МИГРАЦИИ -->
-                <div id="migrationPanel" class="telegram-info" style="border-color: #ffc107; text-align: center;">
-                    <h4 style="color: #ffc107;">Обновление структуры данных</h4>
-                    <p style="margin: 10px 0;">Нажмите кнопку ниже ОДИН РАЗ, чтобы обновить базу данных до новой версии. После этого всё заработает.</p>
-                    <button class="btn-primary" style="background: #ff6b35;" onclick="app.runMigration()">ЗАПУСТИТЬ ОБНОВЛЕНИЕ</button>
+
+                <div class="admin-contact">
+                    <h3>Контакты для пользователей</h3>
+                    <a href="https://t.me/AdamRogozhin" class="contact-link" target="_blank">💬 Telegram поддержка</a>
+                    <a href="mailto:adamrogozhin@gmail.com" class="contact-link">📧 Email поддержка</a>
                 </div>
             </div>
             
             <div id="crmAnalytics" class="crm-content">
-                <div class="analytics-filters">
-                    <div class="form-group"><label>Период:</label><div class="form-row"><input type="date" id="analyticsStartDate"><input type="date" id="analyticsEndDate"></div></div>
-                    <div class="form-group"><label for="analyticsCity">Город:</label><select id="analyticsCity"><option value="all">Все города</option><option value="Павлодар">Павлодар</option><option value="Петропавловск">Петропавловск</option><option value="Кокшетау">Кокшетау</option><option value="Костанай">Костанай</option><option value="Усть-Каменогорск">Усть-Каменогорск</option></select></div>
+                 <div class="analytics-filters">
+                    <div class="form-group">
+                        <label>Период:</label>
+                        <div class="form-row">
+                            <input type="date" id="analyticsStartDate">
+                            <input type="date" id="analyticsEndDate">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="analyticsCity">Город:</label>
+                        <select id="analyticsCity">
+                            <option value="all">Все города</option>
+                            <option value="Павлодар">Павлодар</option>
+                            <option value="Петропавловск">Петропавловск</option>
+                            <option value="Кокшетау">Кокшетау</option>
+                            <option value="Костанай">Костанай</option>
+                            <option value="Усть-Каменогорск">Усть-Каменогорск</option>
+                        </select>
+                    </div>
                     <button class="btn-primary" onclick="app.applyAnalyticsFilters()">Применить</button>
                 </div>
+
                 <div class="analytics-grid">
-                    <div class="chart-container"><h3 >Динамика заказов</h3><canvas id="ordersTrendChart"></canvas></div>
-                    <div id="cityChartContainer" class="chart-container"><h3 >Заказы по городам</h3><canvas id="cityChart"></canvas></div>
-                    <div class="chart-container"><h3 >Уровни блогеров</h3><canvas id="bloggerLevelChart"></canvas></div>
+                    <div class="chart-container">
+                        <h3>Динамика заказов</h3>
+                        <canvas id="ordersTrendChart"></canvas>
+                    </div>
+                    <div class="chart-container">
+                        <h3>Заказы по городам</h3>
+                        <canvas id="cityChart"></canvas>
+                    </div>
+                     <div class="chart-container">
+                        <h3>Уровни блогеров</h3>
+                        <canvas id="bloggerLevelChart"></canvas>
+                    </div>
+                    <div class="chart-container">
+                        <h3>Распределение подписчиков</h3>
+                        <canvas id="followersDistributionChart"></canvas>
+                    </div>
                 </div>
             </div>
 
-            <div id="crmOrders" class="crm-content"><input type="text" id="orderSearch" class="search-input" placeholder="Поиск..." onkeyup="app.filterOrders()"><div class="orders-list" id="ordersList"></div></div>
-            <div id="crmUsers" class="crm-content"><input type="text" id="userSearch" class="search-input" placeholder="Поиск..." onkeyup="app.filterUsers()"><div id="usersList"></div></div>
-            <div id="crmSchedule" class="crm-content"> <!-- ... (Код без изменений) ... --> </div>
-            <div id="crmBlocks" class="crm-content"> <!-- ... (Код без изменений) ... --> </div>
-            <div id="crmBroadcast" class="crm-content"> <!-- ... (Код без изменений) ... --> </div>
-            <div id="crmAdmins" class="crm-content"> <!-- ... (Код без изменений) ... --> </div>
+            <div id="crmOrders" class="crm-content">
+                <input type="text" id="orderSearch" class="search-input" placeholder="Поиск по имени, телефону, Instagram или номеру заказа..." onkeyup="app.filterOrders()">
+                <div class="orders-list" id="ordersList"></div>
+            </div>
+
+            <div id="crmUsers" class="crm-content">
+                <input type="text" id="userSearch" class="search-input" placeholder="Поиск пользователей..." onkeyup="app.filterUsers()">
+                <div id="usersList"></div>
+            </div>
+
+             <div id="crmSchedule" class="crm-content">
+                 <div class="form-header">
+                    <h2>Управление расписанием</h2>
+                    <p class="subtitle">Укажите доступные часы для доставки в формате "10:00-14:00" или "10:00-12:00, 14:00-18:00".<br>Оставьте поле пустым, чтобы сделать день недоступным.</p>
+                </div>
+                <div id="scheduleCityTabs" class="schedule-city-tabs"></div>
+                <div id="scheduleFormsContainer"></div>
+                <button class="btn-primary" onclick="app.saveSchedule(this)">Сохранить расписание</button>
+            </div>
+
+            <div id="crmBlocks" class="crm-content">
+                <button class="btn-primary" onclick="app.showAddBlockModal()" style="margin-bottom: 20px;">+ Добавить блокировку</button>
+                <div id="blockedSlotsList"></div>
+            </div>
+
+             <div id="crmBroadcast" class="crm-content">
+                <div class="form-header">
+                    <h2>Массовая рассылка</h2>
+                    <p class="subtitle">Отправьте сообщение пользователям бота</p>
+                </div>
+                <div class="form-group">
+                    <label>Фильтр по тегам (рассылка будет отправлена пользователям, имеющим хотя бы один из выбранных тегов)</label>
+                    <div id="broadcastTagsContainer" class="tags-container" style="min-height: 40px; background: #3a3a3a; padding: 5px; border-radius: 12px; border: 2px solid #4a4a4a;">
+                    </div>
+                    <div style="position: relative;">
+                         <input type="text" id="broadcastTagInput" placeholder="Добавьте тег для рассылки..." style="margin-top: 10px;">
+                         <div id="tagSuggestions" class="tag-suggestions-container"></div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="broadcastMessage">Текст сообщения</label>
+                    <textarea id="broadcastMessage" rows="6" placeholder="Введите ваше сообщение здесь..."></textarea>
+                </div>
+                <button class="btn-primary" onclick="app.sendBroadcast(this)">Отправить рассылку</button>
+                <div class="telegram-info" style="margin-top: 20px;">
+                     <h4 style="color: #ffc107; margin-bottom: 10px;">⚠️ Внимание!</h4>
+                     <p style="color: #ccc; font-size: 14px; line-height: 1.5;">
+                         Эта функция отправляет сообщения напрямую из вашего браузера. Не закрывайте вкладку до завершения рассылки.
+                     </p>
+                </div>
+            </div>
+
+            <div id="crmAdmins" class="crm-content">
+                <button class="btn-primary" onclick="app.showAddAdminModal()" style="margin-bottom: 20px;">+ Добавить сотрудника</button>
+                <div id="adminsList"></div>
+            </div>
         </div>
         
-        <!-- Address, DateTime, Instructions Screens -->
-        <div id="setSelectionScreen" class="form-screen set-selection"> <!-- ... (Код без изменений) ... --> </div>
-        <div id="addressScreen" class="form-screen"> <!-- ... (Код без изменений) ... --> </div>
-        <div id="dateTimeScreen" class="form-screen datetime-selection"> <!-- ... (Код без изменений) ... --> </div>
-        <div id="instructionsScreen" class="form-screen"> <!-- ... (Код без изменений) ... --> </div>
+        <!-- Address, DateTime, Instructions Screens (без изменений) -->
+        <div id="setSelectionScreen" class="form-screen set-selection">
+            <button class="btn-back" onclick="app.showDashboard()">← Назад</button>
+            
+            <div class="form-header">
+                <h2>Выберите набор</h2>
+            </div>
+
+            <div class="set-item" data-set-name="Набор 1 'Классик'" onclick="app.selectSet(this, 'set1')">
+                <div class="set-title">Набор 1 "Классик"</div>
+                <div class="set-description">32 роллы: Филадельфия классик (8шт), Калифорния с крабом (8шт), Лосось терияки (8шт), Тунец спайси (8шт)</div>
+            </div>
+
+            <div class="set-item" data-set-name="Набор 2 'Премиум'" onclick="app.selectSet(this, 'set2')">
+                <div class="set-title">Набор 2 "Премиум"</div>
+                <div class="set-description">28 роллов: Филадельфия с лососем (8шт), Дракон (6шт), Радуга (8шт), Темпура микс (6шт)</div>
+            </div>
+
+            <div class="set-item" data-set-name="Набор 3 'Микс'" onclick="app.selectSet(this, 'set3')">
+                <div class="set-title">Набор 3 "Микс"</div>
+                <div class="set-description">40 роллов: Ассорти из лучших роллов недели + бонусные маки (8шт)</div>
+            </div>
+
+            <button type="button" id="nextFromSet" class="btn-primary" onclick="app.showAddressForm()" disabled>Далее</button>
+        </div>
+
+        <div id="addressScreen" class="form-screen">
+            <button class="btn-back" id="backFromAddress" onclick="app.showDashboard()">← В главное меню</button>
+            
+            <div class="form-header">
+                <h2>Адрес доставки</h2>
+            </div>
+
+            <form id="addressForm">
+                <div class="form-group">
+                    <label for="city">Город *</label>
+                    <select id="city" required onchange="app.handleCityChange()">
+                        <option value="">Выберите город</option>
+                        <option value="Павлодар">Павлодар</option>
+                        <option value="Петропавловск">Петропавловск</option>
+                        <option value="Кокшетау">Кокшетау</option>
+                        <option value="Костанай">Костанай</option>
+                        <option value="Усть-Каменогорск">Усть-Каменогорск</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="street">Улица, дом *</label>
+                    <input type="text" id="street" required placeholder="ул. Пушкина, д. 10">
+                </div>
+
+                <div class="form-group">
+                    <label for="entrance">Подъезд</label>
+                    <input type="text" id="entrance" placeholder="1">
+                </div>
+
+                <div class="form-group">
+                    <label for="floor">Этаж</label>
+                    <input type="text" id="floor" placeholder="5">
+                </div>
+
+                <div class="form-group">
+                    <label for="recipientPhone">Телефон получателя *</label>
+                    <input type="tel" id="recipientPhone" required placeholder="+7 (___) ___-__-__">
+                </div>
+
+                <div id="orderScreenshotGroup" class="form-group" style="display: none;">
+                    <label>Скриншот заказа на сумму бартера *</label>
+                    <div class="file-upload">
+                        <input type="file" id="orderScreenshot" accept="image/*">
+                        <label for="orderScreenshot" class="file-upload-label">
+                            📷 Загрузить скриншот заказа
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="comment">Дополнительный комментарий</label>
+                    <textarea id="comment" rows="3" placeholder="Особые пожелания или комментарии"></textarea>
+                </div>
+
+                <button type="button" class="btn-primary" onclick="app.submitAddressAndShowDateTime()">Далее</button>
+            </form>
+        </div>
+
+        <div id="dateTimeScreen" class="form-screen datetime-selection">
+            <button class="btn-back" id="backFromDateTime" onclick="app.showAddressForm()">← Назад</button>
+            
+            <div class="form-header">
+                <h2>Дата и время доставки</h2>
+            </div>
+
+            <div class="form-group">
+                <label for="deliveryDate">Выберите дату</label>
+                <input type="date" id="deliveryDate" required onchange="app.updateTimeSlots()">
+            </div>
+
+            <div class="form-group">
+                <label>Выберите время</label>
+                <div class="time-slots" id="timeSlots"></div>
+            </div>
+
+            <button type="button" id="nextFromDateTime" class="btn-primary" onclick="app.showInstructions()" disabled>Далее</button>
+        </div>
+
+        <div id="instructionsScreen" class="form-screen">
+            <button class="btn-back" onclick="app.showDateTimeSelection()">← Назад</button>
+            
+            <div class="form-header">
+                <h2>Инструкция для сторис</h2>
+            </div>
+
+            <div class="instructions">
+                <h3>Чек-лист для сторис:</h3>
+                <ul class="checklist">
+                    <li>Упомянуть бренд в сторис</li>
+                    <li>Отметить наш Instagram @vesla.kz</li>
+                    <li>Показывать упаковку и еду</li>
+                    <li>Разместить пост до указанного времени</li>
+                </ul>
+                
+                <div style="margin-top: 20px;">
+                    <strong>Пример тезиса:</strong><br>
+                    <em>"Я заказала у @vesla.kz — это просто космос! Очень вкусно и качественно!"</em>
+                </div>
+            </div>
+
+            <div class="warning-message" id="warningMessage">
+                ⚠️ Пожалуйста, помните: 3 несданных отчета — и вы будете исключены из программы. Мы уверены, до этого не дойдет! 😊
+            </div>
+
+            <button type="button" class="btn-primary" onclick="app.submitOrder(this)">Оформить заказ</button>
+        </div>
         
         <!-- Модальные окна -->
-        <div id="successModal" class="modal"> <!-- ... (Код без изменений) ... --> </div>
-        <div id="errorModal" class="modal"> <!-- ... (Код без изменений) ... --> </div>
-        <div id="rejectionModal" class="modal"> <!-- ... (Код без изменений) ... --> </div>
-        <div id="orderHistoryModal" class="modal"> <!-- ... (Код без изменений) ... --> </div>
-        <div id="orderDetailModal" class="modal"> <!-- ... (Код без изменений) ... --> </div>
-        <div id="userDetailModal" class="modal"> <!-- ... (Код без изменений) ... --> </div>
-        <div id="reportModal" class="modal"> <!-- ... (Код без изменений) ... --> </div>
-        <div id="editProfileModal" class="modal"> <!-- ... (Код без изменений) ... --> </div>
-        <div id="addBlockModal" class="modal"> <!-- ... (Код без изменений) ... --> </div>
-        <div id="addAdminModal" class="modal"> <!-- ... (Код без изменений) ... --> </div>
-        <div id="contactModal" class="modal"> <!-- ... (Код без изменений) ... --> </div>
+        <div id="successModal" class="modal">
+            <div class="modal-content">
+                <div class="success-icon">✅</div>
+                <h2 id="successTitle">Заказ оформлен!</h2>
+                <p class="subtitle" id="successMessage">Через 24 часа после доставки вам придет напоминание об отчете</p>
+                <button class="btn-primary" onclick="app.closeModal()">Закрыть</button>
+            </div>
+        </div>
+
+        <div id="errorModal" class="modal">
+            <div class="modal-content">
+                <div class="error-icon">❌</div>
+                <h2 id="errorTitle">Ошибка</h2>
+                <p class="subtitle" id="errorMessage"></p>
+                <button class="btn-primary" onclick="app.closeErrorModal()">Понятно</button>
+            </div>
+        </div>
+
+        <div id="rejectionModal" class="modal">
+            <div class="modal-content">
+                <div class="error-icon">😔</div>
+                <h2>Спасибо за интерес!</h2>
+                <p class="subtitle">На данный момент сотрудничество доступно для блогеров со средней аудиторией от 300 просмотров сторис. Следите за нашими обновлениями — возможно, скоро это изменится!</p>
+                <button class="btn-primary" onclick="app.closeRejectionModal()">Понятно</button>
+            </div>
+        </div>
+
+        <div id="orderHistoryModal" class="modal">
+            <div class="modal-content" style="max-width: 400px;">
+                <h2>История заказов</h2>
+                <div id="orderHistoryList" style="text-align: left; max-height: 40vh; overflow-y: auto; margin: 20px 0;"></div>
+                <button class="btn-primary" onclick="app.closeOrderHistory()">Закрыть</button>
+            </div>
+        </div>
+        
+        <div id="orderDetailModal" class="modal">
+            <div class="modal-content" style="max-width: 400px;">
+                <div class="modal-header">
+                     <h2 id="orderDetailTitle">Детали заказа</h2>
+                     <div style="display: flex; gap: 10px; align-items: center;">
+                        <button id="markNoReportBtn" class="btn-icon-block" title="Отметить, что отчет не сдан">🚩</button>
+                        <button class="btn-danger-icon" id="deleteOrderBtn" title="Удалить заказ">🗑️</button>
+                     </div>
+                </div>
+                <div id="orderDetailBody" class="modal-body"></div>
+                <div class="form-group" style="margin-top: 20px; text-align: left;">
+                    <label for="orderStatusSelect">Изменить статус:</label>
+                    <select id="orderStatusSelect" style="width: 100%;">
+                         <option value="new">Новый</option>
+                         <option value="confirmed">Подтвержден</option>
+                         <option value="delivered">Доставлен</option>
+                         <option value="awaiting_review">Отчет на проверке</option>
+                         <option value="completed">Завершен</option>
+                         <option value="rejected">Отчет отклонен</option>
+                    </select>
+                </div>
+                <button class="btn-primary" onclick="app.updateOrderStatus(this)">Сохранить статус</button>
+                <button class="btn-secondary" onclick="app.closeOrderDetailModal()" style="margin-top: 10px;">Закрыть</button>
+            </div>
+        </div>
+        
+        <div id="userDetailModal" class="modal">
+            <div class="modal-content" style="max-width: 400px;">
+                <div class="modal-header">
+                     <h2 id="userDetailTitle">Карточка пользователя</h2>
+                </div>
+                <div id="userDetailBody" class="modal-body"></div>
+                
+                <hr style="border-color: #4a4a4a; margin: 20px 0;">
+                
+                <div style="text-align: left;">
+                    <label>Добавленные теги:</label>
+                    <div id="userTagsContainer" class="tags-container"></div>
+                    
+                    <div class="form-group">
+                        <label for="newTagInput" style="margin-top: 15px;">Добавить тег вручную</label>
+                        <div class="input-with-button">
+                            <input type="text" id="newTagInput" placeholder="Название тега">
+                            <button onclick="app.addUserTag()">+</button>
+                        </div>
+                    </div>
+                </div>
+
+                <button class="btn-secondary" onclick="app.closeUserDetailModal()" style="margin-top: 20px;">Закрыть</button>
+            </div>
+        </div>
+
+        <div id="reportModal" class="modal">
+            <div class="modal-content">
+                <h2 id="reportModalTitle">Сдать отчет</h2>
+                <p class="subtitle">Вставьте ссылку на сторис или пост</p>
+                <div class="form-group" style="text-align: left;">
+                    <label for="reportLink">Ссылка на отчет *</label>
+                    <input type="text" id="reportLink" placeholder="https://instagram.com/stories/...">
+                </div>
+                <button class="btn-primary" onclick="app.submitReport(this)">Отправить</button>
+                <button class="btn-secondary" onclick="app.closeReportModal()">Отмена</button>
+            </div>
+        </div>
+
+        <div id="editProfileModal" class="modal">
+            <div class="modal-content" style="max-width: 400px;">
+                <h2>Редактировать профиль</h2>
+                <form id="editProfileForm" style="margin: 20px 0; text-align: left;">
+                    <div class="form-group">
+                        <label for="editFirstName">Имя *</label>
+                        <input type="text" id="editFirstName" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="editPhone">Телефон *</label>
+                        <input type="tel" id="editPhone" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="editInstagram">Instagram *</label>
+                        <input type="text" id="editInstagram" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="editFollowers">Подписчики *</label>
+                        <input type="number" id="editFollowers" required min="1" max="10000000">
+                    </div>
+                    <div class="form-group">
+                        <label for="editViews">Просмотры *</label>
+                        <input type="number" id="editViews" required min="1" max="10000000">
+                    </div>
+                    <div class="form-group">
+                        <label for="editPassword">Новый пароль (оставьте пустым, если не меняете)</label>
+                        <input type="password" id="editPassword" placeholder="Новый пароль">
+                    </div>
+                </form>
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn-primary" onclick="app.saveProfile(this)" style="flex: 1;">Сохранить</button>
+                    <button class="btn-secondary" onclick="app.closeEditProfile()" style="flex: 1;">Отмена</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="addBlockModal" class="modal">
+            <div class="modal-content" style="max-width: 400px;">
+                <h2>Добавить блокировку</h2>
+                <form id="addBlockForm" style="margin: 20px 0; text-align: left;">
+                    <div class="form-group">
+                        <label for="blockCity">Город *</label>
+                        <select id="blockCity" required>
+                            <option value="">Выберите город</option>
+                            <option value="Павлодар">Павлодар</option>
+                            <option value="Петропавловск">Петропавловск</option>
+                            <option value="Кокшетау">Кокшетау</option>
+                            <option value="Костанай">Костанай</option>
+                            <option value="Усть-Каменогорск">Усть-Каменогорск</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="blockDate">Дата *</label>
+                        <input type="date" id="blockDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="blockType">Тип блокировки *</label>
+                        <select id="blockType" required onchange="app.toggleBlockTime()">
+                            <option value="time">Конкретное время</option>
+                            <option value="fullday">Весь день</option>
+                        </select>
+                    </div>
+                    <div class="form-group" id="blockTimeGroup">
+                        <label for="blockTime">Время *</label>
+                        <input type="time" id="blockTime">
+                    </div>
+                    <div class="form-group">
+                        <label for="blockReason">Причина</label>
+                        <input type="text" id="blockReason" placeholder="Причина блокировки">
+                    </div>
+                </form>
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn-primary" onclick="app.addBlock(this)" style="flex: 1;">Добавить</button>
+                    <button class="btn-secondary" onclick="app.closeAddBlockModal()" style="flex: 1;">Отмена</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="addAdminModal" class="modal">
+            <div class="modal-content" style="max-width: 400px;">
+                <h2>Добавить сотрудника</h2>
+                <div class="form-group" style="text-align: left;">
+                    <label for="adminRoleSelect">Роль</label>
+                    <select id="adminRoleSelect">
+                        <option value="operator">Оператор</option>
+                        <option value="admin">Администратор</option>
+                    </select>
+                </div>
+                <input type="text" id="adminUserSearch" class="search-input" placeholder="Поиск пользователя для назначения..." onkeyup="app.filterAdminUsers()">
+                <div id="adminUsersList" style="text-align: left; max-height: 40vh; overflow-y: auto;"></div>
+                <button class="btn-secondary" onclick="app.closeAddAdminModal()" style="margin-top: 20px;">Закрыть</button>
+            </div>
+        </div>
+
+        <div id="contactModal" class="modal">
+            <div class="modal-content">
+                <h2>Связаться с администратором</h2>
+                <p class="subtitle">Выберите удобный способ связи</p>
+                <a href="https://t.me/oderefyu" class="contact-link" target="_blank">💬 Telegram поддержка</a>
+                <a href="mailto:adamrogozhin@gmail.com" class="contact-link">📧 Email поддержка</a>
+                <button class="btn-secondary" onclick="app.closeContactModal()">Закрыть</button>
+            </div>
+        </div>
     </div>
 
-    <div class="admin-panel" id="adminPanel" style="display: none;"><button class="admin-btn" onclick="app.showCRM()" title="Панель управления">⚙️</button></div>
+    <div class="admin-panel" id="adminPanel" style="display: none;">
+        <button class="admin-btn" onclick="app.showCRM()" title="Панель управления">⚙️</button>
+    </div>
 
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
     <script>
-    const app = (function() {
-        // ... (весь JavaScript из предыдущего ответа, включая функцию runMigration)
-    })();
+const app = (function() {
+
+    const TELEGRAM_BOT_TOKEN = '8227812944:AAFy8ydOkUeCj3Qkjg7_Xsq6zyQpcUyMShY';
+    
+    const firebaseConfig = {
+        apiKey: "AIzaSyATmIapS6SJi7KnvKrJp5sfD9VMXxKMCgA",
+        authDomain: "vesla-barter.firebaseapp.com",
+        projectId: "vesla-barter",
+        storageBucket: "vesla-barter.firebasestorage.app",
+        messagingSenderId: "730193371508",
+        appId: "1:730193371508:web:a6517d156f2766ece50c21",
+        measurementId: "G-1QJ9RRS1L6"
+    };
+    
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    const COLLECTIONS = {
+        USERS: 'users',
+        ORDERS: 'orders',
+        ADMINS: 'admins',
+        BLOCKED_SLOTS: 'blockedSlots',
+        SCHEDULES: 'schedules'
+    };
+    const SCREENS = {
+        WELCOME: 'welcomeScreen',
+        REGISTRATION: 'registrationScreen',
+        LOGIN: 'loginScreen',
+        MIGRATION: 'migrationScreen',
+        DASHBOARD: 'dashboardScreen',
+        CRM: 'crmScreen',
+        SET_SELECTION: 'setSelectionScreen',
+        ADDRESS: 'addressScreen',
+        DATE_TIME: 'dateTimeScreen',
+        INSTRUCTIONS: 'instructionsScreen'
+    };
+
+    let tg;
+    let telegramUser = null;
+    let currentUserId = null;
+    let userData = {};
+    let migrationUser = null;
+    let currentOrderData = {};
+    let currentUserRole = null; // Замена для isCurrentUserAdmin
+    let cityChart, ordersTrendChart, bloggerLevelChart, followersDistributionChart;
+    let currentEditingOrderId = null;
+    let currentReportingOrderId = null;
+    let currentUserDetailId = null;
+    let userListenerUnsubscribe = null;
+    
+    const CITIES = ["Павлодар", "Петропавловск", "Кокшетау", "Костанай", "Усть-Каменогорск"];
+
+    function generateOrderNumber(city, date, firestoreId) {
+        const cityCodes = {
+            'Павлодар': 'PVL',
+            'Петропавловск': 'PPK',
+            'Кокшетау': 'KOK',
+            'Костанай': 'KSN',
+            'Усть-Каменогорск': 'UKK'
+        };
+        const cityCode = cityCodes[city] || 'UNK';
+        const dateObj = new Date(date);
+        const day = String(dateObj.getDate()).padStart(2, '0');
+        const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const year = String(dateObj.getFullYear()).slice(-2);
+        const shortId = firestoreId.substring(0, 4).toUpperCase();
+        return `${cityCode}-${day}${month}${year}-${shortId}`;
+    }
+
+    async function sendTelegramNotification(chatId, message) {
+        if (!chatId) return;
+        const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ chat_id: chatId, text: message, parse_mode: 'Markdown' })
+            });
+            const result = await response.json();
+            if (!result.ok) throw new Error(result.description);
+        } catch (error) {
+            console.error(`Ошибка отправки уведомления в Telegram для ${chatId}:`, error);
+        }
+    }
+    
+    async function sendAdminNotification(orderData, screenshotFile) {
+        const adminSnapshot = await db.collection(COLLECTIONS.ADMINS).get();
+        const adminChatIds = adminSnapshot.docs.map(doc => doc.id);
+        if (adminChatIds.length === 0) return;
+
+        let message = `*Новая заявка на бартер*
+
+📝 *Заказ:* \`${orderData.orderNumber}\`
+👤 *Блогер:*
+Имя: ${orderData.userName}
+Телефон: \`${orderData.phone}\`
+Instagram: @${orderData.instagram}
+Уровень: ${determineBloggerLevel(orderData.followersCount).text}`;
+        
+        if (orderData.setName) message += `\n🍱 *Выбранный набор:* ${orderData.setName}`;
+
+        message += `\n\n🗓 *Доставка:*
+Дата: ${orderData.date} в ${orderData.time}
+Город: ${orderData.city}
+Адрес: ${orderData.street}`;
+        
+        for (const chatId of adminChatIds) {
+            try {
+                if (screenshotFile) {
+                    const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto`;
+                    const formData = new FormData();
+                    formData.append('chat_id', chatId);
+                    formData.append('photo', screenshotFile);
+                    formData.append('caption', message);
+                    formData.append('parse_mode', 'Markdown');
+                    await fetch(url, { method: 'POST', body: formData });
+                } else {
+                    await sendTelegramNotification(chatId, message);
+                }
+            } catch (error) {
+                console.error('Ошибка отправки уведомления администратору:', error);
+            }
+        }
+    }
+
+    function initTelegram() {
+        try {
+            if (window.Telegram && window.Telegram.WebApp) {
+                tg = window.Telegram.WebApp;
+                tg.ready();
+                tg.expand();
+                if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
+                    telegramUser = tg.initDataUnsafe.user;
+                    currentUserId = 'tg_' + telegramUser.id;
+                }
+            }
+        } catch (error) {
+            console.error('Error initializing Telegram:', error);
+        }
+    }
+    
+    function attachUserListener(userId) {
+        if (userListenerUnsubscribe) userListenerUnsubscribe();
+        userListenerUnsubscribe = db.collection(COLLECTIONS.USERS).doc(userId)
+            .onSnapshot((doc) => {
+                if (doc.exists) {
+                    userData = { userId: doc.id, ...doc.data() };
+                    updateDashboard();
+                } else {
+                    logout();
+                }
+            }, (error) => {
+                console.error("Error with real-time listener: ", error);
+            });
+    }
+
+    function hashPassword(password) {
+        let hash = 0;
+        for (let i = 0; i < password.length; i++) {
+            const char = password.charCodeAt(i);
+            hash = ((hash << 5) - hash) + char;
+            hash &= hash;
+        }
+        return hash.toString();
+    }
+    
+    function validatePassword(password) { return password && password.length >= 6; }
+
+    async function getUserRole(userId) {
+        if (!userId) return null;
+        const checkId = String(userId).replace('tg_','');
+        try {
+            const adminDoc = await db.collection(COLLECTIONS.ADMINS).doc(checkId).get();
+            return adminDoc.exists ? adminDoc.data().role : null;
+        } catch (error) {
+            console.error("Error checking admin status:", error);
+            return null;
+        }
+    }
+    
+    async function checkAndSetUserRole() {
+        const checkId = telegramUser ? telegramUser.id : (userData.telegramId || null);
+        currentUserRole = await getUserRole(checkId);
+    }
+
+    function migrateOldAccount(userInfo) {
+        if (userInfo && userInfo.registration && !userInfo.registration.password) {
+            migrationUser = userInfo;
+            return true; 
+        }
+        return false;
+    }
+
+   async function saveUser(userId, data) {
+        if (!userId) throw new Error("User ID is missing");
+        try {
+            await db.collection(COLLECTIONS.USERS).doc(userId).set(data, { merge: true });
+        } catch (error) {
+            console.error("Error saving data to Firestore: ", error);
+            showError("Ошибка сохранения", "Не удалось сохранить ваши данные. Проверьте интернет-соединение.");
+            throw error;
+        }
+    }
+
+    async function loadUser(userId) {
+        try {
+            const doc = await db.collection(COLLECTIONS.USERS).doc(userId).get();
+            return doc.exists ? { userId: doc.id, ...doc.data() } : null;
+        } catch (error) {
+            console.error("Error loading user from Firestore:", error);
+            return null;
+        }
+    }
+    
+    async function findUserByCredentials(phone, instagram, password) {
+        try {
+            const snapshot = await db.collection(COLLECTIONS.USERS)
+                .where('registration.phone', '==', phone)
+                .where('registration.instagramLogin', '==', instagram.toLowerCase())
+                .get();
+            if (snapshot.empty) return null;
+            for (const doc of snapshot.docs) {
+                const foundUser = { userId: doc.id, ...doc.data() };
+                if (foundUser.registration.password === hashPassword(password)) return foundUser;
+            }
+            return null;
+        } catch (error) {
+            console.error("Error finding user by credentials:", error);
+            return null;
+        }
+    }
+    
+    async function findUserByPhoneAndInstagram(phone, instagram) {
+        try {
+            const snapshot = await db.collection(COLLECTIONS.USERS)
+                .where('registration.phone', '==', phone)
+                .where('registration.instagramLogin', '==', instagram.toLowerCase())
+                .get();
+            if (snapshot.empty) return null;
+            const userDoc = snapshot.docs[0];
+            const foundUser = { userId: userDoc.id, ...userDoc.data() };
+            return !foundUser.registration.password ? foundUser : null;
+        } catch (error) {
+            console.error("Error finding user for migration:", error);
+            return null;
+        }
+    }
+    
+    async function checkForDuplicateRegistration(phone, instagram, excludeUserId = null) {
+        try {
+            const phoneQuery = db.collection(COLLECTIONS.USERS).where('registration.phone', '==', phone).get();
+            const instagramQuery = db.collection(COLLECTIONS.USERS).where('registration.instagramLogin', '==', instagram.toLowerCase()).get();
+            const [phoneSnapshot, instagramSnapshot] = await Promise.all([phoneQuery, instagramQuery]);
+            const phoneExists = !phoneSnapshot.empty && phoneSnapshot.docs[0].id !== excludeUserId;
+            const instagramExists = !instagramSnapshot.empty && instagramSnapshot.docs[0].id !== excludeUserId;
+            return { phoneExists, instagramExists, canRegister: !phoneExists && !instagramExists };
+        } catch (error) {
+            console.error("Error checking for duplicates:", error);
+            return { phoneExists: true, instagramExists: true, canRegister: false };
+        }
+    }
+
+    async function attemptTelegramAutoLogin() {
+        if (!telegramUser) return false;
+        document.getElementById('autoLoginInfo').style.display = 'block';
+        const existingUser = await loadUser('tg_' + telegramUser.id);
+        document.getElementById('autoLoginInfo').style.display = 'none';
+
+        if (existingUser) {
+            if (migrateOldAccount(existingUser)) {
+                showScreen(SCREENS.MIGRATION);
+                return false;
+            }
+            currentUserId = existingUser.userId;
+            await saveUser(currentUserId, { lastActivity: new Date().toISOString() });
+            await checkAndSetUserRole();
+            attachUserListener(currentUserId);
+            return true;
+        }
+        return false;
+    }
+
+    function fillTelegramData() {
+        if (telegramUser && telegramUser.first_name) {
+            document.getElementById('firstName').value = telegramUser.first_name;
+        }
+    }
+
+    function determineBloggerLevel(followersCount) {
+        const count = Number(followersCount) || 0;
+        if (count <= 6000) return { level: 'micro', text: 'Микроблогер' };
+        if (count <= 10500) return { level: 'macro-a', text: 'Макроблогер тип A' };
+        return { level: 'macro-b', text: 'Макроблогер тип B' };
+    }
+
+    async function isSlotBlocked(city, date, time) {
+        try {
+            const timeBlockDoc = db.collection(COLLECTIONS.BLOCKED_SLOTS).doc(`${city}_${date}_${time}`).get();
+            const dayBlockDoc = db.collection(COLLECTIONS.BLOCKED_SLOTS).doc(`${city}_${date}_fullday`).get();
+            const [timeBlock, dayBlock] = await Promise.all([timeBlockDoc, dayBlockDoc]);
+            return timeBlock.exists || dayBlock.exists;
+        } catch (error) {
+            console.error("Error checking blocked slot:", error);
+            return true;
+        }
+    }
+
+    function showScreen(screenId) {
+        document.querySelectorAll('.form-screen, .dashboard, .welcome-screen, .crm-screen').forEach(s => s.style.display = 'none');
+        document.getElementById(screenId).style.display = (screenId === SCREENS.WELCOME) ? 'flex' : 'block';
+    }
+
+    function showDashboard() {
+        showScreen(SCREENS.DASHBOARD);
+        document.getElementById('adminPanel').style.display = currentUserRole ? 'block' : 'none';
+    }
+
+    function showWelcomeScreen() { showScreen(SCREENS.WELCOME); }
+    function showRegistration() { showScreen(SCREENS.REGISTRATION); fillTelegramData(); }
+    function showLogin() { showScreen(SCREENS.LOGIN); }
+    function showSetSelection() { showScreen(SCREENS.SET_SELECTION); }
+    function showAddressForm() { showScreen(SCREENS.ADDRESS); }
+    function showDateTimeSelection() { showScreen(SCREENS.DATE_TIME); }
+    function showInstructions() { showScreen(SCREENS.INSTRUCTIONS); }
+
+    async function showCRM() {
+        if (!currentUserRole) {
+            showError('Доступ запрещен', 'У вас нет прав для доступа к CRM.');
+            return;
+        }
+        showScreen(SCREENS.CRM);
+        
+        document.querySelectorAll('.crm-tab').forEach(tab => {
+            const tabName = tab.dataset.tab;
+            let isVisible = false;
+            if (currentUserRole === 'admin') {
+                isVisible = true;
+            } else if (currentUserRole === 'operator') {
+                const operatorTabs = ['overview', 'orders', 'users', 'schedule', 'blocks'];
+                isVisible = operatorTabs.includes(tabName);
+            }
+            tab.style.display = isVisible ? 'flex' : 'none';
+        });
+
+        // Активировать первую видимую вкладку
+        const firstVisibleTab = document.querySelector('.crm-tab[style*="display: flex"]');
+        if (firstVisibleTab) {
+            showCrmTab(firstVisibleTab.dataset.tab, firstVisibleTab);
+        }
+        updateCRMData();
+    }
+
+    function showCrmTab(tabName, element) {
+        document.querySelectorAll('.crm-content').forEach(c => c.classList.remove('active'));
+        document.querySelectorAll('.crm-tab').forEach(t => t.classList.remove('active'));
+        document.getElementById('crm' + tabName.charAt(0).toUpperCase() + tabName.slice(1)).classList.add('active');
+        element.classList.add('active');
+        
+        switch(tabName) {
+            case 'overview': updateCRMStats(); break;
+            case 'analytics': applyAnalyticsFilters(); break;
+            case 'orders': updateOrdersList(); break;
+            case 'users': updateUsersList(); break;
+            case 'schedule': loadSchedule(); break;
+            case 'blocks': updateBlockedSlotsList(); break;
+            case 'admins': updateAdminsList(); break;
+            case 'broadcast': setupBroadcastTagInput(); break;
+        }
+    }
+    
+    async function withLoading(button, asyncFunction) {
+        const originalText = button.innerHTML;
+        button.disabled = true;
+        button.innerHTML = 'Загрузка...';
+        try {
+            await asyncFunction();
+        } catch (error) {
+            console.error("Operation failed:", error);
+            showError("Произошла ошибка", error.message);
+        } finally {
+            button.disabled = false;
+            button.innerHTML = originalText;
+        }
+    }
+    
+    async function submitLogin(button) {
+        await withLoading(button, async () => {
+            const phone = document.getElementById('loginPhone').value.trim();
+            const instagram = document.getElementById('loginInstagram').value.trim();
+            const password = document.getElementById('loginPassword').value.trim();
+            if (!phone || !instagram || !password) return showError('Ошибка', 'Пожалуйста, заполните все поля');
+            
+            const oldUser = await findUserByPhoneAndInstagram(phone, instagram);
+            if (oldUser) {
+                migrationUser = oldUser;
+                showScreen(SCREENS.MIGRATION);
+                return;
+            }
+            
+            const existingUser = await findUserByCredentials(phone, instagram, password);
+            if (existingUser) {
+                currentUserId = existingUser.userId;
+                if (telegramUser && !existingUser.telegramId) {
+                    await saveUser(currentUserId, { telegramId: telegramUser.id, merge: true });
+                }
+                await saveUser(currentUserId, { lastActivity: new Date().toISOString() });
+                await checkAndSetUserRole();
+                attachUserListener(currentUserId);
+                showDashboard();
+            } else {
+                showError('Неверные данные', 'Проверьте правильность введенных данных.');
+            }
+        });
+    }
+
+    async function submitMigration(button) {
+        await withLoading(button, async () => {
+            const password = document.getElementById('migrationPassword').value.trim();
+            const passwordConfirm = document.getElementById('migrationPasswordConfirm').value.trim();
+            if (!validatePassword(password) || password !== passwordConfirm) {
+               return showError('Ошибка пароля', 'Пароли не совпадают или короче 6 символов.');
+            }
+
+            if (migrationUser) {
+                migrationUser.registration.password = hashPassword(password);
+                migrationUser.lastActivity = new Date().toISOString();
+                if (telegramUser && !migrationUser.telegramId) migrationUser.telegramId = telegramUser.id;
+                await saveUser(migrationUser.userId, migrationUser);
+                currentUserId = migrationUser.userId;
+                migrationUser = null;
+                await checkAndSetUserRole();
+                attachUserListener(currentUserId);
+                showDashboard();
+            }
+        });
+    }
+
+    async function submitRegistration(button) {
+        await withLoading(button, async () => {
+            const firstName = document.getElementById('firstName').value.trim();
+            const phone = document.getElementById('phone').value.trim();
+            const instagramLogin = document.getElementById('instagramLogin').value.trim().toLowerCase();
+            const password = document.getElementById('password').value.trim();
+            const followersCount = parseInt(document.getElementById('followersCount').value);
+            const avgViews = parseInt(document.getElementById('avgViews').value);
+
+            if (!firstName || !phone || !instagramLogin || !password || isNaN(followersCount) || isNaN(avgViews)) {
+                return showError('Ошибка', 'Пожалуйста, заполните все обязательные поля');
+            }
+            if (avgViews < 300) return showRejectionModal();
+            
+            const duplicateCheck = await checkForDuplicateRegistration(phone, instagramLogin);
+            if (!duplicateCheck.canRegister) {
+                return showError('Аккаунт уже существует', 'Телефон или Instagram уже используются.');
+            }
+
+            const bloggerData = determineBloggerLevel(followersCount);
+            if (!currentUserId) currentUserId = (telegramUser ? 'tg_' + telegramUser.id : db.collection(COLLECTIONS.USERS).doc().id);
+            
+            const newUser = {
+                registration: { firstName, phone, instagramLogin, followersCount, avgViews, password: hashPassword(password) },
+                level: bloggerData.level,
+                orders: [],
+                telegramId: telegramUser ? telegramUser.id : null,
+                registrationDate: new Date().toISOString(),
+                lastActivity: new Date().toISOString(),
+                isBlocked: false,
+                blockReason: '',
+                strikes: 0,
+                tags: [bloggerData.level] // Автоматический тег уровня
+            };
+
+            await saveUser(currentUserId, newUser);
+            await checkAndSetUserRole();
+            attachUserListener(currentUserId);
+            showDashboard();
+        });
+    }
+
+    function getStatusInfo(status) {
+        const statuses = {
+            'new': { text: 'Новый', className: 'status-new' },
+            'confirmed': { text: 'Подтвержден', className: 'status-confirmed' },
+            'delivered': { text: 'Доставлен', className: 'status-delivered' },
+            'awaiting_review': { text: 'На проверке', className: 'status-awaiting_review' },
+            'completed': { text: 'Завершен', className: 'status-completed' },
+            'rejected': { text: 'Отклонен', className: 'status-rejected' }
+        };
+        return statuses[status] || { text: status, className: '' };
+    }
+
+    function updateDashboard() {
+        const dataSource = userData.registration || userData;
+        if (!dataSource || !dataSource.firstName) return;
+
+        const { firstName, followersCount, avgViews } = dataSource;
+        const levelInfo = determineBloggerLevel(followersCount);
+        
+        document.getElementById('blockedPanel').style.display = 'none';
+        if (userData.isBlocked) {
+            document.getElementById('blockedPanel').innerHTML = `<h4>🔒 Ваш аккаунт заблокирован</h4><p>${userData.blockReason || 'Свяжитесь с администратором.'}</p>`;
+            document.getElementById('blockedPanel').style.display = 'block';
+        }
+
+        document.getElementById('userName').textContent = firstName;
+        const userAvatar = document.getElementById('userAvatar');
+        userAvatar.innerHTML = telegramUser?.photo_url ? `<img src="${telegramUser.photo_url}" alt="${firstName}">` : (firstName ? firstName.charAt(0).toUpperCase() : '👤');
+
+        document.getElementById('userLevel').textContent = levelInfo.text;
+        document.getElementById('followersDisplay').textContent = (followersCount || 0).toLocaleString('ru-RU');
+        document.getElementById('viewsDisplay').textContent = (avgViews || 0).toLocaleString('ru-RU');
+
+        // Логика отображения статуса и отчетов (без изменений)
+        const statusPanel = document.getElementById('statusPanel');
+        statusPanel.style.display = 'none';
+        if (userData.orders && userData.orders.length > 0) {
+            const latestOrder = [...userData.orders].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0];
+            let statusMessage = '';
+            if (latestOrder.status === 'new') statusMessage = `⏳ <strong>Ваш заказ #${latestOrder.orderNumber.split('-')[2]} в обработке.</strong>`;
+            if (latestOrder.status === 'confirmed') statusMessage = `✅ <strong>Ваш заказ #${latestOrder.orderNumber.split('-')[2]} подтвержден!</strong>`;
+            if (statusMessage) {
+                statusPanel.innerHTML = statusMessage;
+                statusPanel.style.display = 'block';
+            }
+        }
+        const reportPanel = document.getElementById('reportActionsPanel');
+        reportPanel.innerHTML = '';
+        (userData.orders || []).filter(o => o.status === 'delivered').forEach(order => {
+            const card = document.createElement('div');
+            card.className = 'action-card report-action-card';
+            card.onclick = () => showReportModal(order.id, order.orderNumber);
+            card.innerHTML = `<div class="action-icon">📤</div><div class="action-title">Сдать отчет по заказу</div><div class="action-desc">${order.orderNumber}</div>`;
+            reportPanel.appendChild(card);
+        });
+    }
+
+    // --- CRM Функции ---
+    async function updateCRMData() {
+        updateCRMStats();
+    }
+
+    async function updateCRMStats() {
+        try {
+            const [usersSnap, ordersSnap, newOrdersSnap, blocksSnap] = await Promise.all([
+                db.collection(COLLECTIONS.USERS).get(),
+                db.collection(COLLECTIONS.ORDERS).get(),
+                db.collection(COLLECTIONS.ORDERS).where('status', '==', 'new').get(),
+                db.collection(COLLECTIONS.BLOCKED_SLOTS).get()
+            ]);
+            document.getElementById('totalUsers').textContent = usersSnap.size;
+            document.getElementById('totalOrders').textContent = ordersSnap.size;
+            document.getElementById('newOrders').textContent = newOrdersSnap.size;
+            document.getElementById('blockedSlots').textContent = blocksSnap.size;
+        } catch (error) { console.error("Error updating CRM stats:", error); }
+    }
+    
+    // Новая функция для аналитики
+    async function applyAnalyticsFilters() {
+        const startDate = document.getElementById('analyticsStartDate').value;
+        const endDate = document.getElementById('analyticsEndDate').value;
+        const city = document.getElementById('analyticsCity').value;
+        updateAllAnalytics({ startDate, endDate, city });
+    }
+
+    async function updateAllAnalytics(filters = {}) {
+        try {
+            let ordersQuery = db.collection(COLLECTIONS.ORDERS);
+            if (filters.startDate) ordersQuery = ordersQuery.where('createdAt', '>=', new Date(filters.startDate).toISOString());
+            if (filters.endDate) ordersQuery = ordersQuery.where('createdAt', '<=', new Date(filters.endDate).toISOString());
+            if (filters.city && filters.city !== 'all') ordersQuery = ordersQuery.where('city', '==', filters.city);
+
+            const [ordersSnap, usersSnap] = await Promise.all([ordersQuery.get(), db.collection(COLLECTIONS.USERS).get()]);
+            
+            const ordersByDate = {};
+            ordersSnap.forEach(doc => {
+                const dateString = new Date(doc.data().createdAt).toISOString().split('T')[0];
+                ordersByDate[dateString] = (ordersByDate[dateString] || 0) + 1;
+            });
+            const sortedDates = Object.keys(ordersByDate).sort();
+            renderChart('ordersTrendChart', 'line', sortedDates, sortedDates.map(date => ordersByDate[date]), 'Динамика заказов');
+
+            const cityCounts = {};
+            ordersSnap.forEach(doc => {
+                const city = doc.data().city;
+                if (city) cityCounts[city] = (cityCounts[city] || 0) + 1;
+            });
+            renderChart('cityChart', 'bar', Object.keys(cityCounts), Object.values(cityCounts), 'Заказы по городам');
+
+            const levelCounts = { 'Микроблогер': 0, 'Макроблогер тип A': 0, 'Макроблогер тип B': 0 };
+            const followerRanges = { '1-5k': 0, '5-10k': 0, '10-20k': 0, '20k+': 0 };
+            usersSnap.forEach(doc => {
+                const followers = (doc.data().registration || doc.data()).followersCount || 0;
+                const levelText = determineBloggerLevel(followers).text;
+                if (levelCounts.hasOwnProperty(levelText)) levelCounts[levelText]++;
+                if (followers <= 5000) followerRanges['1-5k']++;
+                else if (followers <= 10000) followerRanges['5-10k']++;
+                else if (followers <= 20000) followerRanges['10-20k']++;
+                else followerRanges['20k+']++;
+            });
+            renderChart('bloggerLevelChart', 'doughnut', Object.keys(levelCounts), Object.values(levelCounts), 'Уровни блогеров');
+            renderChart('followersDistributionChart', 'pie', Object.keys(followerRanges), Object.values(followerRanges), 'Подписчики');
+
+        } catch(e) { console.error("Analytics error:", e) }
+    }
+    
+    function renderChart(canvasId, type, labels, data, label) {
+        let chartInstance;
+        if (canvasId === 'cityChart') chartInstance = cityChart;
+        else if (canvasId === 'ordersTrendChart') chartInstance = ordersTrendChart;
+        else if (canvasId === 'bloggerLevelChart') chartInstance = bloggerLevelChart;
+        else if (canvasId === 'followersDistributionChart') chartInstance = followersDistributionChart;
+        
+        const ctx = document.getElementById(canvasId)?.getContext('2d');
+        if (!ctx) return;
+        if (chartInstance) chartInstance.destroy();
+        
+        const chartColors = ['rgba(0, 180, 216, 0.7)', 'rgba(255, 107, 53, 0.7)', 'rgba(40, 167, 69, 0.7)', 'rgba(255, 193, 7, 0.7)'];
+        const newChartInstance = new Chart(ctx, {
+            type: type,
+            data: { labels: labels, datasets: [{ label: label, data: data, backgroundColor: chartColors, borderColor: chartColors, borderWidth: 1, tension: 0.3 }] },
+            options: { responsive: true, maintainAspectRatio: false, scales: (type === 'line' || type === 'bar') ? { y: { ticks: { color: '#fff' } }, x: { ticks: { color: '#fff' } } } : {}, plugins: { legend: { labels: { color: '#fff' } } } }
+        });
+        
+        if (canvasId === 'cityChart') cityChart = newChartInstance;
+        else if (canvasId === 'ordersTrendChart') ordersTrendChart = newChartInstance;
+        else if (canvasId === 'bloggerLevelChart') bloggerLevelChart = newChartInstance;
+        else if (canvasId === 'followersDistributionChart') followersDistributionChart = newChartInstance;
+    }
+
+    async function updateOrdersList() {
+        const list = document.getElementById('ordersList');
+        list.innerHTML = '<div class="loading-indicator">Загрузка...</div>';
+        try {
+            const snapshot = await db.collection(COLLECTIONS.ORDERS).orderBy('createdAt', 'desc').get();
+            if (snapshot.empty) {
+                list.innerHTML = '<div class="empty-state">Нет заказов.</div>';
+                return;
+            }
+            list.innerHTML = '';
+            snapshot.forEach(doc => {
+                const order = { id: doc.id, ...doc.data() };
+                const statusInfo = getStatusInfo(order.status);
+                const el = document.createElement('div');
+                el.className = 'order-item';
+                el.dataset.search = `${order.userName} ${order.phone} ${order.instagram} ${order.orderNumber}`.toLowerCase();
+                el.onclick = () => showOrderDetailModal(order.id);
+                el.innerHTML = `
+                    <div class="order-header">
+                        <span class="order-id">${order.orderNumber}</span>
+                        <span class="order-status ${statusInfo.className}">${statusInfo.text}</span>
+                    </div>
+                    <div class="order-info">
+                        <strong>${order.userName}</strong> (${order.city})<br>
+                        <small>Создан: ${new Date(order.createdAt).toLocaleString('ru-RU')}</small>
+                    </div>`;
+                list.appendChild(el);
+            });
+        } catch (error) {
+            console.error("Error fetching orders:", error);
+            list.innerHTML = '<div class="empty-state">Ошибка загрузки.</div>';
+        }
+    }
+    
+    function calculateBloggerRating(user) {
+        const { followersCount = 0, avgViews = 0 } = user.registration || user;
+        const strikes = user.strikes || 0;
+        const followersScore = followersCount > 0 ? Math.log10(followersCount) * 2.5 : 0;
+        const viewsScore = avgViews > 0 ? Math.log10(avgViews) * 4.5 : 0;
+        let rating = ((followersScore + viewsScore - (strikes * 1.5)) / 25) * 10;
+        return Math.max(1, Math.min(10, rating)).toFixed(1);
+    }
+    
+    async function updateUsersList() {
+        const list = document.getElementById('usersList');
+        list.innerHTML = '<div class="loading-indicator">Загрузка...</div>';
+        try {
+            const [usersSnapshot, adminsSnapshot] = await Promise.all([
+                 db.collection(COLLECTIONS.USERS).orderBy('registrationDate', 'desc').get(),
+                 db.collection(COLLECTIONS.ADMINS).get()
+            ]);
+            const adminData = new Map(adminsSnapshot.docs.map(doc => [doc.id, doc.data()]));
+            if (usersSnapshot.empty) {
+                list.innerHTML = '<div class="empty-state">Нет пользователей.</div>';
+                return;
+            }
+            list.innerHTML = '';
+            usersSnapshot.forEach(doc => {
+                const user = { userId: doc.id, ...doc.data() };
+                const reg = user.registration || user;
+                if (!reg.firstName) return;
+
+                const adminInfo = adminData.get(String(user.telegramId));
+                const rating = calculateBloggerRating(user);
+                const el = document.createElement('div');
+                el.className = `user-item ${user.isBlocked ? 'blocked' : ''}`;
+                el.dataset.search = `${reg.firstName} ${reg.phone} ${reg.instagramLogin}`.toLowerCase();
+                el.onclick = () => showUserDetailModal(user.userId);
+                
+                let badges = '';
+                if(adminInfo) badges += `<span class="user-admin-badge">${adminInfo.role}</span>`;
+                if(user.isBlocked) badges += `<span class="user-blocked-badge" style="margin-left: 5px;">Заблокирован</span>`;
+
+                el.innerHTML = `
+                    <div class="user-details">
+                        <div class="user-header">
+                           <span class="user-name-phone">${reg.firstName}</span>
+                           <span class="user-rating">⭐ ${rating}</span>
+                        </div>
+                        <div style="font-size: 14px; color: #ccc;">@${reg.instagramLogin}</div>
+                        ${badges ? `<div style="margin-top:5px;">${badges}</div>` : ''}
+                    </div>
+                    <div class="user-controls">
+                       ${user.isBlocked 
+                            ? `<button class="btn-icon-unblock" title="Разблокировать" onclick="event.stopPropagation(); app.toggleUserBlock('${user.userId}', false)">🔓</button>`
+                            : `<button class="btn-icon-block" title="Заблокировать" onclick="event.stopPropagation(); app.toggleUserBlock('${user.userId}', true)">🔒</button>`
+                       }
+                       <button class="btn-danger-icon" title="Удалить" onclick="event.stopPropagation(); app.removeUser('${user.userId}', '${reg.firstName}')">🗑️</button>
+                    </div>`;
+                list.appendChild(el);
+            });
+        } catch (error) {
+            console.error("Error fetching users:", error);
+            list.innerHTML = '<div class="empty-state">Ошибка загрузки.</div>';
+        }
+    }
+    
+    async function updateBlockedSlotsList() {
+        const list = document.getElementById('blockedSlotsList');
+        list.innerHTML = '<div class="loading-indicator">Загрузка...</div>';
+        try {
+            const snapshot = await db.collection(COLLECTIONS.BLOCKED_SLOTS).get();
+            if (snapshot.empty) {
+                list.innerHTML = '<div class="empty-state">Нет блокировок.</div>';
+                return;
+            }
+            list.innerHTML = '';
+            snapshot.forEach(doc => {
+                const block = { id: doc.id, ...doc.data() };
+                const el = document.createElement('div');
+                el.className = 'blocked-slot';
+                el.innerHTML = `
+                    <div class="blocked-slot-info">
+                        <div class="blocked-slot-city">${block.city}</div>
+                        <div class="blocked-slot-time">${block.date} (${block.type === 'fullday' ? 'Весь день' : block.time})</div>
+                    </div>
+                    <button class="btn-danger-icon" onclick="app.removeBlock('${block.id}')">🗑️</button>`;
+                list.appendChild(el);
+            });
+        } catch (error) {
+            console.error("Error fetching blocks:", error);
+            list.innerHTML = '<div class="empty-state">Ошибка загрузки.</div>';
+        }
+    }
+    
+    async function updateAdminsList() {
+        const list = document.getElementById('adminsList');
+        list.innerHTML = '<div class="loading-indicator">Загрузка...</div>';
+        try {
+            const snapshot = await db.collection(COLLECTIONS.ADMINS).get();
+             if (snapshot.empty) {
+                list.innerHTML = '<div class="empty-state">Нет сотрудников.</div>';
+                return;
+            }
+            list.innerHTML = '';
+            snapshot.forEach(doc => {
+                const admin = { id: doc.id, ...doc.data() };
+                const el = document.createElement('div');
+                el.className = 'user-item';
+                el.innerHTML = `
+                    <div class="user-details">
+                        <span class="user-name-phone">${admin.name || 'Сотрудник'}</span>
+                        <div style="margin-top: 5px;"><span class="user-admin-badge">${admin.role}</span></div>
+                    </div>
+                    <div class="user-controls">
+                        ${admin.id !== '1345815453' ? `<button class="btn-danger-icon" onclick="app.removeAdmin('${admin.id}')">🗑️</button>` : ''}
+                    </div>`;
+                list.appendChild(el);
+            });
+        } catch (error) {
+            console.error("Error fetching admins:", error);
+            list.innerHTML = '<div class="empty-state">Ошибка загрузки.</div>';
+        }
+    }
+
+    async function updateOrderStatus(button) {
+        if (!currentEditingOrderId) return;
+        await withLoading(button, async () => {
+            const newStatus = document.getElementById('orderStatusSelect').value;
+            const orderRef = db.collection(COLLECTIONS.ORDERS).doc(currentEditingOrderId);
+            const orderDoc = await orderRef.get();
+            if (!orderDoc.exists) throw new Error("Заказ не найден");
+            const orderData = orderDoc.data();
+            const userRef = db.collection(COLLECTIONS.USERS).doc(orderData.userId);
+            const batch = db.batch();
+            batch.update(orderRef, { status: newStatus });
+            const userDoc = await userRef.get();
+            if (userDoc.exists) {
+                const orders = userDoc.data().orders || [];
+                const orderIndex = orders.findIndex(o => o.id === currentEditingOrderId);
+                if (orderIndex > -1) {
+                    orders[orderIndex].status = newStatus;
+                    batch.update(userRef, { orders: orders });
+                }
+                if (userDoc.data().telegramId) {
+                    if (newStatus === 'confirmed') await sendTelegramNotification(userDoc.data().telegramId, `✅ Ваш заказ №${orderData.orderNumber} подтвержден!`);
+                    if (newStatus === 'completed') await sendTelegramNotification(userDoc.data().telegramId, `🎉 Сотрудничество по заказу №${orderData.orderNumber} завершено.`);
+                }
+            }
+            await batch.commit();
+            showSuccessMessage('Статус обновлен!');
+            closeOrderDetailModal();
+            updateOrdersList();
+        });
+    }
+
+    function filter(inputId, listSelector, itemSelector) {
+        const query = document.getElementById(inputId).value.toLowerCase();
+        document.querySelectorAll(`${listSelector} ${itemSelector}`).forEach(item => {
+            item.style.display = (item.dataset.search || '').includes(query) ? '' : 'none';
+        });
+    }
+    function filterOrders() { filter('orderSearch', '#ordersList', '.order-item'); }
+    function filterUsers() { filter('userSearch', '#usersList', '.user-item'); }
+    function filterAdminUsers() { filter('adminUserSearch', '#adminUsersList', '.user-item'); }
+    
+    async function addBlock(button) {
+        await withLoading(button, async () => {
+            const city = document.getElementById('blockCity').value;
+            const date = document.getElementById('blockDate').value;
+            const type = document.getElementById('blockType').value;
+            const time = document.getElementById('blockTime').value;
+            const reason = document.getElementById('blockReason').value.trim();
+            if (!city || !date || (type === 'time' && !time)) return showError('Ошибка', 'Заполните все поля.');
+            const blockId = type === 'fullday' ? `${city}_${date}_fullday` : `${city}_${date}_${time}`;
+            const newBlock = { city, date, type, reason, time: type === 'time' ? time : null };
+            await db.collection(COLLECTIONS.BLOCKED_SLOTS).doc(blockId).set(newBlock);
+            closeAddBlockModal();
+            updateBlockedSlotsList();
+            showSuccessMessage('Блокировка добавлена!');
+        });
+    }
+
+    async function removeBlock(blockId) {
+        if (confirm('Удалить блокировку?')) {
+            await db.collection(COLLECTIONS.BLOCKED_SLOTS).doc(blockId).delete();
+            updateBlockedSlotsList();
+        }
+    }
+    
+    async function toggleUserBlock(userId, shouldBlock) {
+        const reason = shouldBlock ? prompt("Причина блокировки:", "") : '';
+        if (shouldBlock && reason === null) return;
+        await db.collection(COLLECTIONS.USERS).doc(userId).update({ isBlocked: shouldBlock, blockReason: shouldBlock ? reason : '' });
+        showSuccessMessage(`Пользователь ${shouldBlock ? 'заблокирован' : 'разблокирован'}.`);
+        updateUsersList();
+    }
+    
+    async function removeUser(userId, userName) {
+        if (confirm(`Удалить пользователя ${userName} и все его заказы? Это действие необратимо.`)) {
+            const userRef = db.collection(COLLECTIONS.USERS).doc(userId);
+            const userDoc = await userRef.get();
+            if (!userDoc.exists) return;
+            const batch = db.batch();
+            batch.delete(userRef);
+            (userDoc.data().orders || []).forEach(order => {
+                batch.delete(db.collection(COLLECTIONS.ORDERS).doc(order.id));
+            });
+            await batch.commit();
+            showSuccessMessage(`Пользователь ${userName} удален.`);
+            updateUsersList();
+        }
+    }
+
+    async function addAdmin(userId, userName, role) {
+        if (!userId) return;
+        const userDoc = await loadUser(userId);
+        const telegramId = userDoc?.telegramId;
+        if(!telegramId) return showError("Ошибка", "У пользователя нет Telegram ID.");
+        
+        const newAdmin = { name: userName, role: role, addedAt: new Date().toISOString() };
+        await db.collection(COLLECTIONS.ADMINS).doc(String(telegramId)).set(newAdmin);
+
+        // Авто-добавление тега
+        const userRef = db.collection(COLLECTIONS.USERS).doc(userId);
+        const tags = userDoc.tags || [];
+        if (!tags.includes(role)) tags.push(role);
+        await userRef.update({ tags: tags });
+
+        closeAddAdminModal();
+        updateAdminsList();
+        showSuccessMessage(`${userName} назначен на роль: ${role}!`);
+    }
+
+    async function removeAdmin(adminId) {
+        if (adminId === '1345815453') return showError('Ошибка', 'Нельзя удалить главного администратора');
+        if (confirm(`Удалить сотрудника?`)) {
+            const adminRef = db.collection(COLLECTIONS.ADMINS).doc(adminId);
+            const adminDoc = await adminRef.get();
+            if (!adminDoc.exists) return;
+            const role = adminDoc.data().role;
+
+            const usersSnapshot = await db.collection(COLLECTIONS.USERS).where('telegramId', '==', Number(adminId)).get();
+            if (!usersSnapshot.empty) {
+                const userDoc = usersSnapshot.docs[0];
+                const tags = userDoc.data().tags.filter(t => t !== role);
+                await db.collection(COLLECTIONS.USERS).doc(userDoc.id).update({ tags: tags });
+            }
+
+            await adminRef.delete();
+            updateAdminsList();
+            showSuccessMessage('Сотрудник удален!');
+        }
+    }
+    
+    async function removeOrder(orderId) {
+        if (confirm('Удалить этот заказ? Действие необратимо.')) {
+            await withLoading(document.getElementById('deleteOrderBtn'), async () => {
+                const orderRef = db.collection(COLLECTIONS.ORDERS).doc(orderId);
+                const orderDoc = await orderRef.get();
+                if (!orderDoc.exists) return;
+                const userId = orderDoc.data().userId;
+                const userRef = db.collection(COLLECTIONS.USERS).doc(userId);
+                const batch = db.batch();
+                batch.delete(orderRef);
+                const userDoc = await userRef.get();
+                if (userDoc.exists) {
+                    const updatedOrders = (userDoc.data().orders || []).filter(o => o.id !== orderId);
+                    batch.update(userRef, { orders: updatedOrders });
+                }
+                await batch.commit();
+                closeOrderDetailModal();
+                updateOrdersList(); 
+                showSuccessMessage('Заказ удален.');
+            });
+        }
+    }
+    
+    async function markNoReport(orderId) {
+        if (!confirm('Отчет по заказу не сдан? Это добавит штрафной балл.')) return;
+        await withLoading(document.getElementById('markNoReportBtn'), async () => {
+            const orderRef = db.collection(COLLECTIONS.ORDERS).doc(orderId);
+            const orderDoc = await orderRef.get();
+            if (!orderDoc.exists) return;
+            const userRef = db.collection(COLLECTIONS.USERS).doc(orderDoc.data().userId);
+            const batch = db.batch();
+            const userDoc = await userRef.get();
+            if(!userDoc.exists) throw new Error("User not found!");
+            const newStrikes = (userDoc.data().strikes || 0) + 1;
+            const updates = { strikes: newStrikes };
+            if (newStrikes >= 3) {
+                updates.isBlocked = true;
+                updates.blockReason = `Автоматическая блокировка: ${newStrikes} несданных отчета.`;
+            }
+            batch.update(userRef, updates);
+            const orders = (userDoc.data().orders || []).map(o => o.id === orderId ? {...o, status: 'completed'} : o);
+            batch.update(userRef, { orders: orders });
+            batch.update(orderRef, { reportMissed: true, status: 'completed' });
+            await batch.commit();
+            showSuccessMessage('Штрафной балл добавлен, заказ закрыт.');
+            closeOrderDetailModal();
+            updateUsersList(); 
+        });
+    }
+
+    async function sendBroadcast(button) {
+        const message = document.getElementById('broadcastMessage').value.trim();
+        const selectedTags = Array.from(document.querySelectorAll('#broadcastTagsContainer .tag')).map(el => el.textContent.replace(' ×', ''));
+        if (!message) return showError('Ошибка', 'Сообщение не может быть пустым.');
+        if (!confirm(`Начать рассылку? Не закрывайте вкладку до завершения.`)) return;
+
+        await withLoading(button, async () => {
+            let usersQuery = db.collection(COLLECTIONS.USERS);
+            if (selectedTags.length > 0) {
+                // 'array-contains-any' имеет лимит 10. Для большего количества нужна другая логика.
+                if (selectedTags.length > 10) throw new Error("Можно выбрать не более 10 тегов для одной рассылки.");
+                usersQuery = usersQuery.where("tags", "array-contains-any", selectedTags);
+            }
+            const usersSnapshot = await usersQuery.get();
+            if (usersSnapshot.empty) return showError('Не найдено', 'Пользователи с такими тегами не найдены.');
+
+            const usersToSend = usersSnapshot.docs.map(doc => doc.data().telegramId).filter(id => id);
+            if (usersToSend.length === 0) return showError('Не найдено', 'У найденных пользователей нет Telegram ID.');
+
+            let successCount = 0;
+            for (let i = 0; i < usersToSend.length; i++) {
+                button.innerHTML = `Отправка... ${i + 1} / ${usersToSend.length}`;
+                try {
+                    await sendTelegramNotification(usersToSend[i], message);
+                    successCount++;
+                } catch (e) {}
+                await new Promise(resolve => setTimeout(resolve, 100)); // Задержка для избежания лимитов Telegram
+            }
+            showSuccessMessage(`Рассылка завершена. Успешно: ${successCount} из ${usersToSend.length}.`);
+        });
+    }
+
+    function startCollaboration() {
+        if(userData.isBlocked) return;
+        currentOrderData = {};
+        showAddressForm();
+    }
+
+    function handleCityChange() {
+        const isMacro = (userData.registration || userData).level !== 'micro';
+        document.getElementById('orderScreenshotGroup').style.display = isMacro ? 'block' : 'none';
+    }
+
+    function selectSet(element, setId) {
+        document.querySelectorAll('.set-item').forEach(item => item.classList.remove('selected'));
+        element.classList.add('selected');
+        currentOrderData.set = setId;
+        currentOrderData.setName = element.dataset.setName;
+        document.getElementById('nextFromSet').disabled = false;
+    }
+    
+    function submitAddressAndShowDateTime() {
+        if (!validateAddressForm()) return;
+        currentOrderData.city = document.getElementById('city').value;
+        currentOrderData.street = document.getElementById('street').value;
+        currentOrderData.entrance = document.getElementById('entrance').value;
+        currentOrderData.floor = document.getElementById('floor').value;
+        currentOrderData.recipientPhone = document.getElementById('recipientPhone').value;
+        currentOrderData.comment = document.getElementById('comment').value;
+
+        showDateTimeSelection();
+        setupDateInput();
+    }
+
+    function setupDateInput() {
+        const dateInput = document.getElementById('deliveryDate');
+        const today = new Date();
+        dateInput.min = today.toISOString().split('T')[0];
+        dateInput.value = '';
+        document.getElementById('timeSlots').innerHTML = '';
+        document.getElementById('nextFromDateTime').disabled = true;
+    }
+
+    async function updateTimeSlots() {
+        const dateValue = document.getElementById('deliveryDate').value;
+        currentOrderData.time = '';
+        document.getElementById('nextFromDateTime').disabled = true;
+        const timeSlotsContainer = document.getElementById('timeSlots');
+        timeSlotsContainer.innerHTML = '<div class="loading-indicator">Загрузка...</div>';
+        if (!dateValue) { timeSlotsContainer.innerHTML = ''; return; }
+        currentOrderData.date = dateValue;
+        
+        const city = document.getElementById('city').value;
+        const scheduleDoc = await db.collection(COLLECTIONS.SCHEDULES).doc(city).get();
+        const scheduleData = scheduleDoc.exists ? scheduleDoc.data() : {};
+        const dayKey = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][new Date(dateValue).getDay()];
+        const daySchedule = scheduleData[dayKey] || '';
+        const timeSlots = [];
+        if (daySchedule) {
+            daySchedule.split(',').forEach(range => {
+                const [start, end] = range.trim().split('-');
+                if (start && end) {
+                    for(let h = parseInt(start); h < parseInt(end); h++) timeSlots.push(`${String(h).padStart(2, '0')}:00`);
+                }
+            });
+        }
+        
+        const now = new Date();
+        timeSlotsContainer.innerHTML = '';
+        for (const time of timeSlots) {
+            if (dateValue === now.toISOString().split('T')[0] && parseInt(time) <= now.getHours()) continue;
+            if (await isSlotBlocked(city, dateValue, time)) continue;
+            const slot = document.createElement('div');
+            slot.className = 'time-slot';
+            slot.textContent = time;
+            slot.onclick = () => selectTimeSlot(slot, time);
+            timeSlotsContainer.appendChild(slot);
+        }
+        if (timeSlotsContainer.innerHTML === '') timeSlotsContainer.innerHTML = '<p style="text-align:center;color:#999;">Нет доступного времени.</p>';
+    }
+
+    function selectTimeSlot(element, time) {
+        document.querySelectorAll('.time-slot').forEach(item => item.classList.remove('selected'));
+        element.classList.add('selected');
+        currentOrderData.time = time;
+        document.getElementById('nextFromDateTime').disabled = false;
+    }
+
+    function validateAddressForm() {
+        const city = document.getElementById('city').value;
+        const street = document.getElementById('street').value;
+        const phone = document.getElementById('recipientPhone').value;
+        if (!city || !street || !phone) {
+            showError('Ошибка', 'Заполните: город, улица, телефон.');
+            return false;
+        }
+        const isMacro = (userData.registration || userData).level !== 'micro';
+        const screenshotInput = document.getElementById('orderScreenshot');
+        if (isMacro && (!screenshotInput.files || screenshotInput.files.length === 0)) {
+            showError('Ошибка', 'Для макроблогеров нужен скриншот заказа.');
+            return false;
+        }
+        return true;
+    }
+
+    async function submitOrder(button) {
+        await withLoading(button, async () => {
+            const orderId = db.collection(COLLECTIONS.ORDERS).doc().id;
+            const dataSource = userData.registration || userData;
+            
+            const newOrder = {
+                ...currentOrderData, id: orderId, status: 'new',
+                orderNumber: generateOrderNumber(currentOrderData.city, currentOrderData.date, orderId),
+                userId: currentUserId, userName: dataSource.firstName,
+                instagram: dataSource.instagramLogin, phone: dataSource.phone,
+                createdAt: new Date().toISOString()
+            };
+            
+            const userOrders = userData.orders || [];
+            userOrders.push({ id: orderId, orderNumber: newOrder.orderNumber, status: 'new', createdAt: newOrder.createdAt });
+            
+            // Авто-тег города
+            const cityTag = newOrder.city.toLowerCase().replace(/\s/g, '-');
+            const userTags = userData.tags || [];
+            if (!userTags.includes(cityTag)) userTags.push(cityTag);
+
+            const batch = db.batch();
+            batch.set(db.collection(COLLECTIONS.ORDERS).doc(orderId), newOrder);
+            batch.update(db.collection(COLLECTIONS.USERS).doc(currentUserId), { orders: userOrders, tags: userTags });
+            await batch.commit();
+
+            const screenshotFile = document.getElementById('orderScreenshot').files[0] || null;
+            await sendAdminNotification(newOrder, screenshotFile);
+            showSuccessModal();
+        });
+    }
+    
+    function showOrderHistory() {
+        const list = document.getElementById('orderHistoryList');
+        const sortedOrders = (userData.orders || []).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        if (sortedOrders.length === 0) {
+            list.innerHTML = '<div class="empty-state">Нет заказов.</div>';
+        } else {
+            list.innerHTML = sortedOrders.map(order => {
+                const statusInfo = getStatusInfo(order.status);
+                return `<div class="order-item">
+                    <div class="order-header">
+                        <span class="order-id">${order.orderNumber}</span>
+                        <span class="order-status ${statusInfo.className}">${statusInfo.text}</span>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+        document.getElementById('orderHistoryModal').style.display = 'flex';
+    }
+
+    function editProfile() {
+        const reg = userData.registration || userData;
+        document.getElementById('editFirstName').value = reg.firstName;
+        document.getElementById('editPhone').value = reg.phone;
+        document.getElementById('editInstagram').value = reg.instagramLogin;
+        document.getElementById('editFollowers').value = reg.followersCount;
+        document.getElementById('editViews').value = reg.avgViews;
+        document.getElementById('editPassword').value = '';
+        document.getElementById('editProfileModal').style.display = 'flex';
+    }
+
+    async function saveProfile(button) {
+        await withLoading(button, async () => {
+            const reg = userData.registration || userData;
+            const newPhone = document.getElementById('editPhone').value.trim();
+            const newInstagram = document.getElementById('editInstagram').value.trim().toLowerCase();
+            if (newPhone !== reg.phone || newInstagram !== reg.instagramLogin) {
+                const { canRegister } = await checkForDuplicateRegistration(newPhone, newInstagram, currentUserId);
+                if (!canRegister) return showError('Данные заняты', 'Телефон или Instagram уже используются.');
+            }
+            
+            const newFollowers = parseInt(document.getElementById('editFollowers').value);
+            const levelData = determineBloggerLevel(newFollowers);
+            const oldLevelTags = ['micro', 'macro-a', 'macro-b'];
+            const currentTags = userData.tags || [];
+            const updatedTags = currentTags.filter(t => !oldLevelTags.includes(t));
+            if(!updatedTags.includes(levelData.level)) updatedTags.push(levelData.level);
+
+            const updates = {
+                'registration.firstName': document.getElementById('editFirstName').value.trim(),
+                'registration.phone': newPhone, 'registration.instagramLogin': newInstagram,
+                'registration.followersCount': newFollowers,
+                'registration.avgViews': parseInt(document.getElementById('editViews').value),
+                'level': levelData.level, 'tags': updatedTags
+            };
+            const newPassword = document.getElementById('editPassword').value.trim();
+            if (validatePassword(newPassword)) updates['registration.password'] = hashPassword(newPassword);
+            
+            await db.collection(COLLECTIONS.USERS).doc(currentUserId).update(updates);
+            closeEditProfile();
+            showSuccessMessage('Профиль обновлен!');
+        });
+    }
+
+    function logout() {
+        if (userListenerUnsubscribe) userListenerUnsubscribe();
+        userData = {}; currentUserId = null; telegramUser = null; currentUserRole = null;
+        window.location.reload();
+    }
+
+    // --- Модальные окна (Утилиты)---
+    function showSuccessModal() { document.getElementById('successModal').style.display = 'flex'; }
+    function showSuccessMessage(message) {
+        document.getElementById('successTitle').textContent = 'Успешно!';
+        document.getElementById('successMessage').textContent = message;
+        document.getElementById('successModal').style.display = 'flex';
+    }
+    function showError(title, message) {
+        document.getElementById('errorTitle').textContent = title;
+        document.getElementById('errorMessage').textContent = message;
+        document.getElementById('errorModal').style.display = 'flex';
+    }
+    async function showOrderDetailModal(orderId) {
+        currentEditingOrderId = orderId;
+        const orderDoc = await db.collection(COLLECTIONS.ORDERS).doc(orderId).get();
+        if(!orderDoc.exists) return;
+        const order = orderDoc.data();
+        document.getElementById('orderDetailTitle').textContent = `Заказ ${order.orderNumber}`;
+        document.getElementById('orderDetailBody').innerHTML = `<strong>Блогер:</strong> ${order.userName}<br><strong>Город:</strong> ${order.city}<br><strong>Адрес:</strong> ${order.street}<br>`;
+        document.getElementById('orderStatusSelect').value = order.status;
+        document.getElementById('deleteOrderBtn').onclick = () => removeOrder(order.id);
+        document.getElementById('orderDetailModal').style.display = 'flex';
+    }
+    async function showAddAdminModal() { 
+        document.getElementById('addAdminModal').style.display = 'flex';
+        const list = document.getElementById('adminUsersList');
+        list.innerHTML = '<div class="loading-indicator">Загрузка...</div>';
+        const [usersSnapshot, adminsSnapshot] = await Promise.all([
+             db.collection(COLLECTIONS.USERS).get(), db.collection(COLLECTIONS.ADMINS).get()
+        ]);
+        const adminIds = new Set(adminsSnapshot.docs.map(doc => doc.id));
+        list.innerHTML = '';
+        usersSnapshot.forEach(doc => {
+            const user = { userId: doc.id, ...doc.data() };
+            const reg = user.registration || user;
+            if (!reg.firstName || !user.telegramId) return;
+            const isAlreadyAdmin = adminIds.has(String(user.telegramId));
+            const el = document.createElement('div');
+            el.className = 'user-item';
+            el.dataset.search = `${reg.firstName} ${reg.instagramLogin}`.toLowerCase();
+            el.innerHTML = `<div><strong>${reg.firstName}</strong><div style="font-size: 12px; color: #999;">@${reg.instagramLogin}</div></div>
+                ${isAlreadyAdmin ? '<span class="user-admin-badge">Сотрудник</span>' : `<button class="btn-primary btn-small" onclick="app.addAdmin('${user.userId}', '${reg.firstName}', document.getElementById('adminRoleSelect').value)">Назначить</button>`}`;
+            list.appendChild(el);
+        });
+    }
+    
+    function showRejectionModal() { document.getElementById('rejectionModal').style.display = 'flex'; }
+    function closeModal() { document.getElementById('successModal').style.display = 'none'; showDashboard(); }
+    function closeErrorModal() { document.getElementById('errorModal').style.display = 'none'; }
+    function closeRejectionModal() { document.getElementById('rejectionModal').style.display = 'none'; }
+    function closeOrderHistory() { document.getElementById('orderHistoryModal').style.display = 'none'; }
+    function closeEditProfile() { document.getElementById('editProfileModal').style.display = 'none'; }
+    function contactAdmin() { document.getElementById('contactModal').style.display = 'flex'; }
+    function closeContactModal() { document.getElementById('contactModal').style.display = 'none'; }
+    function closeOrderDetailModal() { document.getElementById('orderDetailModal').style.display = 'none'; }
+    function closeReportModal() { document.getElementById('reportModal').style.display = 'none'; }
+    function closeUserDetailModal() { document.getElementById('userDetailModal').style.display = 'none'; }
+    function toggleBlockTime() { document.getElementById('blockTimeGroup').style.display = document.getElementById('blockType').value === 'time' ? 'block' : 'none'; }
+    function showAddBlockModal() { document.getElementById('addBlockModal').style.display = 'flex'; }
+    function closeAddBlockModal() { document.getElementById('addBlockModal').style.display = 'none'; }
+    function closeAddAdminModal() { document.getElementById('addAdminModal').style.display = 'none'; }
+    
+    function setupPhoneMask(inputId) {
+        const phoneInput = document.getElementById(inputId);
+        if (phoneInput) phoneInput.addEventListener('input', () => {
+            let digits = phoneInput.value.replace(/\D/g, '');
+            if (digits.startsWith('7') || digits.startsWith('8')) digits = digits.substring(1);
+            let formatted = '+7 (';
+            if (digits.length > 0) formatted += digits.substring(0, 3);
+            if (digits.length > 3) formatted += `) ${digits.substring(3, 6)}`;
+            if (digits.length > 6) formatted += `-${digits.substring(6, 8)}`;
+            if (digits.length > 8) formatted += `-${digits.substring(8, 10)}`;
+            phoneInput.value = formatted;
+        });
+    }
+
+    async function initializeApp() {
+        initTelegram();
+        if (!(await attemptTelegramAutoLogin())) {
+            showWelcomeScreen();
+        } else {
+            showDashboard();
+        }
+    }
+
+    // --- Функции для расписания ---
+    function showScheduleForCity(city, element) {
+        document.querySelectorAll('.schedule-city-tab, .schedule-form').forEach(el => el.classList.remove('active'));
+        element.classList.add('active');
+        document.getElementById(`schedule-form-${city}`).classList.add('active');
+    }
+
+    async function loadSchedule() {
+        const tabsContainer = document.getElementById('scheduleCityTabs');
+        const formsContainer = document.getElementById('scheduleFormsContainer');
+        tabsContainer.innerHTML = '';
+        formsContainer.innerHTML = '<div class="loading-indicator">Загрузка...</div>';
+        const days = { monday: "Пн", tuesday: "Вт", wednesday: "Ср", thursday: "Чт", friday: "Пт", saturday: "Сб", sunday: "Вс" };
+        let formsHtml = '';
+        for (const city of CITIES) {
+             const tab = document.createElement('button');
+             tab.className = 'schedule-city-tab';
+             tab.textContent = city;
+             tab.onclick = () => showScheduleForCity(city, tab);
+             tabsContainer.appendChild(tab);
+             let formHtml = `<div class="schedule-form" id="schedule-form-${city}">`;
+             const scheduleDoc = await db.collection(COLLECTIONS.SCHEDULES).doc(city).get();
+             const scheduleData = scheduleDoc.exists ? scheduleDoc.data() : {};
+             for (const dayKey in days) {
+                formHtml += `<div class="form-group"><label>${days[dayKey]}</label><input type="text" id="schedule_${city}_${dayKey}" value="${scheduleData[dayKey] || ''}" placeholder="12:00-18:00"></div>`;
+             }
+             formsHtml += formHtml + `</div>`;
+        }
+        formsContainer.innerHTML = formsHtml;
+        if(tabsContainer.firstChild) tabsContainer.firstChild.click();
+    }
+
+    async function saveSchedule(button) {
+        await withLoading(button, async() => {
+            const batch = db.batch();
+            for (const city of CITIES) {
+                const scheduleRef = db.collection(COLLECTIONS.SCHEDULES).doc(city);
+                const scheduleData = {};
+                ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].forEach(dayKey => {
+                    scheduleData[dayKey] = document.getElementById(`schedule_${city}_${dayKey}`).value.trim();
+                });
+                batch.set(scheduleRef, scheduleData);
+            }
+            await batch.commit();
+            showSuccessMessage("Расписание сохранено!");
+        });
+    }
+
+    // --- Функции для тегов ---
+    async function showUserDetailModal(userId) {
+        currentUserDetailId = userId;
+        const userDoc = await db.collection(COLLECTIONS.USERS).doc(userId).get();
+        if (!userDoc.exists) return;
+        const user = userDoc.data();
+        const reg = user.registration || user;
+        document.getElementById('userDetailTitle').textContent = reg.firstName;
+        document.getElementById('userDetailBody').innerHTML = `<strong>Instagram:</strong> @${reg.instagramLogin}<br><strong>Рейтинг:</strong> ⭐ ${calculateBloggerRating(user)}`;
+        renderTags(user.tags || []);
+        document.getElementById('userDetailModal').style.display = 'flex';
+    }
+
+    function renderTags(tags) {
+        const container = document.getElementById('userTagsContainer');
+        container.innerHTML = tags.length ? tags.map(tag => `<span class="tag">${tag} <span class="remove-tag" onclick="app.removeUserTag('${tag}')">×</span></span>`).join('') : `<p style="font-size: 12px; color: #999;">Тегов нет.</p>`;
+    }
+
+    async function addUserTag() {
+        const input = document.getElementById('newTagInput');
+        const newTag = input.value.trim().toLowerCase();
+        if (!newTag || !currentUserDetailId) return;
+
+        const userRef = db.collection(COLLECTIONS.USERS).doc(currentUserDetailId);
+        await db.runTransaction(async (transaction) => {
+            const userDoc = await transaction.get(userRef);
+            if (!userDoc.exists) throw "User not found";
+            const tags = userDoc.data().tags || [];
+            if (!tags.includes(newTag)) {
+                tags.push(newTag);
+                transaction.update(userRef, { tags: tags });
+                renderTags(tags);
+            }
+        });
+        input.value = '';
+    }
+
+    async function removeUserTag(tagToRemove) {
+        if (!tagToRemove || !currentUserDetailId) return;
+        const userRef = db.collection(COLLECTIONS.USERS).doc(currentUserDetailId);
+        await db.runTransaction(async (transaction) => {
+            const userDoc = await transaction.get(userRef);
+            if (!userDoc.exists) throw "User not found";
+            const tags = userDoc.data().tags || [];
+            const updatedTags = tags.filter(t => t !== tagToRemove);
+            transaction.update(userRef, { tags: updatedTags });
+            renderTags(updatedTags);
+        });
+    }
+    
+    function showReportModal(orderId, orderNumber) {
+        currentReportingOrderId = orderId;
+        document.getElementById('reportModalTitle').textContent = `Отчет по заказу ${orderNumber}`;
+        document.getElementById('reportModal').style.display = 'flex';
+    }
+
+    async function submitReport(button) {
+        await withLoading(button, async() => {
+            const reportLink = document.getElementById('reportLink').value.trim();
+            if (!reportLink.startsWith('http')) return showError('Ошибка', 'Введите корректную ссылку.');
+            const orderRef = db.collection(COLLECTIONS.ORDERS).doc(currentReportingOrderId);
+            const userRef = db.collection(COLLECTIONS.USERS).doc(currentUserId);
+            const batch = db.batch();
+            batch.update(orderRef, { status: 'awaiting_review', reportLink: reportLink });
+            const userDoc = await userRef.get();
+            if (userDoc.exists) {
+                const orders = (userDoc.data().orders || []).map(o => o.id === currentReportingOrderId ? {...o, status: 'awaiting_review'} : o);
+                batch.update(userRef, { orders: orders });
+            }
+            await batch.commit();
+            closeReportModal();
+            showSuccessMessage('Отчет отправлен на проверку!');
+        });
+    }
+    
+    async function getTagStats() {
+        const tagStats = {};
+        const usersSnapshot = await db.collection(COLLECTIONS.USERS).get();
+        usersSnapshot.forEach(doc => {
+            (doc.data().tags || []).forEach(tag => {
+                tagStats[tag] = (tagStats[tag] || 0) + 1;
+            });
+        });
+        return tagStats;
+    }
+    
+    // Новая логика для подсказок тегов в рассылке
+    async function setupBroadcastTagInput() {
+        const input = document.getElementById('broadcastTagInput');
+        const suggestionsContainer = document.getElementById('tagSuggestions');
+        const selectedContainer = document.getElementById('broadcastTagsContainer');
+        const tagStats = await getTagStats();
+        const availableTags = Object.keys(tagStats);
+
+        const renderSelectedTags = () => {
+            selectedContainer.innerHTML = Array.from(selectedContainer.children).map(el => el.outerHTML).join('');
+        };
+
+        const addTag = (tag) => {
+            if (!tag || Array.from(selectedContainer.children).some(el => el.dataset.tag === tag)) return;
+            const tagEl = document.createElement('span');
+            tagEl.className = 'tag';
+            tagEl.dataset.tag = tag;
+            tagEl.innerHTML = `${tag} <span class="remove-tag">×</span>`;
+            tagEl.querySelector('.remove-tag').onclick = () => {
+                tagEl.remove();
+                renderSelectedTags();
+            };
+            selectedContainer.appendChild(tagEl);
+            input.value = '';
+            suggestionsContainer.style.display = 'none';
+        };
+
+        input.addEventListener('focus', () => {
+            renderSuggestions('');
+            suggestionsContainer.style.display = 'block';
+        });
+
+        input.addEventListener('keyup', (e) => {
+            if (e.key === 'Enter') addTag(input.value.trim().toLowerCase());
+            else renderSuggestions(input.value.toLowerCase());
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('#broadcastTagInput') && !e.target.closest('#tagSuggestions')) {
+                suggestionsContainer.style.display = 'none';
+            }
+        });
+
+        function renderSuggestions(filter) {
+            suggestionsContainer.innerHTML = '';
+            availableTags.filter(tag => tag.includes(filter)).forEach(tag => {
+                const item = document.createElement('div');
+                item.className = 'tag-suggestion-item';
+                item.innerHTML = `<span>${tag}</span> <span class="user-count">${tagStats[tag]} чел.</span>`;
+                item.onclick = () => addTag(tag);
+                suggestionsContainer.appendChild(item);
+            });
+        }
+    }
+
+
+    document.addEventListener('DOMContentLoaded', () => {
+        ['loginPhone', 'phone', 'recipientPhone', 'editPhone'].forEach(setupPhoneMask);
+        setTimeout(initializeApp, 100);
+    });
+
+    return {
+        showRegistration, showLogin, showWelcomeScreen, submitLogin, submitRegistration, 
+        submitMigration, showDashboard, logout, startCollaboration, showOrderHistory, editProfile,
+        contactAdmin, showCRM, showCrmTab, filterOrders, filterUsers, filterAdminUsers,
+        removeBlock, removeAdmin, removeUser, toggleUserBlock, sendBroadcast,
+        addBlock, addAdmin, selectSet, showSetSelection, showAddressForm, showDateTimeSelection, showInstructions,
+        handleCityChange, submitAddressAndShowDateTime, updateTimeSlots, submitOrder, saveProfile,
+        closeModal, closeErrorModal, closeRejectionModal, closeOrderHistory, closeEditProfile,
+        closeContactModal, showAddBlockModal, closeAddBlockModal, showAddAdminModal, closeAddAdminModal,
+        closeOrderDetailModal, toggleBlockTime, updateOrderStatus, showReportModal, closeReportModal, submitReport,
+        loadSchedule, saveSchedule, showUserDetailModal, closeUserDetailModal, addUserTag, removeUserTag,
+        showScheduleForCity, applyAnalyticsFilters
+    };
+})();
     </script>
 </body>
 </html>
