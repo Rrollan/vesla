@@ -48,76 +48,68 @@ app.get('/', (req, res) => {
 
 
 // ======================================================================
-// === НОВЫЙ БЛОК: API ДЛЯ МАССОВОЙ РАССЫЛКИ ===
+// === API ДЛЯ МАССОВОЙ РАССЫЛКИ ===
 // ======================================================================
 app.post('/api/broadcast', async (req, res) => {
     const { message, tags, senderChatId } = req.body;
-
-    if (!message) {
-        return res.status(400).json({ error: 'Текст сообщения обязателен.' });
+    if (!message || !senderChatId) {
+        return res.status(400).json({ error: 'message и senderChatId обязательны.' });
     }
-    if (!senderChatId) {
-        return res.status(400).json({ error: 'Не указан ID чата администратора для отчета.' });
-    }
-    
-    // Сразу отвечаем приложению, что задача принята.
-    res.status(202).json({ message: 'Рассылка запущена. Отчет о завершении придет в личные сообщения.' });
+    res.status(202).json({ message: 'Рассылка запущена.' });
 
-    // Асинхронно выполняем долгую задачу рассылки
     (async () => {
         try {
             let usersQuery = db.collection('users');
             if (tags && tags.length > 0) {
                 usersQuery = usersQuery.where("tags", "array-contains-any", tags);
             }
-
             const usersSnapshot = await usersQuery.get();
             if (usersSnapshot.empty) {
-                await sendTelegramNotification(senderChatId, '⚠️ Рассылка завершена. Не найдено ни одного пользователя по вашим критериям.');
-                return;
+                return sendTelegramNotification(senderChatId, '⚠️ Рассылка завершена. Не найдено ни одного пользователя по вашим критериям.');
             }
-
-            const usersToSend = usersSnapshot.docs
-                .map(doc => doc.data().telegramId)
-                .filter(id => id);
-
+            const usersToSend = usersSnapshot.docs.map(doc => doc.data().telegramId).filter(id => id);
             if (usersToSend.length === 0) {
-                 await sendTelegramNotification(senderChatId, '⚠️ Рассылка завершена. Пользователи найдены, но ни у кого из них нет Telegram ID.');
-                 return;
+                 return sendTelegramNotification(senderChatId, '⚠️ Рассылка завершена. Пользователи найдены, но ни у кого из них нет Telegram ID.');
             }
-
-            let successCount = 0;
-            let errorCount = 0;
-
+            let successCount = 0, errorCount = 0;
             for (const chatId of usersToSend) {
-                try {
-                    const response = await sendTelegramNotification(chatId, message, true); // true, чтобы получить ответ
-                    if (response.ok) successCount++;
-                    else errorCount++;
-                } catch (e) {
-                    errorCount++;
-                }
-                // Пауза 100 мс (10 сообщений в секунду) для обхода лимитов
+                const result = await sendTelegramNotification(chatId, message, true);
+                if (result && result.ok) successCount++;
+                else errorCount++;
                 await new Promise(resolve => setTimeout(resolve, 100));
             }
-
-            // Отправляем отчет о завершении администратору
             const reportMessage = `✅ Рассылка завершена!\n\nУспешно отправлено: ${successCount}\nОшибок: ${errorCount}`;
             await sendTelegramNotification(senderChatId, reportMessage);
-
         } catch (error) {
-            console.error('Критическая ошибка в процессе рассылки:', error);
-            await sendTelegramNotification(senderChatId, `❌ Произошла критическая ошибка во время рассылки: ${error.message}`);
+            console.error('Ошибка в процессе рассылки:', error);
+            await sendTelegramNotification(senderChatId, `❌ Ошибка во время рассылки: ${error.message}`);
         }
     })();
 });
 
+// ======================================================================
+// === API ДЛЯ МОМЕНТАЛЬНЫХ УВЕДОМЛЕНИЙ ===
+// ======================================================================
+app.post('/api/notify', async (req, res) => {
+    const { chatId, message } = req.body;
+    if (!chatId || !message) {
+        return res.status(400).json({ error: 'chatId и message обязательны.' });
+    }
+    try {
+        const result = await sendTelegramNotification(chatId, message, true);
+        if (result && result.ok) {
+            res.status(200).json({ success: true, message: 'Уведомление отправлено.' });
+        } else {
+            res.status(500).json({ success: false, message: 'Ошибка API Telegram.', error: result.description });
+        }
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Внутренняя ошибка сервера.' });
+    }
+});
 
 // ======================================================================
-// === ВАШ СТАРЫЙ КОД: ПЛАНИРОВЩИКИ И УВЕДОМЛЕНИЯ (немного улучшен) ===
+// === ПЛАНИРОВЩИКИ (CRON JOBS) ===
 // ======================================================================
-
-// 1. Уведомление о доступности нового заказа (раз в день)
 async function checkAndNotifyUsers() {
   if (!admin.apps.length) return;
   console.log('Запуск ежедневной проверки доступности заказов...');
@@ -150,7 +142,6 @@ async function checkAndNotifyUsers() {
   }
 }
 
-// 2. Напоминание о сдаче отчета (каждый час)
 async function checkReportReminders() {
     if (!admin.apps.length) return;
     console.log('Запуск ежечасной проверки напоминаний об отчетах...');
@@ -158,6 +149,7 @@ async function checkReportReminders() {
         const twentyFiveHoursAgo = new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString();
         const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
+        // Важно: Для collectionGroup нужен соответствующий индекс в Firestore
         const ordersQuery = db.collectionGroup('orders')
                                 .where('status', '==', 'delivered')
                                 .where('reminderSent', '==', false)
@@ -185,11 +177,10 @@ async function checkReportReminders() {
     }
 }
 
-// Общая вспомогательная функция для отправки
 async function sendAndUpdate(chatId, message, docRef, updateData) {
     try {
         const response = await sendTelegramNotification(chatId, message, true);
-        if (response.ok) {
+        if (response && response.ok) {
             await docRef.update(updateData);
             console.log(`Уведомление для ${chatId} отправлено, документ обновлен.`);
         } else {
@@ -200,7 +191,6 @@ async function sendAndUpdate(chatId, message, docRef, updateData) {
     }
 }
 
-// Универсальная функция отправки в Telegram
 async function sendTelegramNotification(chatId, text, returnResponse = false) {
     const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
     try {
@@ -215,12 +205,9 @@ async function sendTelegramNotification(chatId, text, returnResponse = false) {
     } catch (error) {
         console.error(`Ошибка отправки в Telegram для ${chatId}:`, error);
         if (returnResponse) return { ok: false, description: error.message };
-        // ** ИСПРАВЛЕНИЕ: ВОЗВРАЩЕНА НЕДОСТАЮЩАЯ СКОБКА **
     }
 }
 
-
-// --- ПЛАНИРОВЩИКИ ---
 cron.schedule('0 9 * * *', checkAndNotifyUsers, { timezone: "Asia/Almaty" });
 cron.schedule('0 * * * *', checkReportReminders, { timezone: "Asia/Almaty" }); 
 
