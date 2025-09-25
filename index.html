@@ -653,6 +653,7 @@
             font-size: 12px;
             color: #28a745;
             font-weight: bold;
+            text-transform: capitalize;
         }
         
         .user-blocked-badge {
@@ -725,10 +726,42 @@
             cursor: pointer;
             font-weight: bold;
         }
-        .add-tag-form {
+        
+        .input-with-button {
             display: flex;
-            gap: 10px;
+            align-items: center;
+            background: #3a3a3a;
+            border: 2px solid #4a4a4a;
+            border-radius: 12px;
+            transition: border-color 0.3s ease;
             margin-top: 15px;
+        }
+        .input-with-button:focus-within {
+            border-color: #00b4d8;
+        }
+        .input-with-button input {
+            flex-grow: 1;
+            border: none;
+            background: transparent;
+            padding: 15px;
+            color: #fff;
+            font-size: 16px;
+            outline: none;
+        }
+        .input-with-button button {
+            background: #00b4d8;
+            border: none;
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+            padding: 0 20px;
+            height: 54px;
+            border-radius: 0 10px 10px 0;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+        .input-with-button button:hover {
+            background: #0099b8;
         }
 
 
@@ -1044,26 +1077,26 @@
             outline: none;
         }
         
-        /* Стили для нового слайдера аналитики */
-        .analytics-slider {
-            position: relative;
-            overflow: hidden;
-            width: 100%;
-        }
-        .analytics-wrapper {
+       /* Новые стили для Аналитики */
+        .analytics-filters {
+            background: #3a3a3a;
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
             display: flex;
-            transition: transform 0.3s ease-in-out;
+            flex-direction: column;
+            gap: 15px;
         }
-        .analytics-slide {
-            flex: 0 0 100%;
-            width: 100%;
-            padding: 0 5px; /* Небольшой отступ по бокам */
+        .analytics-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 20px;
         }
         .chart-container {
             background: #3a3a3a;
             padding: 20px 15px;
             border-radius: 15px;
-            height: 300px; /* Фиксированная высота для всех графиков */
+            height: 300px;
             display: flex;
             flex-direction: column;
         }
@@ -1075,30 +1108,46 @@
             font-weight: 500;
         }
         .chart-container canvas {
-            max-height: 220px; /* Ограничиваем высоту самого графика */
+            max-height: 220px;
         }
-        .slider-dots {
-            text-align: center;
-            margin-top: 15px;
+        
+        /* Стили для подсказок тегов */
+        .tag-suggestions-container {
+            max-height: 150px;
+            overflow-y: auto;
+            background: #404040;
+            border: 1px solid #4a4a4a;
+            border-radius: 8px;
+            margin-top: 5px;
+            display: none;
+            position: absolute;
+            width: calc(100% - 40px);
+            z-index: 1001;
         }
-        .slider-dot {
-            display: inline-block;
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: #4a4a4a;
-            margin: 0 5px;
+        .tag-suggestion-item {
+            padding: 10px 15px;
             cursor: pointer;
-            transition: background 0.3s;
+            transition: background 0.2s;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
-        .slider-dot.active {
-            background: #00b4d8;
+        .tag-suggestion-item:hover {
+            background: #5a5a5a;
+        }
+        .tag-suggestion-item .user-count {
+            color: #999;
+            font-size: 12px;
+            background: #333;
+            padding: 2px 8px;
+            border-radius: 10px;
         }
 
     </style>
 </head>
 <body>
     <div class="container">
+        <!-- Welcome, Login, Registration, Migration Screens (без изменений) -->
         <div id="welcomeScreen" class="welcome-screen">
             <div class="logo-container">
                 <div class="logo-icon">
@@ -1274,19 +1323,19 @@
 
         <div id="crmScreen" class="crm-screen">
             <div class="crm-header">
-                <h2>🔧 Панель администратора</h2>
+                <h2>🔧 Панель управления</h2>
                 <button class="btn-back" onclick="app.showDashboard()">← Назад</button>
             </div>
 
             <div class="crm-tabs">
-                <button class="crm-tab active" onclick="app.showCrmTab('overview', this)">Обзор</button>
-                <button class="crm-tab" onclick="app.showCrmTab('analytics', this)">Аналитика</button>
-                <button class="crm-tab" onclick="app.showCrmTab('orders', this)">Заказы</button>
-                <button class="crm-tab" onclick="app.showCrmTab('users', this)">Пользователи</button>
-                <button class="crm-tab" onclick="app.showCrmTab('schedule', this)">Расписание</button>
-                <button class="crm-tab" onclick="app.showCrmTab('blocks', this)">Блокировки</button>
-                <button class="crm-tab" onclick="app.showCrmTab('broadcast', this)">Рассылка</button>
-                <button class="crm-tab" onclick="app.showCrmTab('admins', this)">Админы</button>
+                <button class="crm-tab active" data-tab="overview" onclick="app.showCrmTab('overview', this)">Обзор</button>
+                <button class="crm-tab" data-tab="analytics" onclick="app.showCrmTab('analytics', this)">Аналитика</button>
+                <button class="crm-tab" data-tab="orders" onclick="app.showCrmTab('orders', this)">Заказы</button>
+                <button class="crm-tab" data-tab="users" onclick="app.showCrmTab('users', this)">Пользователи</button>
+                <button class="crm-tab" data-tab="schedule" onclick="app.showCrmTab('schedule', this)">Расписание</button>
+                <button class="crm-tab" data-tab="blocks" onclick="app.showCrmTab('blocks', this)">Блокировки</button>
+                <button class="crm-tab" data-tab="broadcast" onclick="app.showCrmTab('broadcast', this)">Рассылка</button>
+                <button class="crm-tab" data-tab="admins" onclick="app.showCrmTab('admins', this)">Админы</button>
             </div>
 
             <div id="crmOverview" class="crm-content active">
@@ -1317,36 +1366,46 @@
             </div>
             
             <div id="crmAnalytics" class="crm-content">
-                <h3 style="text-align: center; margin-bottom: 20px;">Ключевые показатели</h3>
-                <div class="analytics-slider">
-                    <div class="analytics-wrapper">
-                        <div class="analytics-slide">
-                            <div class="chart-container">
-                                <h3>Динамика заказов (30 дней)</h3>
-                                <canvas id="ordersTrendChart"></canvas>
-                            </div>
-                        </div>
-                        <div class="analytics-slide">
-                            <div class="chart-container">
-                                <h3>Заказы по городам</h3>
-                                <canvas id="cityChart"></canvas>
-                            </div>
-                        </div>
-                        <div class="analytics-slide">
-                             <div class="chart-container">
-                                <h3>Уровни блогеров</h3>
-                                <canvas id="bloggerLevelChart"></canvas>
-                            </div>
-                        </div>
-                        <div class="analytics-slide">
-                             <div class="chart-container">
-                                <h3>Распределение подписчиков</h3>
-                                <canvas id="followersDistributionChart"></canvas>
-                            </div>
+                 <div class="analytics-filters">
+                    <div class="form-group">
+                        <label>Период:</label>
+                        <div class="form-row">
+                            <input type="date" id="analyticsStartDate">
+                            <input type="date" id="analyticsEndDate">
                         </div>
                     </div>
+                    <div class="form-group">
+                        <label for="analyticsCity">Город:</label>
+                        <select id="analyticsCity">
+                            <option value="all">Все города</option>
+                            <option value="Павлодар">Павлодар</option>
+                            <option value="Петропавловск">Петропавловск</option>
+                            <option value="Кокшетау">Кокшетау</option>
+                            <option value="Костанай">Костанай</option>
+                            <option value="Усть-Каменогорск">Усть-Каменогорск</option>
+                        </select>
+                    </div>
+                    <button class="btn-primary" onclick="app.applyAnalyticsFilters()">Применить</button>
                 </div>
-                <div class="slider-dots" id="analyticsSliderDots"></div>
+
+                <div class="analytics-grid">
+                    <div class="chart-container">
+                        <h3>Динамика заказов</h3>
+                        <canvas id="ordersTrendChart"></canvas>
+                    </div>
+                    <div class="chart-container">
+                        <h3>Заказы по городам</h3>
+                        <canvas id="cityChart"></canvas>
+                    </div>
+                     <div class="chart-container">
+                        <h3>Уровни блогеров</h3>
+                        <canvas id="bloggerLevelChart"></canvas>
+                    </div>
+                    <div class="chart-container">
+                        <h3>Распределение подписчиков</h3>
+                        <canvas id="followersDistributionChart"></canvas>
+                    </div>
+                </div>
             </div>
 
             <div id="crmOrders" class="crm-content">
@@ -1377,11 +1436,16 @@
              <div id="crmBroadcast" class="crm-content">
                 <div class="form-header">
                     <h2>Массовая рассылка</h2>
-                    <p class="subtitle">Отправьте сообщение всем пользователям бота</p>
+                    <p class="subtitle">Отправьте сообщение пользователям бота</p>
                 </div>
                 <div class="form-group">
-                    <label for="broadcastTagFilter">Фильтр по тегам (оставьте пустым для отправки всем)</label>
-                    <input type="text" id="broadcastTagFilter" placeholder="Например: фуд-блогер">
+                    <label>Фильтр по тегам (рассылка будет отправлена пользователям, имеющим хотя бы один из выбранных тегов)</label>
+                    <div id="broadcastTagsContainer" class="tags-container" style="min-height: 40px; background: #3a3a3a; padding: 5px; border-radius: 12px; border: 2px solid #4a4a4a;">
+                    </div>
+                    <div style="position: relative;">
+                         <input type="text" id="broadcastTagInput" placeholder="Добавьте тег для рассылки..." style="margin-top: 10px;">
+                         <div id="tagSuggestions" class="tag-suggestions-container"></div>
+                    </div>
                 </div>
                 <div class="form-group">
                     <label for="broadcastMessage">Текст сообщения</label>
@@ -1391,17 +1455,18 @@
                 <div class="telegram-info" style="margin-top: 20px;">
                      <h4 style="color: #ffc107; margin-bottom: 10px;">⚠️ Внимание!</h4>
                      <p style="color: #ccc; font-size: 14px; line-height: 1.5;">
-                         Эта функция отправляет сообщения напрямую из вашего браузера. Не закрывайте вкладку до завершения рассылки. Для больших списков пользователей рекомендуется использовать серверное решение.
+                         Эта функция отправляет сообщения напрямую из вашего браузера. Не закрывайте вкладку до завершения рассылки.
                      </p>
                 </div>
             </div>
 
             <div id="crmAdmins" class="crm-content">
-                <button class="btn-primary" onclick="app.showAddAdminModal()" style="margin-bottom: 20px;">+ Добавить администратора</button>
+                <button class="btn-primary" onclick="app.showAddAdminModal()" style="margin-bottom: 20px;">+ Добавить сотрудника</button>
                 <div id="adminsList"></div>
             </div>
         </div>
-
+        
+        <!-- Address, DateTime, Instructions Screens (без изменений) -->
         <div id="setSelectionScreen" class="form-screen set-selection">
             <button class="btn-back" onclick="app.showDashboard()">← Назад</button>
             
@@ -1534,7 +1599,8 @@
 
             <button type="button" class="btn-primary" onclick="app.submitOrder(this)">Оформить заказ</button>
         </div>
-
+        
+        <!-- Модальные окна -->
         <div id="successModal" class="modal">
             <div class="modal-content">
                 <div class="success-icon">✅</div>
@@ -1606,15 +1672,16 @@
                 <hr style="border-color: #4a4a4a; margin: 20px 0;">
                 
                 <div style="text-align: left;">
-                    <div class="form-group">
-                        <label for="newTagInput">Добавить тег</label>
-                        <div class="add-tag-form">
-                            <input type="text" id="newTagInput" placeholder="Например: фуд-блогер" style="flex: 1; margin:0;">
-                            <button class="btn-primary btn-small" onclick="app.addUserTag()" style="margin:0;">+</button>
-                        </div>
-                    </div>
                     <label>Добавленные теги:</label>
                     <div id="userTagsContainer" class="tags-container"></div>
+                    
+                    <div class="form-group">
+                        <label for="newTagInput" style="margin-top: 15px;">Добавить тег вручную</label>
+                        <div class="input-with-button">
+                            <input type="text" id="newTagInput" placeholder="Название тега">
+                            <button onclick="app.addUserTag()">+</button>
+                        </div>
+                    </div>
                 </div>
 
                 <button class="btn-secondary" onclick="app.closeUserDetailModal()" style="margin-top: 20px;">Закрыть</button>
@@ -1714,7 +1781,14 @@
 
         <div id="addAdminModal" class="modal">
             <div class="modal-content" style="max-width: 400px;">
-                <h2>Добавить администратора</h2>
+                <h2>Добавить сотрудника</h2>
+                <div class="form-group" style="text-align: left;">
+                    <label for="adminRoleSelect">Роль</label>
+                    <select id="adminRoleSelect">
+                        <option value="operator">Оператор</option>
+                        <option value="admin">Администратор</option>
+                    </select>
+                </div>
                 <input type="text" id="adminUserSearch" class="search-input" placeholder="Поиск пользователя для назначения..." onkeyup="app.filterAdminUsers()">
                 <div id="adminUsersList" style="text-align: left; max-height: 40vh; overflow-y: auto;"></div>
                 <button class="btn-secondary" onclick="app.closeAddAdminModal()" style="margin-top: 20px;">Закрыть</button>
@@ -1733,7 +1807,7 @@
     </div>
 
     <div class="admin-panel" id="adminPanel" style="display: none;">
-        <button class="admin-btn" onclick="app.showCRM()" title="Админ панель">⚙️</button>
+        <button class="admin-btn" onclick="app.showCRM()" title="Панель управления">⚙️</button>
     </div>
 
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -1742,8 +1816,6 @@
     <script>
 const app = (function() {
 
-    // ВАЖНО: Храните токен здесь только для тестирования. 
-    // Для реального проекта этот токен ДОЛЖЕН быть на сервере.
     const TELEGRAM_BOT_TOKEN = '8227812944:AAFy8ydOkUeCj3Qkjg7_Xsq6zyQpcUyMShY';
     
     const firebaseConfig = {
@@ -1764,7 +1836,6 @@ const app = (function() {
         ORDERS: 'orders',
         ADMINS: 'admins',
         BLOCKED_SLOTS: 'blockedSlots',
-        BROADCASTS: 'broadcasts',
         SCHEDULES: 'schedules'
     };
     const SCREENS = {
@@ -1786,15 +1857,12 @@ const app = (function() {
     let userData = {};
     let migrationUser = null;
     let currentOrderData = {};
-    let isCurrentUserAdmin = false;
+    let currentUserRole = null; // Замена для isCurrentUserAdmin
     let cityChart, ordersTrendChart, bloggerLevelChart, followersDistributionChart;
     let currentEditingOrderId = null;
     let currentReportingOrderId = null;
     let currentUserDetailId = null;
     let userListenerUnsubscribe = null;
-
-    let currentSlide = 0;
-    const totalSlides = 4;
     
     const CITIES = ["Павлодар", "Петропавловск", "Кокшетау", "Костанай", "Усть-Каменогорск"];
 
@@ -1811,12 +1879,9 @@ const app = (function() {
         const day = String(dateObj.getDate()).padStart(2, '0');
         const month = String(dateObj.getMonth() + 1).padStart(2, '0');
         const year = String(dateObj.getFullYear()).slice(-2);
-        
         const shortId = firestoreId.substring(0, 4).toUpperCase();
-        
         return `${cityCode}-${day}${month}${year}-${shortId}`;
     }
-
 
     async function sendTelegramNotification(chatId, message) {
         if (!chatId) return;
@@ -1825,73 +1890,52 @@ const app = (function() {
             const response = await fetch(url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    chat_id: chatId,
-                    text: message,
-                    parse_mode: 'Markdown'
-                })
+                body: JSON.stringify({ chat_id: chatId, text: message, parse_mode: 'Markdown' })
             });
             const result = await response.json();
             if (!result.ok) throw new Error(result.description);
-            console.log(`Уведомление в Telegram для ${chatId} успешно отправлено!`);
         } catch (error) {
             console.error(`Ошибка отправки уведомления в Telegram для ${chatId}:`, error);
-            // Важно: не прерываем выполнение, просто логируем ошибку
         }
     }
     
     async function sendAdminNotification(orderData, screenshotFile) {
-        const ADMIN_CHAT_ID = '1345815453';
+        const adminSnapshot = await db.collection(COLLECTIONS.ADMINS).get();
+        const adminChatIds = adminSnapshot.docs.map(doc => doc.id);
+        if (adminChatIds.length === 0) return;
 
         let message = `*Новая заявка на бартер*
 
 📝 *Заказ:* \`${orderData.orderNumber}\`
-        
 👤 *Блогер:*
 Имя: ${orderData.userName}
 Телефон: \`${orderData.phone}\`
 Instagram: @${orderData.instagram}
-Подписчики: ${orderData.followersCount.toLocaleString('ru-RU')}
-Средние просмотры: ${orderData.avgViews.toLocaleString('ru-RU')}
 Уровень: ${determineBloggerLevel(orderData.followersCount).text}`;
         
-        if (orderData.setName) {
-            message += `\n🍱 *Выбранный набор:* ${orderData.setName}`;
-        }
+        if (orderData.setName) message += `\n🍱 *Выбранный набор:* ${orderData.setName}`;
 
-        message += `
-
-🗓 *Дата и время доставки:*
-Дата: ${orderData.date}
-Время: ${orderData.time}
-
-📍 *Доставка:*
+        message += `\n\n🗓 *Доставка:*
+Дата: ${orderData.date} в ${orderData.time}
 Город: ${orderData.city}
-Адрес: ${orderData.street}
-Подъезд: ${orderData.entrance || 'не указан'}
-Этаж: ${orderData.floor || 'не указан'}
-Телефон получателя: \`${orderData.recipientPhone}\``;
+Адрес: ${orderData.street}`;
         
-        try {
-            if (screenshotFile) {
-                const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto`;
-                const formData = new FormData();
-                formData.append('chat_id', ADMIN_CHAT_ID);
-                formData.append('photo', screenshotFile);
-                formData.append('caption', message);
-                formData.append('parse_mode', 'Markdown');
-
-                const response = await fetch(url, { method: 'POST', body: formData });
-                const result = await response.json();
-                if (!result.ok) throw new Error(result.description);
-
-            } else {
-                await sendTelegramNotification(ADMIN_CHAT_ID, message);
+        for (const chatId of adminChatIds) {
+            try {
+                if (screenshotFile) {
+                    const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto`;
+                    const formData = new FormData();
+                    formData.append('chat_id', chatId);
+                    formData.append('photo', screenshotFile);
+                    formData.append('caption', message);
+                    formData.append('parse_mode', 'Markdown');
+                    await fetch(url, { method: 'POST', body: formData });
+                } else {
+                    await sendTelegramNotification(chatId, message);
+                }
+            } catch (error) {
+                console.error('Ошибка отправки уведомления администратору:', error);
             }
-            console.log('Уведомление администратору успешно отправлено!');
-
-        } catch (error) {
-            console.error('Ошибка отправки уведомления администратору:', error);
         }
     }
 
@@ -1912,17 +1956,13 @@ Instagram: @${orderData.instagram}
     }
     
     function attachUserListener(userId) {
-        if (userListenerUnsubscribe) {
-            userListenerUnsubscribe();
-        }
+        if (userListenerUnsubscribe) userListenerUnsubscribe();
         userListenerUnsubscribe = db.collection(COLLECTIONS.USERS).doc(userId)
             .onSnapshot((doc) => {
-                console.log("User data updated in real-time.");
                 if (doc.exists) {
                     userData = { userId: doc.id, ...doc.data() };
                     updateDashboard();
                 } else {
-                    console.log("User document deleted.");
                     logout();
                 }
             }, (error) => {
@@ -1941,26 +1981,22 @@ Instagram: @${orderData.instagram}
     }
     
     function validatePassword(password) { return password && password.length >= 6; }
-    function validateNumber(value, min = 1, max = 10000000) {
-        const num = parseInt(value);
-        return !isNaN(num) && num >= min && num <= max;
-    }
 
-    async function isAdmin(userId) {
-        if (!userId) return false;
+    async function getUserRole(userId) {
+        if (!userId) return null;
         const checkId = String(userId).replace('tg_','');
         try {
             const adminDoc = await db.collection(COLLECTIONS.ADMINS).doc(checkId).get();
-            return adminDoc.exists;
+            return adminDoc.exists ? adminDoc.data().role : null;
         } catch (error) {
             console.error("Error checking admin status:", error);
-            return false;
+            return null;
         }
     }
     
-    async function checkAndSetAdminStatus() {
+    async function checkAndSetUserRole() {
         const checkId = telegramUser ? telegramUser.id : (userData.telegramId || null);
-        isCurrentUserAdmin = await isAdmin(checkId);
+        currentUserRole = await getUserRole(checkId);
     }
 
     function migrateOldAccount(userInfo) {
@@ -1972,16 +2008,12 @@ Instagram: @${orderData.instagram}
     }
 
    async function saveUser(userId, data) {
-        if (!userId) {
-            console.error("User ID is missing, cannot save data.");
-            showError("Критическая ошибка", "Отсутствует ID пользователя. Пожалуйста, перезапустите приложение.");
-            throw new Error("User ID is missing");
-        }
+        if (!userId) throw new Error("User ID is missing");
         try {
             await db.collection(COLLECTIONS.USERS).doc(userId).set(data, { merge: true });
         } catch (error) {
             console.error("Error saving data to Firestore: ", error);
-            showError("Ошибка сохранения", "Не удалось сохранить ваши данные в облако. Проверьте интернет-соединение или попробуйте позже.");
+            showError("Ошибка сохранения", "Не удалось сохранить ваши данные. Проверьте интернет-соединение.");
             throw error;
         }
     }
@@ -2002,14 +2034,10 @@ Instagram: @${orderData.instagram}
                 .where('registration.phone', '==', phone)
                 .where('registration.instagramLogin', '==', instagram.toLowerCase())
                 .get();
-
             if (snapshot.empty) return null;
-
             for (const doc of snapshot.docs) {
                 const foundUser = { userId: doc.id, ...doc.data() };
-                if (foundUser.registration.password === hashPassword(password)) {
-                    return foundUser;
-                }
+                if (foundUser.registration.password === hashPassword(password)) return foundUser;
             }
             return null;
         } catch (error) {
@@ -2024,12 +2052,9 @@ Instagram: @${orderData.instagram}
                 .where('registration.phone', '==', phone)
                 .where('registration.instagramLogin', '==', instagram.toLowerCase())
                 .get();
-
             if (snapshot.empty) return null;
-            
             const userDoc = snapshot.docs[0];
             const foundUser = { userId: userDoc.id, ...userDoc.data() };
-
             return !foundUser.registration.password ? foundUser : null;
         } catch (error) {
             console.error("Error finding user for migration:", error);
@@ -2041,12 +2066,9 @@ Instagram: @${orderData.instagram}
         try {
             const phoneQuery = db.collection(COLLECTIONS.USERS).where('registration.phone', '==', phone).get();
             const instagramQuery = db.collection(COLLECTIONS.USERS).where('registration.instagramLogin', '==', instagram.toLowerCase()).get();
-
             const [phoneSnapshot, instagramSnapshot] = await Promise.all([phoneQuery, instagramQuery]);
-
             const phoneExists = !phoneSnapshot.empty && phoneSnapshot.docs[0].id !== excludeUserId;
             const instagramExists = !instagramSnapshot.empty && instagramSnapshot.docs[0].id !== excludeUserId;
-
             return { phoneExists, instagramExists, canRegister: !phoneExists && !instagramExists };
         } catch (error) {
             console.error("Error checking for duplicates:", error);
@@ -2056,7 +2078,6 @@ Instagram: @${orderData.instagram}
 
     async function attemptTelegramAutoLogin() {
         if (!telegramUser) return false;
-        
         document.getElementById('autoLoginInfo').style.display = 'block';
         const existingUser = await loadUser('tg_' + telegramUser.id);
         document.getElementById('autoLoginInfo').style.display = 'none';
@@ -2066,10 +2087,9 @@ Instagram: @${orderData.instagram}
                 showScreen(SCREENS.MIGRATION);
                 return false;
             }
-            
             currentUserId = existingUser.userId;
             await saveUser(currentUserId, { lastActivity: new Date().toISOString() });
-            await checkAndSetAdminStatus();
+            await checkAndSetUserRole();
             attachUserListener(currentUserId);
             return true;
         }
@@ -2078,8 +2098,7 @@ Instagram: @${orderData.instagram}
 
     function fillTelegramData() {
         if (telegramUser && telegramUser.first_name) {
-            const firstNameField = document.getElementById('firstName');
-            if (firstNameField) firstNameField.value = telegramUser.first_name;
+            document.getElementById('firstName').value = telegramUser.first_name;
         }
     }
 
@@ -2092,14 +2111,11 @@ Instagram: @${orderData.instagram}
 
     async function isSlotBlocked(city, date, time) {
         try {
-            const timeBlockId = `${city}_${date}_${time}`;
-            const timeBlockDoc = db.collection(COLLECTIONS.BLOCKED_SLOTS).doc(timeBlockId).get();
-            const dayBlockId = `${city}_${date}_fullday`;
-            const dayBlockDoc = db.collection(COLLECTIONS.BLOCKED_SLOTS).doc(dayBlockId).get();
+            const timeBlockDoc = db.collection(COLLECTIONS.BLOCKED_SLOTS).doc(`${city}_${date}_${time}`).get();
+            const dayBlockDoc = db.collection(COLLECTIONS.BLOCKED_SLOTS).doc(`${city}_${date}_fullday`).get();
             const [timeBlock, dayBlock] = await Promise.all([timeBlockDoc, dayBlockDoc]);
             return timeBlock.exists || dayBlock.exists;
-        } catch (error)
-        {
+        } catch (error) {
             console.error("Error checking blocked slot:", error);
             return true;
         }
@@ -2107,15 +2123,12 @@ Instagram: @${orderData.instagram}
 
     function showScreen(screenId) {
         document.querySelectorAll('.form-screen, .dashboard, .welcome-screen, .crm-screen').forEach(s => s.style.display = 'none');
-        const screen = document.getElementById(screenId);
-        if (screen) {
-            screen.style.display = (screenId === SCREENS.WELCOME) ? 'flex' : 'block';
-        }
+        document.getElementById(screenId).style.display = (screenId === SCREENS.WELCOME) ? 'flex' : 'block';
     }
 
     function showDashboard() {
         showScreen(SCREENS.DASHBOARD);
-        document.getElementById('adminPanel').style.display = isCurrentUserAdmin ? 'block' : 'none';
+        document.getElementById('adminPanel').style.display = currentUserRole ? 'block' : 'none';
     }
 
     function showWelcomeScreen() { showScreen(SCREENS.WELCOME); }
@@ -2127,11 +2140,29 @@ Instagram: @${orderData.instagram}
     function showInstructions() { showScreen(SCREENS.INSTRUCTIONS); }
 
     async function showCRM() {
-        if (!isCurrentUserAdmin) {
-            showError('Доступ запрещен', 'У вас нет прав администратора');
+        if (!currentUserRole) {
+            showError('Доступ запрещен', 'У вас нет прав для доступа к CRM.');
             return;
         }
         showScreen(SCREENS.CRM);
+        
+        document.querySelectorAll('.crm-tab').forEach(tab => {
+            const tabName = tab.dataset.tab;
+            let isVisible = false;
+            if (currentUserRole === 'admin') {
+                isVisible = true;
+            } else if (currentUserRole === 'operator') {
+                const operatorTabs = ['overview', 'orders', 'users', 'schedule', 'blocks'];
+                isVisible = operatorTabs.includes(tabName);
+            }
+            tab.style.display = isVisible ? 'flex' : 'none';
+        });
+
+        // Активировать первую видимую вкладку
+        const firstVisibleTab = document.querySelector('.crm-tab[style*="display: flex"]');
+        if (firstVisibleTab) {
+            showCrmTab(firstVisibleTab.dataset.tab, firstVisibleTab);
+        }
         updateCRMData();
     }
 
@@ -2143,16 +2174,13 @@ Instagram: @${orderData.instagram}
         
         switch(tabName) {
             case 'overview': updateCRMStats(); break;
-            case 'analytics': 
-                updateAllAnalytics(); 
-                setTimeout(() => goToSlide(0), 10);
-                break;
+            case 'analytics': applyAnalyticsFilters(); break;
             case 'orders': updateOrdersList(); break;
             case 'users': updateUsersList(); break;
             case 'schedule': loadSchedule(); break;
             case 'blocks': updateBlockedSlotsList(); break;
             case 'admins': updateAdminsList(); break;
-            case 'broadcast': break;
+            case 'broadcast': setupBroadcastTagInput(); break;
         }
     }
     
@@ -2164,7 +2192,7 @@ Instagram: @${orderData.instagram}
             await asyncFunction();
         } catch (error) {
             console.error("Operation failed:", error);
-            showError("Произошла ошибка", "Пожалуйста, попробуйте еще раз. " + error.message);
+            showError("Произошла ошибка", error.message);
         } finally {
             button.disabled = false;
             button.innerHTML = originalText;
@@ -2176,8 +2204,7 @@ Instagram: @${orderData.instagram}
             const phone = document.getElementById('loginPhone').value.trim();
             const instagram = document.getElementById('loginInstagram').value.trim();
             const password = document.getElementById('loginPassword').value.trim();
-            
-            if (!phone || !instagram || !password) return showError('Ошибка валидации', 'Пожалуйста, заполните все поля');
+            if (!phone || !instagram || !password) return showError('Ошибка', 'Пожалуйста, заполните все поля');
             
             const oldUser = await findUserByPhoneAndInstagram(phone, instagram);
             if (oldUser) {
@@ -2193,11 +2220,11 @@ Instagram: @${orderData.instagram}
                     await saveUser(currentUserId, { telegramId: telegramUser.id, merge: true });
                 }
                 await saveUser(currentUserId, { lastActivity: new Date().toISOString() });
-                await checkAndSetAdminStatus();
+                await checkAndSetUserRole();
                 attachUserListener(currentUserId);
                 showDashboard();
             } else {
-                showError('Неверные данные', 'Проверьте правильность введенных данных или пройдите регистрацию');
+                showError('Неверные данные', 'Проверьте правильность введенных данных.');
             }
         });
     }
@@ -2206,7 +2233,6 @@ Instagram: @${orderData.instagram}
         await withLoading(button, async () => {
             const password = document.getElementById('migrationPassword').value.trim();
             const passwordConfirm = document.getElementById('migrationPasswordConfirm').value.trim();
-            
             if (!validatePassword(password) || password !== passwordConfirm) {
                return showError('Ошибка пароля', 'Пароли не совпадают или короче 6 символов.');
             }
@@ -2215,12 +2241,10 @@ Instagram: @${orderData.instagram}
                 migrationUser.registration.password = hashPassword(password);
                 migrationUser.lastActivity = new Date().toISOString();
                 if (telegramUser && !migrationUser.telegramId) migrationUser.telegramId = telegramUser.id;
-                
                 await saveUser(migrationUser.userId, migrationUser);
-                
                 currentUserId = migrationUser.userId;
                 migrationUser = null;
-                await checkAndSetAdminStatus();
+                await checkAndSetUserRole();
                 attachUserListener(currentUserId);
                 showDashboard();
             }
@@ -2237,17 +2261,13 @@ Instagram: @${orderData.instagram}
             const avgViews = parseInt(document.getElementById('avgViews').value);
 
             if (!firstName || !phone || !instagramLogin || !password || isNaN(followersCount) || isNaN(avgViews)) {
-                return showError('Ошибка валидации', 'Пожалуйста, заполните все обязательные поля');
+                return showError('Ошибка', 'Пожалуйста, заполните все обязательные поля');
             }
-
             if (avgViews < 300) return showRejectionModal();
             
             const duplicateCheck = await checkForDuplicateRegistration(phone, instagramLogin);
             if (!duplicateCheck.canRegister) {
-                let msg = 'Аккаунт с такими данными уже зарегистрирован.';
-                if (duplicateCheck.phoneExists) msg += '\n• Телефон уже используется';
-                if (duplicateCheck.instagramExists) msg += '\n• Instagram уже используется';
-                return showError('Аккаунт уже существует', msg);
+                return showError('Аккаунт уже существует', 'Телефон или Instagram уже используются.');
             }
 
             const bloggerData = determineBloggerLevel(followersCount);
@@ -2263,11 +2283,11 @@ Instagram: @${orderData.instagram}
                 isBlocked: false,
                 blockReason: '',
                 strikes: 0,
-                tags: []
+                tags: [bloggerData.level] // Автоматический тег уровня
             };
 
             await saveUser(currentUserId, newUser);
-            await checkAndSetAdminStatus();
+            await checkAndSetUserRole();
             attachUserListener(currentUserId);
             showDashboard();
         });
@@ -2292,78 +2312,47 @@ Instagram: @${orderData.instagram}
         const { firstName, followersCount, avgViews } = dataSource;
         const levelInfo = determineBloggerLevel(followersCount);
         
-        const blockedPanel = document.getElementById('blockedPanel');
+        document.getElementById('blockedPanel').style.display = 'none';
         if (userData.isBlocked) {
-            blockedPanel.innerHTML = `<h4>🔒 Ваш аккаунт заблокирован</h4><p>${userData.blockReason || 'Для получения дополнительной информации свяжитесь с администратором.'}</p>`;
-            blockedPanel.style.display = 'block';
-        } else {
-            blockedPanel.style.display = 'none';
+            document.getElementById('blockedPanel').innerHTML = `<h4>🔒 Ваш аккаунт заблокирован</h4><p>${userData.blockReason || 'Свяжитесь с администратором.'}</p>`;
+            document.getElementById('blockedPanel').style.display = 'block';
         }
-
 
         document.getElementById('userName').textContent = firstName;
-        
         const userAvatar = document.getElementById('userAvatar');
-        if (telegramUser && telegramUser.photo_url) {
-            userAvatar.innerHTML = `<img src="${telegramUser.photo_url}" alt="${firstName}">`;
-        } else {
-            userAvatar.innerHTML = ''; 
-            userAvatar.textContent = firstName ? firstName.charAt(0).toUpperCase() : '👤';
-        }
+        userAvatar.innerHTML = telegramUser?.photo_url ? `<img src="${telegramUser.photo_url}" alt="${firstName}">` : (firstName ? firstName.charAt(0).toUpperCase() : '👤');
 
         document.getElementById('userLevel').textContent = levelInfo.text;
         document.getElementById('followersDisplay').textContent = (followersCount || 0).toLocaleString('ru-RU');
         document.getElementById('viewsDisplay').textContent = (avgViews || 0).toLocaleString('ru-RU');
 
+        // Логика отображения статуса и отчетов (без изменений)
         const statusPanel = document.getElementById('statusPanel');
+        statusPanel.style.display = 'none';
         if (userData.orders && userData.orders.length > 0) {
-            const latestOrder = [...userData.orders].sort((a, b) => new Date(b.createdAt || b.date) - new Date(a.createdAt || a.date))[0];
+            const latestOrder = [...userData.orders].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0];
             let statusMessage = '';
-            
-            if (latestOrder.status === 'new') {
-                statusMessage = `⏳ <strong>Ваш заказ #${latestOrder.orderNumber.split('-')[2]} в обработке.</strong> Ожидайте подтверждения.`;
-            } else if (latestOrder.status === 'confirmed') {
-                statusMessage = `✅ <strong>Ваш заказ #${latestOrder.orderNumber.split('-')[2]} подтвержден!</strong> Ожидайте доставку.`;
-            } else if (latestOrder.status === 'awaiting_review') {
-                statusMessage = `🙌 <strong>Спасибо! Ваш отчет по заказу #${latestOrder.orderNumber.split('-')[2]} на проверке.</strong>`;
-            } else if (latestOrder.status === 'rejected') {
-                 statusMessage = `❌ <strong>Отчет по заказу #${latestOrder.orderNumber.split('-')[2]} отклонен.</strong> Пожалуйста, свяжитесь с администратором.`;
-            }
-
+            if (latestOrder.status === 'new') statusMessage = `⏳ <strong>Ваш заказ #${latestOrder.orderNumber.split('-')[2]} в обработке.</strong>`;
+            if (latestOrder.status === 'confirmed') statusMessage = `✅ <strong>Ваш заказ #${latestOrder.orderNumber.split('-')[2]} подтвержден!</strong>`;
             if (statusMessage) {
                 statusPanel.innerHTML = statusMessage;
                 statusPanel.style.display = 'block';
-            } else {
-                statusPanel.style.display = 'none';
             }
-        } else {
-            statusPanel.style.display = 'none';
         }
-
         const reportPanel = document.getElementById('reportActionsPanel');
         reportPanel.innerHTML = '';
-        const ordersToReport = (userData.orders || []).filter(order => order.status === 'delivered');
-        if(ordersToReport.length > 0) {
-            ordersToReport.forEach(order => {
-                const card = document.createElement('div');
-                card.className = 'action-card report-action-card';
-                card.onclick = () => showReportModal(order.id, order.orderNumber);
-                card.innerHTML = `
-                    <div class="action-icon">📤</div>
-                    <div class="action-title">Сдать отчет по заказу</div>
-                    <div class="action-desc">${order.orderNumber}</div>`;
-                reportPanel.appendChild(card);
-            });
-        }
+        (userData.orders || []).filter(o => o.status === 'delivered').forEach(order => {
+            const card = document.createElement('div');
+            card.className = 'action-card report-action-card';
+            card.onclick = () => showReportModal(order.id, order.orderNumber);
+            card.innerHTML = `<div class="action-icon">📤</div><div class="action-title">Сдать отчет по заказу</div><div class="action-desc">${order.orderNumber}</div>`;
+            reportPanel.appendChild(card);
+        });
     }
 
     // --- CRM Функции ---
     async function updateCRMData() {
         updateCRMStats();
-        const activeTab = document.querySelector('.crm-tab.active');
-        if (activeTab) {
-            activeTab.click();
-        }
     }
 
     async function updateCRMStats() {
@@ -2374,161 +2363,78 @@ Instagram: @${orderData.instagram}
                 db.collection(COLLECTIONS.ORDERS).where('status', '==', 'new').get(),
                 db.collection(COLLECTIONS.BLOCKED_SLOTS).get()
             ]);
-
             document.getElementById('totalUsers').textContent = usersSnap.size;
             document.getElementById('totalOrders').textContent = ordersSnap.size;
             document.getElementById('newOrders').textContent = newOrdersSnap.size;
             document.getElementById('blockedSlots').textContent = blocksSnap.size;
-        } catch (error) {
-            console.error("Error updating CRM stats:", error);
-        }
+        } catch (error) { console.error("Error updating CRM stats:", error); }
     }
     
-    function setupAnalyticsSlider() {
-        const wrapper = document.querySelector('.analytics-wrapper');
-        const dotsContainer = document.getElementById('analyticsSliderDots');
-        if (!wrapper || !dotsContainer) return;
-
-        dotsContainer.innerHTML = '';
-        for (let i = 0; i < totalSlides; i++) {
-            const dot = document.createElement('span');
-            dot.classList.add('slider-dot');
-            if (i === 0) dot.classList.add('active');
-            dot.onclick = () => goToSlide(i);
-            dotsContainer.appendChild(dot);
-        }
-
-        let startX = 0;
-        let endX = 0;
-
-        wrapper.addEventListener('touchstart', (e) => startX = e.touches[0].clientX, { passive: true });
-        wrapper.addEventListener('touchend', (e) => {
-            endX = e.changedTouches[0].clientX;
-            if (startX > endX + 50) {
-                goToSlide(currentSlide + 1);
-            } else if (startX < endX - 50) {
-                goToSlide(currentSlide - 1);
-            }
-        }, { passive: true });
+    // Новая функция для аналитики
+    async function applyAnalyticsFilters() {
+        const startDate = document.getElementById('analyticsStartDate').value;
+        const endDate = document.getElementById('analyticsEndDate').value;
+        const city = document.getElementById('analyticsCity').value;
+        updateAllAnalytics({ startDate, endDate, city });
     }
 
-    function goToSlide(slideIndex) {
-        const wrapper = document.querySelector('.analytics-wrapper');
-        if (!wrapper) return;
-        
-        if (slideIndex >= totalSlides) slideIndex = 0;
-        if (slideIndex < 0) slideIndex = totalSlides - 1;
-
-        currentSlide = slideIndex;
-        wrapper.style.transform = `translateX(-${currentSlide * 100}%)`;
-
-        document.querySelectorAll('.slider-dot').forEach((dot, index) => {
-            dot.classList.toggle('active', index === currentSlide);
-        });
-    }
-
-    async function updateAllAnalytics() {
+    async function updateAllAnalytics(filters = {}) {
         try {
-            const [ordersSnap, usersSnap] = await Promise.all([
-                db.collection(COLLECTIONS.ORDERS).get(),
-                db.collection(COLLECTIONS.USERS).get()
-            ]);
+            let ordersQuery = db.collection(COLLECTIONS.ORDERS);
+            if (filters.startDate) ordersQuery = ordersQuery.where('createdAt', '>=', new Date(filters.startDate).toISOString());
+            if (filters.endDate) ordersQuery = ordersQuery.where('createdAt', '<=', new Date(filters.endDate).toISOString());
+            if (filters.city && filters.city !== 'all') ordersQuery = ordersQuery.where('city', '==', filters.city);
 
-            const thirtyDaysAgo = new Date();
-            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+            const [ordersSnap, usersSnap] = await Promise.all([ordersQuery.get(), db.collection(COLLECTIONS.USERS).get()]);
             
             const ordersByDate = {};
             ordersSnap.forEach(doc => {
-                const createdAt = new Date(doc.data().createdAt);
-                if (createdAt >= thirtyDaysAgo) {
-                    const dateString = createdAt.toISOString().split('T')[0];
-                    ordersByDate[dateString] = (ordersByDate[dateString] || 0) + 1;
-                }
+                const dateString = new Date(doc.data().createdAt).toISOString().split('T')[0];
+                ordersByDate[dateString] = (ordersByDate[dateString] || 0) + 1;
             });
             const sortedDates = Object.keys(ordersByDate).sort();
-            const ordersTrendData = sortedDates.map(date => ordersByDate[date]);
-            renderChart('ordersTrendChart', 'line', sortedDates, ordersTrendData, 'Динамика заказов', ordersTrendChart);
+            renderChart('ordersTrendChart', 'line', sortedDates, sortedDates.map(date => ordersByDate[date]), 'Динамика заказов');
 
             const cityCounts = {};
             ordersSnap.forEach(doc => {
                 const city = doc.data().city;
                 if (city) cityCounts[city] = (cityCounts[city] || 0) + 1;
             });
-            renderChart('cityChart', 'bar', Object.keys(cityCounts), Object.values(cityCounts), 'Заказы по городам', cityChart);
+            renderChart('cityChart', 'bar', Object.keys(cityCounts), Object.values(cityCounts), 'Заказы по городам');
 
             const levelCounts = { 'Микроблогер': 0, 'Макроблогер тип A': 0, 'Макроблогер тип B': 0 };
             const followerRanges = { '1-5k': 0, '5-10k': 0, '10-20k': 0, '20k+': 0 };
             usersSnap.forEach(doc => {
-                const userDocData = doc.data();
-                const dataSource = userDocData.registration || userDocData;
-                const followers = dataSource.followersCount || 0;
+                const followers = (doc.data().registration || doc.data()).followersCount || 0;
                 const levelText = determineBloggerLevel(followers).text;
                 if (levelCounts.hasOwnProperty(levelText)) levelCounts[levelText]++;
-
                 if (followers <= 5000) followerRanges['1-5k']++;
                 else if (followers <= 10000) followerRanges['5-10k']++;
                 else if (followers <= 20000) followerRanges['10-20k']++;
                 else followerRanges['20k+']++;
             });
-            renderChart('bloggerLevelChart', 'doughnut', Object.keys(levelCounts), Object.values(levelCounts), 'Уровни блогеров', bloggerLevelChart);
-            renderChart('followersDistributionChart', 'pie', Object.keys(followerRanges), Object.values(followerRanges), 'Подписчики', followersDistributionChart);
+            renderChart('bloggerLevelChart', 'doughnut', Object.keys(levelCounts), Object.values(levelCounts), 'Уровни блогеров');
+            renderChart('followersDistributionChart', 'pie', Object.keys(followerRanges), Object.values(followerRanges), 'Подписчики');
 
         } catch(e) { console.error("Analytics error:", e) }
     }
     
-    function renderChart(canvasId, type, labels, data, label, chartInstance) {
+    function renderChart(canvasId, type, labels, data, label) {
+        let chartInstance;
+        if (canvasId === 'cityChart') chartInstance = cityChart;
+        else if (canvasId === 'ordersTrendChart') chartInstance = ordersTrendChart;
+        else if (canvasId === 'bloggerLevelChart') chartInstance = bloggerLevelChart;
+        else if (canvasId === 'followersDistributionChart') chartInstance = followersDistributionChart;
+        
         const ctx = document.getElementById(canvasId)?.getContext('2d');
         if (!ctx) return;
-        
         if (chartInstance) chartInstance.destroy();
-
-        const chartColors = [
-            'rgba(0, 180, 216, 0.7)',
-            'rgba(255, 107, 53, 0.7)',
-            'rgba(40, 167, 69, 0.7)',
-            'rgba(255, 193, 7, 0.7)',
-            'rgba(111, 66, 193, 0.7)'
-        ];
-        const chartBorderColors = [
-            'rgba(0, 180, 216, 1)',
-            'rgba(255, 107, 53, 1)',
-            'rgba(40, 167, 69, 1)',
-            'rgba(255, 193, 7, 1)',
-            'rgba(111, 66, 193, 1)'
-        ];
-
-        const gradient = ctx.createLinearGradient(0, 0, 0, 300);
-        gradient.addColorStop(0, 'rgba(0, 180, 216, 0.5)');
-        gradient.addColorStop(1, 'rgba(0, 180, 216, 0)');
-
-        const chartOptions = {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: (type === 'line' || type === 'bar') ? { 
-                y: { beginAtZero: true, ticks: { color: '#fff', stepSize: 1 } }, 
-                x: { ticks: { color: '#fff' } } 
-            } : {},
-            plugins: { 
-                legend: { labels: { color: '#fff' } },
-                tooltip: { titleFont: { size: 14 }, bodyFont: { size: 12 } }
-            }
-        };
-
+        
+        const chartColors = ['rgba(0, 180, 216, 0.7)', 'rgba(255, 107, 53, 0.7)', 'rgba(40, 167, 69, 0.7)', 'rgba(255, 193, 7, 0.7)'];
         const newChartInstance = new Chart(ctx, {
             type: type,
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: label,
-                    data: data,
-                    backgroundColor: (type === 'doughnut' || type === 'pie' || type === 'bar') ? chartColors : (type === 'line' ? gradient : '#00b4d8'),
-                    borderColor: (type === 'doughnut' || type === 'pie' || type === 'bar') ? chartBorderColors : '#ff6b35',
-                    borderWidth: (type === 'doughnut' || type === 'pie' || type === 'bar') ? 1 : 2,
-                    tension: 0.3,
-                    fill: type === 'line'
-                }]
-            },
-            options: chartOptions
+            data: { labels: labels, datasets: [{ label: label, data: data, backgroundColor: chartColors, borderColor: chartColors, borderWidth: 1, tension: 0.3 }] },
+            options: { responsive: true, maintainAspectRatio: false, scales: (type === 'line' || type === 'bar') ? { y: { ticks: { color: '#fff' } }, x: { ticks: { color: '#fff' } } } : {}, plugins: { legend: { labels: { color: '#fff' } } } }
         });
         
         if (canvasId === 'cityChart') cityChart = newChartInstance;
@@ -2539,11 +2445,11 @@ Instagram: @${orderData.instagram}
 
     async function updateOrdersList() {
         const list = document.getElementById('ordersList');
-        list.innerHTML = '<div class="loading-indicator">Загрузка заказов...</div>';
+        list.innerHTML = '<div class="loading-indicator">Загрузка...</div>';
         try {
             const snapshot = await db.collection(COLLECTIONS.ORDERS).orderBy('createdAt', 'desc').get();
             if (snapshot.empty) {
-                list.innerHTML = '<div class="empty-state">Пока нет ни одного заказа.</div>';
+                list.innerHTML = '<div class="empty-state">Нет заказов.</div>';
                 return;
             }
             list.innerHTML = '';
@@ -2556,56 +2462,41 @@ Instagram: @${orderData.instagram}
                 el.onclick = () => showOrderDetailModal(order.id);
                 el.innerHTML = `
                     <div class="order-header">
-                        <span class="order-id">${order.orderNumber || `#${order.id.substring(0, 6)}`}</span>
+                        <span class="order-id">${order.orderNumber}</span>
                         <span class="order-status ${statusInfo.className}">${statusInfo.text}</span>
                     </div>
                     <div class="order-info">
                         <strong>${order.userName}</strong> (${order.city})<br>
-                        ${new Date(order.date).toLocaleDateString('ru-RU')} - ${order.time}<br>
                         <small>Создан: ${new Date(order.createdAt).toLocaleString('ru-RU')}</small>
                     </div>`;
                 list.appendChild(el);
             });
         } catch (error) {
             console.error("Error fetching orders:", error);
-            list.innerHTML = '<div class="empty-state">Ошибка загрузки заказов.</div>';
+            list.innerHTML = '<div class="empty-state">Ошибка загрузки.</div>';
         }
     }
     
     function calculateBloggerRating(user) {
-        const dataSource = user.registration || user;
-        const followers = dataSource.followersCount || 0;
-        const views = dataSource.avgViews || 0;
+        const { followersCount = 0, avgViews = 0 } = user.registration || user;
         const strikes = user.strikes || 0;
-
-        const followersWeight = 2.5;
-        const viewsWeight = 4.5;
-        const strikePenalty = 1.5;
-
-        const followersScore = followers > 0 ? Math.log10(followers) * followersWeight : 0;
-        const viewsScore = views > 0 ? Math.log10(views) * viewsWeight : 0;
-        
-        let totalScore = followersScore + viewsScore - (strikes * strikePenalty);
-        
-        let rating = (totalScore / 25) * 10;
-        rating = Math.max(1, Math.min(10, rating));
-        
-        return rating.toFixed(1);
+        const followersScore = followersCount > 0 ? Math.log10(followersCount) * 2.5 : 0;
+        const viewsScore = avgViews > 0 ? Math.log10(avgViews) * 4.5 : 0;
+        let rating = ((followersScore + viewsScore - (strikes * 1.5)) / 25) * 10;
+        return Math.max(1, Math.min(10, rating)).toFixed(1);
     }
     
     async function updateUsersList() {
         const list = document.getElementById('usersList');
-        list.innerHTML = '<div class="loading-indicator">Загрузка пользователей...</div>';
+        list.innerHTML = '<div class="loading-indicator">Загрузка...</div>';
         try {
             const [usersSnapshot, adminsSnapshot] = await Promise.all([
                  db.collection(COLLECTIONS.USERS).orderBy('registrationDate', 'desc').get(),
                  db.collection(COLLECTIONS.ADMINS).get()
             ]);
-
-            const adminIds = new Set(adminsSnapshot.docs.map(doc => doc.id));
-            
+            const adminData = new Map(adminsSnapshot.docs.map(doc => [doc.id, doc.data()]));
             if (usersSnapshot.empty) {
-                list.innerHTML = '<div class="empty-state">Еще никто не зарегистрировался.</div>';
+                list.innerHTML = '<div class="empty-state">Нет пользователей.</div>';
                 return;
             }
             list.innerHTML = '';
@@ -2614,29 +2505,25 @@ Instagram: @${orderData.instagram}
                 const reg = user.registration || user;
                 if (!reg.firstName) return;
 
-                const isUserAdmin = adminIds.has(String(user.telegramId));
+                const adminInfo = adminData.get(String(user.telegramId));
                 const rating = calculateBloggerRating(user);
-
                 const el = document.createElement('div');
                 el.className = `user-item ${user.isBlocked ? 'blocked' : ''}`;
                 el.dataset.search = `${reg.firstName} ${reg.phone} ${reg.instagramLogin}`.toLowerCase();
                 el.onclick = () => showUserDetailModal(user.userId);
                 
                 let badges = '';
-                if(isUserAdmin) badges += '<span class="user-admin-badge">Администратор</span>';
-                if(user.isBlocked) badges += `<span class="user-blocked-badge" style="margin-left: 5px;">Заблокирован (${user.strikes || 0} стр.)</span>`;
+                if(adminInfo) badges += `<span class="user-admin-badge">${adminInfo.role}</span>`;
+                if(user.isBlocked) badges += `<span class="user-blocked-badge" style="margin-left: 5px;">Заблокирован</span>`;
 
                 el.innerHTML = `
                     <div class="user-details">
-                        <div class="user-header" style="margin-bottom: 5px;">
-                           <span class="user-name-phone">${reg.firstName} (${reg.phone})</span>
+                        <div class="user-header">
+                           <span class="user-name-phone">${reg.firstName}</span>
                            <span class="user-rating">⭐ ${rating}</span>
                         </div>
-                        <div style="font-size: 14px; color: #ccc;">
-                            Instagram: ${reg.instagramLogin}<br>
-                            Подписчики: ${(reg.followersCount || 0).toLocaleString('ru-RU')} | Просмотры: ${(reg.avgViews || 0).toLocaleString('ru-RU')}
-                            ${badges ? `<div style="margin-top:5px;">${badges}</div>` : ''}
-                        </div>
+                        <div style="font-size: 14px; color: #ccc;">@${reg.instagramLogin}</div>
+                        ${badges ? `<div style="margin-top:5px;">${badges}</div>` : ''}
                     </div>
                     <div class="user-controls">
                        ${user.isBlocked 
@@ -2645,12 +2532,11 @@ Instagram: @${orderData.instagram}
                        }
                        <button class="btn-danger-icon" title="Удалить" onclick="event.stopPropagation(); app.removeUser('${user.userId}', '${reg.firstName}')">🗑️</button>
                     </div>`;
-
                 list.appendChild(el);
             });
         } catch (error) {
             console.error("Error fetching users:", error);
-            list.innerHTML = '<div class="empty-state">Ошибка загрузки пользователей.</div>';
+            list.innerHTML = '<div class="empty-state">Ошибка загрузки.</div>';
         }
     }
     
@@ -2660,7 +2546,7 @@ Instagram: @${orderData.instagram}
         try {
             const snapshot = await db.collection(COLLECTIONS.BLOCKED_SLOTS).get();
             if (snapshot.empty) {
-                list.innerHTML = '<div class="empty-state">Нет активных блокировок.</div>';
+                list.innerHTML = '<div class="empty-state">Нет блокировок.</div>';
                 return;
             }
             list.innerHTML = '';
@@ -2668,19 +2554,17 @@ Instagram: @${orderData.instagram}
                 const block = { id: doc.id, ...doc.data() };
                 const el = document.createElement('div');
                 el.className = 'blocked-slot';
-                const timeDisplay = block.type === 'fullday' ? 'Весь день' : `в ${block.time}`;
                 el.innerHTML = `
                     <div class="blocked-slot-info">
                         <div class="blocked-slot-city">${block.city}</div>
-                        <div class="blocked-slot-time">${block.date} (${timeDisplay})</div>
-                        ${block.reason ? `<div style="font-size: 12px; color: #999;">${block.reason}</div>` : ''}
+                        <div class="blocked-slot-time">${block.date} (${block.type === 'fullday' ? 'Весь день' : block.time})</div>
                     </div>
-                     <button class="btn-danger-icon" onclick="app.removeBlock('${block.id}')" title="Удалить блокировку">🗑️</button>`;
+                    <button class="btn-danger-icon" onclick="app.removeBlock('${block.id}')">🗑️</button>`;
                 list.appendChild(el);
             });
         } catch (error) {
             console.error("Error fetching blocks:", error);
-            list.innerHTML = '<div class="empty-state">Ошибка загрузки блокировок.</div>';
+            list.innerHTML = '<div class="empty-state">Ошибка загрузки.</div>';
         }
     }
     
@@ -2690,7 +2574,7 @@ Instagram: @${orderData.instagram}
         try {
             const snapshot = await db.collection(COLLECTIONS.ADMINS).get();
              if (snapshot.empty) {
-                list.innerHTML = '<div class="empty-state">Нет назначенных администраторов.</div>';
+                list.innerHTML = '<div class="empty-state">Нет сотрудников.</div>';
                 return;
             }
             list.innerHTML = '';
@@ -2699,88 +2583,61 @@ Instagram: @${orderData.instagram}
                 const el = document.createElement('div');
                 el.className = 'user-item';
                 el.innerHTML = `
-                    <div class="user-header">
-                        <span class="user-name-phone">${admin.name || 'Админ'} (ID: ${admin.id})</span>
-                        <div class="user-controls">
-                            ${admin.id !== '1345815453' ? `<button class="btn-danger-icon" onclick="app.removeAdmin('${admin.id}')">🗑️</button>` : '<span style="color:#999;font-size:12px;">Главный</span>'}
-                        </div>
+                    <div class="user-details">
+                        <span class="user-name-phone">${admin.name || 'Сотрудник'}</span>
+                        <div style="margin-top: 5px;"><span class="user-admin-badge">${admin.role}</span></div>
+                    </div>
+                    <div class="user-controls">
+                        ${admin.id !== '1345815453' ? `<button class="btn-danger-icon" onclick="app.removeAdmin('${admin.id}')">🗑️</button>` : ''}
                     </div>`;
                 list.appendChild(el);
             });
         } catch (error) {
             console.error("Error fetching admins:", error);
-            list.innerHTML = '<div class="empty-state">Ошибка загрузки администраторов.</div>';
+            list.innerHTML = '<div class="empty-state">Ошибка загрузки.</div>';
         }
     }
 
     async function updateOrderStatus(button) {
+        if (!currentEditingOrderId) return;
         await withLoading(button, async () => {
-            if (!currentEditingOrderId) return;
-
             const newStatus = document.getElementById('orderStatusSelect').value;
-            try {
-                const orderRef = db.collection(COLLECTIONS.ORDERS).doc(currentEditingOrderId);
-                const orderDoc = await orderRef.get();
-                if (!orderDoc.exists) throw new Error("Order not found");
-
-                const orderData = orderDoc.data();
-                const userRef = db.collection(COLLECTIONS.USERS).doc(orderData.userId);
-
-                const batch = db.batch();
-                batch.update(orderRef, { status: newStatus });
-
-                const userDoc = await userRef.get();
-                if (userDoc.exists) {
-                    const userDataFromDB = userDoc.data();
-                    const orders = userDataFromDB.orders || [];
-                    const orderIndex = orders.findIndex(o => o.id === currentEditingOrderId);
-                    if (orderIndex > -1) {
-                        orders[orderIndex].status = newStatus;
-                        batch.update(userRef, { orders: orders });
-                    }
-
-                    if (userDataFromDB.telegramId) {
-                        if (newStatus === 'confirmed') {
-                            const message = `✅ Ваш заказ №${orderData.orderNumber} подтвержден! Ожидайте доставку ${orderData.date} в ${orderData.time}.`;
-                            await sendTelegramNotification(userDataFromDB.telegramId, message);
-                        } else if (newStatus === 'completed') {
-                            const message = `🎉 Спасибо за отчет! Сотрудничество по заказу №${orderData.orderNumber} успешно завершено.`;
-                            await sendTelegramNotification(userDataFromDB.telegramId, message);
-                        }
-                    }
+            const orderRef = db.collection(COLLECTIONS.ORDERS).doc(currentEditingOrderId);
+            const orderDoc = await orderRef.get();
+            if (!orderDoc.exists) throw new Error("Заказ не найден");
+            const orderData = orderDoc.data();
+            const userRef = db.collection(COLLECTIONS.USERS).doc(orderData.userId);
+            const batch = db.batch();
+            batch.update(orderRef, { status: newStatus });
+            const userDoc = await userRef.get();
+            if (userDoc.exists) {
+                const orders = userDoc.data().orders || [];
+                const orderIndex = orders.findIndex(o => o.id === currentEditingOrderId);
+                if (orderIndex > -1) {
+                    orders[orderIndex].status = newStatus;
+                    batch.update(userRef, { orders: orders });
                 }
-
-                await batch.commit();
-                
-                showSuccessMessage('Статус обновлен!');
-                closeOrderDetailModal();
-                updateOrdersList();
-            } catch (error) {
-                console.error("Error updating order status: ", error);
-                showError('Ошибка', 'Не удалось обновить статус заказа.');
+                if (userDoc.data().telegramId) {
+                    if (newStatus === 'confirmed') await sendTelegramNotification(userDoc.data().telegramId, `✅ Ваш заказ №${orderData.orderNumber} подтвержден!`);
+                    if (newStatus === 'completed') await sendTelegramNotification(userDoc.data().telegramId, `🎉 Сотрудничество по заказу №${orderData.orderNumber} завершено.`);
+                }
             }
+            await batch.commit();
+            showSuccessMessage('Статус обновлен!');
+            closeOrderDetailModal();
+            updateOrdersList();
         });
     }
 
-    function filter(inputId, listSelector, itemSelector, emptyStateSelector) {
+    function filter(inputId, listSelector, itemSelector) {
         const query = document.getElementById(inputId).value.toLowerCase();
-        let visibleCount = 0;
         document.querySelectorAll(`${listSelector} ${itemSelector}`).forEach(item => {
-            const searchableText = item.dataset.search || '';
-            const isVisible = searchableText.includes(query);
-            item.style.display = isVisible ? '' : 'none';
-            if(isVisible) visibleCount++;
+            item.style.display = (item.dataset.search || '').includes(query) ? '' : 'none';
         });
-
-        const emptyState = document.querySelector(`${listSelector} ${emptyStateSelector}`);
-        if(emptyState) {
-            emptyState.style.display = visibleCount === 0 ? 'block' : 'none';
-        }
     }
-
-    function filterOrders() { filter('orderSearch', '#ordersList', '.order-item', '.empty-state'); }
-    function filterUsers() { filter('userSearch', '#usersList', '.user-item', '.empty-state'); }
-    function filterAdminUsers() { filter('adminUserSearch', '#adminUsersList', '.user-item', '.empty-state'); }
+    function filterOrders() { filter('orderSearch', '#ordersList', '.order-item'); }
+    function filterUsers() { filter('userSearch', '#usersList', '.user-item'); }
+    function filterAdminUsers() { filter('adminUserSearch', '#adminUsersList', '.user-item'); }
     
     async function addBlock(button) {
         await withLoading(button, async () => {
@@ -2789,20 +2646,9 @@ Instagram: @${orderData.instagram}
             const type = document.getElementById('blockType').value;
             const time = document.getElementById('blockTime').value;
             const reason = document.getElementById('blockReason').value.trim();
-
-            if (!city || !date) return;
-            if (type === 'time' && !time) return showError('Ошибка', 'Укажите время для блокировки.');
-
-            let blockId;
-            let newBlock = { city, date, type, reason, addedAt: new Date().toISOString(), addedBy: telegramUser ? telegramUser.id : 'unknown' };
-
-            if (type === 'fullday') {
-                blockId = `${city}_${date}_fullday`;
-            } else {
-                blockId = `${city}_${date}_${time}`;
-                newBlock.time = time;
-            }
-            
+            if (!city || !date || (type === 'time' && !time)) return showError('Ошибка', 'Заполните все поля.');
+            const blockId = type === 'fullday' ? `${city}_${date}_fullday` : `${city}_${date}_${time}`;
+            const newBlock = { city, date, type, reason, time: type === 'time' ? time : null };
             await db.collection(COLLECTIONS.BLOCKED_SLOTS).doc(blockId).set(newBlock);
             closeAddBlockModal();
             updateBlockedSlotsList();
@@ -2811,270 +2657,167 @@ Instagram: @${orderData.instagram}
     }
 
     async function removeBlock(blockId) {
-        if (confirm('Удалить эту блокировку?')) {
+        if (confirm('Удалить блокировку?')) {
             await db.collection(COLLECTIONS.BLOCKED_SLOTS).doc(blockId).delete();
             updateBlockedSlotsList();
-            showSuccessMessage('Блокировка удалена!');
         }
     }
     
     async function toggleUserBlock(userId, shouldBlock) {
-        const reason = shouldBlock ? prompt("Укажите причину блокировки (можно оставить пустым):", "") : '';
-        if (shouldBlock && reason === null) return; // User cancelled prompt
-
-        try {
-            await db.collection(COLLECTIONS.USERS).doc(userId).update({
-                isBlocked: shouldBlock,
-                blockReason: shouldBlock ? reason : ''
-            });
-            showSuccessMessage(`Пользователь ${shouldBlock ? 'заблокирован' : 'разблокирован'}.`);
-            updateUsersList();
-        } catch (e) {
-            showError('Ошибка', 'Не удалось обновить статус пользователя.');
-            console.error(e);
-        }
+        const reason = shouldBlock ? prompt("Причина блокировки:", "") : '';
+        if (shouldBlock && reason === null) return;
+        await db.collection(COLLECTIONS.USERS).doc(userId).update({ isBlocked: shouldBlock, blockReason: shouldBlock ? reason : '' });
+        showSuccessMessage(`Пользователь ${shouldBlock ? 'заблокирован' : 'разблокирован'}.`);
+        updateUsersList();
     }
     
     async function removeUser(userId, userName) {
-        if (confirm(`ВНИМАНИЕ! Вы уверены, что хотите удалить пользователя ${userName}? Все связанные с ним заказы также будут удалены. Это действие необратимо.`)) {
-            await withLoading(document.querySelector('.user-item .btn-danger-icon'), async () => {
-                try {
-                    const userRef = db.collection(COLLECTIONS.USERS).doc(userId);
-                    const userDoc = await userRef.get();
-                    
-                    if (!userDoc.exists) {
-                         showError('Ошибка', 'Пользователь уже удален или не существует.');
-                         updateUsersList();
-                         return;
-                    }
-
-                    const ordersToDelete = userDoc.data().orders || [];
-                    
-                    const batch = db.batch();
-                    
-                    batch.delete(userRef);
-                    
-                    ordersToDelete.forEach(order => {
-                        const orderRef = db.collection(COLLECTIONS.ORDERS).doc(order.id);
-                        batch.delete(orderRef);
-                    });
-                    
-                    await batch.commit();
-                    
-                    showSuccessMessage(`Пользователь ${userName} и все его заказы были удалены.`);
-                    updateUsersList();
-
-                } catch (e) {
-                    showError('Ошибка', 'Не удалось удалить пользователя и его данные.');
-                    console.error(e);
-                }
+        if (confirm(`Удалить пользователя ${userName} и все его заказы? Это действие необратимо.`)) {
+            const userRef = db.collection(COLLECTIONS.USERS).doc(userId);
+            const userDoc = await userRef.get();
+            if (!userDoc.exists) return;
+            const batch = db.batch();
+            batch.delete(userRef);
+            (userDoc.data().orders || []).forEach(order => {
+                batch.delete(db.collection(COLLECTIONS.ORDERS).doc(order.id));
             });
+            await batch.commit();
+            showSuccessMessage(`Пользователь ${userName} удален.`);
+            updateUsersList();
         }
     }
 
-    async function addAdmin(userId, userName) {
+    async function addAdmin(userId, userName, role) {
         if (!userId) return;
         const userDoc = await loadUser(userId);
         const telegramId = userDoc?.telegramId;
-
-        if(!telegramId) return showError("Ошибка", "У этого пользователя нет привязанного Telegram ID.");
-
-        const newAdmin = { name: userName, addedAt: new Date().toISOString(), addedBy: telegramUser ? telegramUser.id : 'unknown' };
+        if(!telegramId) return showError("Ошибка", "У пользователя нет Telegram ID.");
+        
+        const newAdmin = { name: userName, role: role, addedAt: new Date().toISOString() };
         await db.collection(COLLECTIONS.ADMINS).doc(String(telegramId)).set(newAdmin);
+
+        // Авто-добавление тега
+        const userRef = db.collection(COLLECTIONS.USERS).doc(userId);
+        const tags = userDoc.tags || [];
+        if (!tags.includes(role)) tags.push(role);
+        await userRef.update({ tags: tags });
 
         closeAddAdminModal();
         updateAdminsList();
-        showSuccessMessage(`${userName} назначен администратором!`);
+        showSuccessMessage(`${userName} назначен на роль: ${role}!`);
     }
 
     async function removeAdmin(adminId) {
         if (adminId === '1345815453') return showError('Ошибка', 'Нельзя удалить главного администратора');
-        if (confirm(`Удалить администратора?`)) {
-            await db.collection(COLLECTIONS.ADMINS).doc(adminId).delete();
+        if (confirm(`Удалить сотрудника?`)) {
+            const adminRef = db.collection(COLLECTIONS.ADMINS).doc(adminId);
+            const adminDoc = await adminRef.get();
+            if (!adminDoc.exists) return;
+            const role = adminDoc.data().role;
+
+            const usersSnapshot = await db.collection(COLLECTIONS.USERS).where('telegramId', '==', Number(adminId)).get();
+            if (!usersSnapshot.empty) {
+                const userDoc = usersSnapshot.docs[0];
+                const tags = userDoc.data().tags.filter(t => t !== role);
+                await db.collection(COLLECTIONS.USERS).doc(userDoc.id).update({ tags: tags });
+            }
+
+            await adminRef.delete();
             updateAdminsList();
-            showSuccessMessage('Администратор удален!');
+            showSuccessMessage('Сотрудник удален!');
         }
     }
     
     async function removeOrder(orderId) {
-        if (confirm('Вы уверены, что хотите удалить этот заказ? Это действие необратимо.')) {
+        if (confirm('Удалить этот заказ? Действие необратимо.')) {
             await withLoading(document.getElementById('deleteOrderBtn'), async () => {
-                try {
-                    const orderRef = db.collection(COLLECTIONS.ORDERS).doc(orderId);
-                    const orderDoc = await orderRef.get();
-
-                    if (!orderDoc.exists) {
-                        showError('Ошибка', 'Заказ уже удален или не существует.');
-                        updateOrdersList();
-                        return;
-                    }
-                    
-                    const userId = orderDoc.data().userId;
-                    const userRef = db.collection(COLLECTIONS.USERS).doc(userId);
-
-                    const batch = db.batch();
-                    batch.delete(orderRef);
-
-                    const userDoc = await userRef.get();
-                    if (userDoc.exists) {
-                        const currentOrders = userDoc.data().orders || [];
-                        const updatedOrders = currentOrders.filter(o => o.id !== orderId);
-                        batch.update(userRef, { orders: updatedOrders });
-                    }
-
-                    await batch.commit();
-
-                    closeOrderDetailModal();
-                    updateOrdersList(); 
-                    showSuccessMessage('Заказ полностью удален.');
-
-                } catch (e) {
-                    console.error("Error completely removing order: ", e);
-                    showError('Ошибка', 'Не удалось полностью удалить заказ.');
+                const orderRef = db.collection(COLLECTIONS.ORDERS).doc(orderId);
+                const orderDoc = await orderRef.get();
+                if (!orderDoc.exists) return;
+                const userId = orderDoc.data().userId;
+                const userRef = db.collection(COLLECTIONS.USERS).doc(userId);
+                const batch = db.batch();
+                batch.delete(orderRef);
+                const userDoc = await userRef.get();
+                if (userDoc.exists) {
+                    const updatedOrders = (userDoc.data().orders || []).filter(o => o.id !== orderId);
+                    batch.update(userRef, { orders: updatedOrders });
                 }
+                await batch.commit();
+                closeOrderDetailModal();
+                updateOrdersList(); 
+                showSuccessMessage('Заказ удален.');
             });
         }
     }
-
     
     async function markNoReport(orderId) {
-        if (!confirm('Вы уверены, что отчет по этому заказу не был сдан? Это действие добавит штрафной балл пользователю.')) return;
-        
+        if (!confirm('Отчет по заказу не сдан? Это добавит штрафной балл.')) return;
         await withLoading(document.getElementById('markNoReportBtn'), async () => {
-            try {
-                const orderRef = db.collection(COLLECTIONS.ORDERS).doc(orderId);
-                const orderDoc = await orderRef.get();
-                if (!orderDoc.exists) return showError('Ошибка', 'Заказ не найден.');
-
-                const orderData = orderDoc.data();
-                const userId = orderData.userId;
-                const userRef = db.collection(COLLECTIONS.USERS).doc(userId);
-                
-                const batch = db.batch();
-
-                const userDoc = await userRef.get();
-                if(!userDoc.exists) throw "User not found!";
-                
-                const currentStrikes = userDoc.data().strikes || 0;
-                const newStrikes = currentStrikes + 1;
-                
-                const updates = { strikes: newStrikes };
-                if (newStrikes >= 3) {
-                    updates.isBlocked = true;
-                    updates.blockReason = `Автоматическая блокировка: ${newStrikes} несданных отчета.`;
-                }
-                batch.update(userRef, updates);
-                
-                const orders = userDoc.data().orders || [];
-                const orderIndex = orders.findIndex(o => o.id === orderId);
-                if(orderIndex > -1) {
-                    orders[orderIndex].status = 'completed';
-                    batch.update(userRef, { orders: orders });
-                }
-
-                batch.update(orderRef, { reportMissed: true, status: 'completed' });
-                
-                await batch.commit();
-                
-                showSuccessMessage('Штрафной балл добавлен, заказ закрыт.');
-                closeOrderDetailModal();
-                updateUsersList(); 
-
-            } catch (error) {
-                console.error('Error marking no report:', error);
-                showError('Ошибка', 'Не удалось обработать действие.');
+            const orderRef = db.collection(COLLECTIONS.ORDERS).doc(orderId);
+            const orderDoc = await orderRef.get();
+            if (!orderDoc.exists) return;
+            const userRef = db.collection(COLLECTIONS.USERS).doc(orderDoc.data().userId);
+            const batch = db.batch();
+            const userDoc = await userRef.get();
+            if(!userDoc.exists) throw new Error("User not found!");
+            const newStrikes = (userDoc.data().strikes || 0) + 1;
+            const updates = { strikes: newStrikes };
+            if (newStrikes >= 3) {
+                updates.isBlocked = true;
+                updates.blockReason = `Автоматическая блокировка: ${newStrikes} несданных отчета.`;
             }
+            batch.update(userRef, updates);
+            const orders = (userDoc.data().orders || []).map(o => o.id === orderId ? {...o, status: 'completed'} : o);
+            batch.update(userRef, { orders: orders });
+            batch.update(orderRef, { reportMissed: true, status: 'completed' });
+            await batch.commit();
+            showSuccessMessage('Штрафной балл добавлен, заказ закрыт.');
+            closeOrderDetailModal();
+            updateUsersList(); 
         });
     }
 
     async function sendBroadcast(button) {
         const message = document.getElementById('broadcastMessage').value.trim();
-        const tag = document.getElementById('broadcastTagFilter').value.trim().toLowerCase();
+        const selectedTags = Array.from(document.querySelectorAll('#broadcastTagsContainer .tag')).map(el => el.textContent.replace(' ×', ''));
         if (!message) return showError('Ошибка', 'Сообщение не может быть пустым.');
+        if (!confirm(`Начать рассылку? Не закрывайте вкладку до завершения.`)) return;
 
-        let confirmationMessage = tag 
-            ? `Вы уверены, что хотите НАЧАТЬ рассылку пользователям с тегом "${tag}"? Не закрывайте эту вкладку до завершения.`
-            : 'Вы уверены, что хотите НАЧАТЬ рассылку ВСЕМ пользователям? Не закрывайте эту вкладку до завершения.';
-
-        if (!confirm(confirmationMessage)) return;
-
-        const originalText = button.innerHTML;
-        button.disabled = true;
-
-        try {
+        await withLoading(button, async () => {
             let usersQuery = db.collection(COLLECTIONS.USERS);
-            if (tag) {
-                usersQuery = usersQuery.where("tags", "array-contains", tag);
+            if (selectedTags.length > 0) {
+                // 'array-contains-any' имеет лимит 10. Для большего количества нужна другая логика.
+                if (selectedTags.length > 10) throw new Error("Можно выбрать не более 10 тегов для одной рассылки.");
+                usersQuery = usersQuery.where("tags", "array-contains-any", selectedTags);
             }
-
             const usersSnapshot = await usersQuery.get();
-            if (usersSnapshot.empty) {
-                showError('Не найдено', 'Пользователи с таким тегом не найдены.');
-                button.disabled = false;
-                return;
-            }
+            if (usersSnapshot.empty) return showError('Не найдено', 'Пользователи с такими тегами не найдены.');
 
-            const usersToSend = [];
-            usersSnapshot.forEach(doc => {
-                const user = doc.data();
-                if (user.telegramId) {
-                    usersToSend.push(user.telegramId);
-                }
-            });
-
-            if (usersToSend.length === 0) {
-                 showError('Не найдено', 'У найденных пользователей нет привязанного Telegram ID.');
-                 button.disabled = false;
-                 return;
-            }
+            const usersToSend = usersSnapshot.docs.map(doc => doc.data().telegramId).filter(id => id);
+            if (usersToSend.length === 0) return showError('Не найдено', 'У найденных пользователей нет Telegram ID.');
 
             let successCount = 0;
-            const totalCount = usersToSend.length;
-            
-            for (let i = 0; i < totalCount; i++) {
-                const chatId = usersToSend[i];
-                button.innerHTML = `Отправка... ${i + 1} / ${totalCount}`;
-                
+            for (let i = 0; i < usersToSend.length; i++) {
+                button.innerHTML = `Отправка... ${i + 1} / ${usersToSend.length}`;
                 try {
-                    await sendTelegramNotification(chatId, message);
+                    await sendTelegramNotification(usersToSend[i], message);
                     successCount++;
-                } catch (e) {
-                    console.error(`Не удалось отправить сообщение пользователю ${chatId}:`, e);
-                }
-                
-                await new Promise(resolve => setTimeout(resolve, 500));
+                } catch (e) {}
+                await new Promise(resolve => setTimeout(resolve, 100)); // Задержка для избежания лимитов Telegram
             }
-
-            showSuccessMessage(`Рассылка завершена. Успешно отправлено ${successCount} из ${totalCount} сообщений.`);
-
-        } catch (e) {
-            console.error("Ошибка при рассылке:", e);
-            showError('Ошибка', 'Не удалось выполнить рассылку.');
-        } finally {
-            button.disabled = false;
-            button.innerHTML = originalText;
-            document.getElementById('broadcastMessage').value = '';
-            document.getElementById('broadcastTagFilter').value = '';
-        }
+            showSuccessMessage(`Рассылка завершена. Успешно: ${successCount} из ${usersToSend.length}.`);
+        });
     }
 
     function startCollaboration() {
-        if(userData.isBlocked) {
-            showError('Доступ запрещен', 'Вы не можете создавать новые заказы, так как ваш аккаунт заблокирован. Свяжитесь с администратором.');
-            return;
-        }
+        if(userData.isBlocked) return;
         currentOrderData = {};
-        const dataSource = userData.registration || userData;
-        if (dataSource.level === 'micro') {
-            showSetSelection();
-        } else {
-            showAddressForm();
-        }
+        showAddressForm();
     }
 
     function handleCityChange() {
-        const dataSource = userData.registration || userData;
-        const isMacro = dataSource.level !== 'micro';
+        const isMacro = (userData.registration || userData).level !== 'micro';
         document.getElementById('orderScreenshotGroup').style.display = isMacro ? 'block' : 'none';
     }
 
@@ -3088,7 +2831,6 @@ Instagram: @${orderData.instagram}
     
     function submitAddressAndShowDateTime() {
         if (!validateAddressForm()) return;
-        
         currentOrderData.city = document.getElementById('city').value;
         currentOrderData.street = document.getElementById('street').value;
         currentOrderData.entrance = document.getElementById('entrance').value;
@@ -3103,10 +2845,7 @@ Instagram: @${orderData.instagram}
     function setupDateInput() {
         const dateInput = document.getElementById('deliveryDate');
         const today = new Date();
-        const yyyy = today.getFullYear();
-        const mm = String(today.getMonth() + 1).padStart(2, '0');
-        const dd = String(today.getDate()).padStart(2, '0');
-        dateInput.min = `${yyyy}-${mm}-${dd}`;
+        dateInput.min = today.toISOString().split('T')[0];
         dateInput.value = '';
         document.getElementById('timeSlots').innerHTML = '';
         document.getElementById('nextFromDateTime').disabled = true;
@@ -3116,69 +2855,39 @@ Instagram: @${orderData.instagram}
         const dateValue = document.getElementById('deliveryDate').value;
         currentOrderData.time = '';
         document.getElementById('nextFromDateTime').disabled = true;
-
         const timeSlotsContainer = document.getElementById('timeSlots');
-        timeSlotsContainer.innerHTML = '<div class="loading-indicator">Проверка доступного времени...</div>';
-
-        if (!dateValue) {
-            timeSlotsContainer.innerHTML = '';
-            return;
-        }
+        timeSlotsContainer.innerHTML = '<div class="loading-indicator">Загрузка...</div>';
+        if (!dateValue) { timeSlotsContainer.innerHTML = ''; return; }
         currentOrderData.date = dateValue;
         
         const city = document.getElementById('city').value;
-        
         const scheduleDoc = await db.collection(COLLECTIONS.SCHEDULES).doc(city).get();
         const scheduleData = scheduleDoc.exists ? scheduleDoc.data() : {};
-        
-        const dayOfWeek = new Date(dateValue).getDay(); // 0=Sun, 1=Mon...
-        const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-        const dayKey = days[dayOfWeek];
+        const dayKey = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][new Date(dateValue).getDay()];
         const daySchedule = scheduleData[dayKey] || '';
-
         const timeSlots = [];
         if (daySchedule) {
-            const ranges = daySchedule.split(',');
-            ranges.forEach(range => {
+            daySchedule.split(',').forEach(range => {
                 const [start, end] = range.trim().split('-');
                 if (start && end) {
-                    let startHour = parseInt(start.split(':')[0]);
-                    let endHour = parseInt(end.split(':')[0]);
-                    for(let h = startHour; h < endHour; h++) {
-                        timeSlots.push(`${String(h).padStart(2, '0')}:00`);
-                    }
+                    for(let h = parseInt(start); h < parseInt(end); h++) timeSlots.push(`${String(h).padStart(2, '0')}:00`);
                 }
             });
         }
         
         const now = new Date();
-        const todayStr = now.toISOString().split('T')[0];
-        const currentHour = now.getHours();
-        
         timeSlotsContainer.innerHTML = '';
         for (const time of timeSlots) {
-            const [slotHour] = time.split(':').map(Number);
-            
-            if (dateValue === todayStr && slotHour <= currentHour) {
-                continue;
-            }
-            
-            if (await isSlotBlocked(city, dateValue, time)) {
-                continue;
-            }
-
+            if (dateValue === now.toISOString().split('T')[0] && parseInt(time) <= now.getHours()) continue;
+            if (await isSlotBlocked(city, dateValue, time)) continue;
             const slot = document.createElement('div');
             slot.className = 'time-slot';
             slot.textContent = time;
             slot.onclick = () => selectTimeSlot(slot, time);
             timeSlotsContainer.appendChild(slot);
         }
-
-        if (timeSlotsContainer.innerHTML === '') {
-            timeSlotsContainer.innerHTML = '<p style="text-align:center;color:#999;">На выбранную дату нет доступного времени.</p>';
-        }
+        if (timeSlotsContainer.innerHTML === '') timeSlotsContainer.innerHTML = '<p style="text-align:center;color:#999;">Нет доступного времени.</p>';
     }
-
 
     function selectTimeSlot(element, time) {
         document.querySelectorAll('.time-slot').forEach(item => item.classList.remove('selected'));
@@ -3192,17 +2901,15 @@ Instagram: @${orderData.instagram}
         const street = document.getElementById('street').value;
         const phone = document.getElementById('recipientPhone').value;
         if (!city || !street || !phone) {
-            showError('Ошибка', 'Пожалуйста, заполните все обязательные поля: город, улица, телефон.');
+            showError('Ошибка', 'Заполните: город, улица, телефон.');
             return false;
         }
-        const dataSource = userData.registration || userData;
-        const isMacro = dataSource.level !== 'micro';
+        const isMacro = (userData.registration || userData).level !== 'micro';
         const screenshotInput = document.getElementById('orderScreenshot');
         if (isMacro && (!screenshotInput.files || screenshotInput.files.length === 0)) {
-            showError('Требуется скриншот', 'Для макроблогеров необходимо загрузить скриншот заказа.');
+            showError('Ошибка', 'Для макроблогеров нужен скриншот заказа.');
             return false;
         }
-        
         return true;
     }
 
@@ -3212,67 +2919,47 @@ Instagram: @${orderData.instagram}
             const dataSource = userData.registration || userData;
             
             const newOrder = {
-                ...currentOrderData,
-                id: orderId,
+                ...currentOrderData, id: orderId, status: 'new',
                 orderNumber: generateOrderNumber(currentOrderData.city, currentOrderData.date, orderId),
-                userId: currentUserId,
-                userName: dataSource.firstName,
-                avgViews: dataSource.avgViews,
-                followersCount: dataSource.followersCount,
-                instagram: dataSource.instagramLogin,
-                phone: dataSource.phone,
-                status: 'new',
-                createdAt: new Date().toISOString(),
-                reportMissed: false,
-                reportLink: null
+                userId: currentUserId, userName: dataSource.firstName,
+                instagram: dataSource.instagramLogin, phone: dataSource.phone,
+                createdAt: new Date().toISOString()
             };
             
-            newOrder.set = newOrder.set ?? null;
-            
             const userOrders = userData.orders || [];
-            userOrders.push({ 
-                id: orderId, 
-                date: newOrder.date,
-                orderNumber: newOrder.orderNumber, 
-                set: newOrder.set,
-                status: newOrder.status, 
-                createdAt: newOrder.createdAt 
-            });
+            userOrders.push({ id: orderId, orderNumber: newOrder.orderNumber, status: 'new', createdAt: newOrder.createdAt });
             
+            // Авто-тег города
+            const cityTag = newOrder.city.toLowerCase().replace(/\s/g, '-');
+            const userTags = userData.tags || [];
+            if (!userTags.includes(cityTag)) userTags.push(cityTag);
+
             const batch = db.batch();
             batch.set(db.collection(COLLECTIONS.ORDERS).doc(orderId), newOrder);
-            batch.update(db.collection(COLLECTIONS.USERS).doc(currentUserId), { orders: userOrders });
+            batch.update(db.collection(COLLECTIONS.USERS).doc(currentUserId), { orders: userOrders, tags: userTags });
             await batch.commit();
 
-            const screenshotInput = document.getElementById('orderScreenshot');
-            const screenshotFile = screenshotInput.files && screenshotInput.files.length > 0 ? screenshotInput.files[0] : null;
-
+            const screenshotFile = document.getElementById('orderScreenshot').files[0] || null;
             await sendAdminNotification(newOrder, screenshotFile);
-            
             showSuccessModal();
         });
     }
     
     function showOrderHistory() {
         const list = document.getElementById('orderHistoryList');
-        const sortedOrders = (userData.orders || []).sort((a, b) => new Date(b.createdAt || b.date) - new Date(a.createdAt || a.date));
-        
+        const sortedOrders = (userData.orders || []).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
         if (sortedOrders.length === 0) {
-            list.innerHTML = '<div class="empty-state">У вас еще не было заказов.</div>';
+            list.innerHTML = '<div class="empty-state">Нет заказов.</div>';
         } else {
-            list.innerHTML = '';
-            sortedOrders.forEach(order => {
+            list.innerHTML = sortedOrders.map(order => {
                 const statusInfo = getStatusInfo(order.status);
-                const item = document.createElement('div');
-                item.className = 'order-item';
-                item.innerHTML = `
+                return `<div class="order-item">
                     <div class="order-header">
-                        <span class="order-id">${order.orderNumber || 'Заказ от ' + new Date(order.createdAt || order.date).toLocaleDateString()}</span>
+                        <span class="order-id">${order.orderNumber}</span>
                         <span class="order-status ${statusInfo.className}">${statusInfo.text}</span>
                     </div>
-                    <div class="order-info">${order.setName || 'Заказ макроблогера'}</div>`;
-                list.appendChild(item);
-            });
+                </div>`;
+            }).join('');
         }
         document.getElementById('orderHistoryModal').style.display = 'flex';
     }
@@ -3293,61 +2980,42 @@ Instagram: @${orderData.instagram}
             const reg = userData.registration || userData;
             const newPhone = document.getElementById('editPhone').value.trim();
             const newInstagram = document.getElementById('editInstagram').value.trim().toLowerCase();
-            const newFirstName = document.getElementById('editFirstName').value.trim();
-            const newFollowers = parseInt(document.getElementById('editFollowers').value);
-            const newViews = parseInt(document.getElementById('editViews').value);
-            
-            if (!newFirstName || !newPhone || !newInstagram || isNaN(newFollowers) || isNaN(newViews)) {
-                return showError('Ошибка валидации', 'Пожалуйста, заполните все поля корректно.');
-            }
-
             if (newPhone !== reg.phone || newInstagram !== reg.instagramLogin) {
-                const duplicateCheck = await checkForDuplicateRegistration(newPhone, newInstagram, currentUserId);
-                if (!duplicateCheck.canRegister) {
-                    return showError('Данные заняты', 'Телефон или Instagram уже используются другим пользователем.');
-                }
+                const { canRegister } = await checkForDuplicateRegistration(newPhone, newInstagram, currentUserId);
+                if (!canRegister) return showError('Данные заняты', 'Телефон или Instagram уже используются.');
             }
             
-            const updates = {
-                'registration.firstName': newFirstName,
-                'registration.phone': newPhone,
-                'registration.instagramLogin': newInstagram,
-                'registration.followersCount': newFollowers,
-                'registration.avgViews': newViews,
-                'level': determineBloggerLevel(newFollowers).level,
-                'lastActivity': new Date().toISOString()
-            };
+            const newFollowers = parseInt(document.getElementById('editFollowers').value);
+            const levelData = determineBloggerLevel(newFollowers);
+            const oldLevelTags = ['micro', 'macro-a', 'macro-b'];
+            const currentTags = userData.tags || [];
+            const updatedTags = currentTags.filter(t => !oldLevelTags.includes(t));
+            if(!updatedTags.includes(levelData.level)) updatedTags.push(levelData.level);
 
+            const updates = {
+                'registration.firstName': document.getElementById('editFirstName').value.trim(),
+                'registration.phone': newPhone, 'registration.instagramLogin': newInstagram,
+                'registration.followersCount': newFollowers,
+                'registration.avgViews': parseInt(document.getElementById('editViews').value),
+                'level': levelData.level, 'tags': updatedTags
+            };
             const newPassword = document.getElementById('editPassword').value.trim();
-            if (validatePassword(newPassword)) {
-                updates['registration.password'] = hashPassword(newPassword);
-            }
+            if (validatePassword(newPassword)) updates['registration.password'] = hashPassword(newPassword);
             
             await db.collection(COLLECTIONS.USERS).doc(currentUserId).update(updates);
-            
             closeEditProfile();
-            showSuccessMessage('Профиль успешно обновлен!');
+            showSuccessMessage('Профиль обновлен!');
         });
     }
 
     function logout() {
-        if (userListenerUnsubscribe) {
-            userListenerUnsubscribe();
-            userListenerUnsubscribe = null;
-        }
-        userData = {};
-        currentUserId = null;
-        telegramUser = null;
-        isCurrentUserAdmin = false;
+        if (userListenerUnsubscribe) userListenerUnsubscribe();
+        userData = {}; currentUserId = null; telegramUser = null; currentUserRole = null;
         window.location.reload();
     }
 
-    // --- Модальные окна ---
-    function showSuccessModal() {
-        document.getElementById('successTitle').textContent = 'Заказ оформлен!';
-        document.getElementById('successMessage').textContent = 'Когда заказ будет доставлен, здесь появится кнопка для сдачи отчета.';
-        document.getElementById('successModal').style.display = 'flex';
-    }
+    // --- Модальные окна (Утилиты)---
+    function showSuccessModal() { document.getElementById('successModal').style.display = 'flex'; }
     function showSuccessMessage(message) {
         document.getElementById('successTitle').textContent = 'Успешно!';
         document.getElementById('successMessage').textContent = message;
@@ -3361,165 +3029,80 @@ Instagram: @${orderData.instagram}
     async function showOrderDetailModal(orderId) {
         currentEditingOrderId = orderId;
         const orderDoc = await db.collection(COLLECTIONS.ORDERS).doc(orderId).get();
-        if(!orderDoc.exists) return showError('Ошибка', 'Заказ не найден');
-        
+        if(!orderDoc.exists) return;
         const order = orderDoc.data();
-        const body = document.getElementById('orderDetailBody');
-        const statusInfo = getStatusInfo(order.status);
-        
         document.getElementById('orderDetailTitle').textContent = `Заказ ${order.orderNumber}`;
-        let reportHTML = '';
-        if(order.reportLink) {
-            reportHTML = `
-                <strong>Ссылка на отчет:</strong>
-                <a href="${order.reportLink}" target="_blank" class="report-link">Посмотреть отчет</a>`;
-        }
-        
-        body.innerHTML = `
-            <strong>Блогер:</strong> ${order.userName}<br>
-            <strong>Телефон:</strong> ${order.phone}<br>
-            <strong>Instagram:</strong> @${order.instagram}<br>
-            <strong>Город:</strong> ${order.city}<br>
-            <strong>Адрес:</strong> ${order.street}<br>
-            <strong>Подъезд:</strong> ${order.entrance || '-'}<br>
-            <strong>Этаж:</strong> ${order.floor || '-'}<br>
-            <strong>Телефон получателя:</strong> ${order.recipientPhone}<br>
-            <strong>Дата и время:</strong> ${order.date} в ${order.time}<br>
-            <strong>Набор:</strong> ${order.setName || (order.set ? order.set.replace('set', 'Набор ') : 'Заказ макроблогера')}<br>
-            <strong>Комментарий:</strong> ${order.comment || '-'}<br>
-            <strong>Статус:</strong> <span class="order-status ${statusInfo.className}" style="display:inline-block;">${statusInfo.text}</span>
-            ${reportHTML}
-        `;
-        
+        document.getElementById('orderDetailBody').innerHTML = `<strong>Блогер:</strong> ${order.userName}<br><strong>Город:</strong> ${order.city}<br><strong>Адрес:</strong> ${order.street}<br>`;
         document.getElementById('orderStatusSelect').value = order.status;
-        
-        const noReportBtn = document.getElementById('markNoReportBtn');
-        noReportBtn.onclick = () => markNoReport(order.id);
-        if (order.reportMissed) {
-            noReportBtn.disabled = true;
-            noReportBtn.style.color = '#999';
-            noReportBtn.title = 'Штраф уже применен';
-        } else {
-            noReportBtn.disabled = false;
-            noReportBtn.style.color = '#ffc107';
-            noReportBtn.title = 'Отметить, что отчет не сдан';
-        }
-
         document.getElementById('deleteOrderBtn').onclick = () => removeOrder(order.id);
         document.getElementById('orderDetailModal').style.display = 'flex';
     }
-
     async function showAddAdminModal() { 
-        const list = document.getElementById('adminUsersList');
-        list.innerHTML = '<div class="loading-indicator">Загрузка пользователей...</div>';
         document.getElementById('addAdminModal').style.display = 'flex';
-        
+        const list = document.getElementById('adminUsersList');
+        list.innerHTML = '<div class="loading-indicator">Загрузка...</div>';
         const [usersSnapshot, adminsSnapshot] = await Promise.all([
-             db.collection(COLLECTIONS.USERS).orderBy('registrationDate', 'desc').get(),
-             db.collection(COLLECTIONS.ADMINS).get()
+             db.collection(COLLECTIONS.USERS).get(), db.collection(COLLECTIONS.ADMINS).get()
         ]);
-        
         const adminIds = new Set(adminsSnapshot.docs.map(doc => doc.id));
-        
-         if (usersSnapshot.empty) {
-            list.innerHTML = '<div class="empty-state">Нет пользователей для назначения.</div>';
-            return;
-        }
         list.innerHTML = '';
         usersSnapshot.forEach(doc => {
             const user = { userId: doc.id, ...doc.data() };
             const reg = user.registration || user;
             if (!reg.firstName || !user.telegramId) return;
-
             const isAlreadyAdmin = adminIds.has(String(user.telegramId));
-            
             const el = document.createElement('div');
             el.className = 'user-item';
             el.dataset.search = `${reg.firstName} ${reg.instagramLogin}`.toLowerCase();
-            el.innerHTML = `
-                <div>
-                    <strong>${reg.firstName}</strong>
-                    <div style="font-size: 12px; color: #999;">@${reg.instagramLogin}</div>
-                </div>
-                ${isAlreadyAdmin 
-                    ? '<span class="user-admin-badge">Уже админ</span>'
-                    : `<button class="btn-primary btn-small" onclick="app.addAdmin('${user.userId}', '${reg.firstName}')">Назначить</button>`
-                }`;
+            el.innerHTML = `<div><strong>${reg.firstName}</strong><div style="font-size: 12px; color: #999;">@${reg.instagramLogin}</div></div>
+                ${isAlreadyAdmin ? '<span class="user-admin-badge">Сотрудник</span>' : `<button class="btn-primary btn-small" onclick="app.addAdmin('${user.userId}', '${reg.firstName}', document.getElementById('adminRoleSelect').value)">Назначить</button>`}`;
             list.appendChild(el);
         });
     }
     
     function showRejectionModal() { document.getElementById('rejectionModal').style.display = 'flex'; }
-    function closeModal() { 
-        document.getElementById('successModal').style.display = 'none';
-        showDashboard();
-    }
+    function closeModal() { document.getElementById('successModal').style.display = 'none'; showDashboard(); }
     function closeErrorModal() { document.getElementById('errorModal').style.display = 'none'; }
     function closeRejectionModal() { document.getElementById('rejectionModal').style.display = 'none'; }
     function closeOrderHistory() { document.getElementById('orderHistoryModal').style.display = 'none'; }
     function closeEditProfile() { document.getElementById('editProfileModal').style.display = 'none'; }
     function contactAdmin() { document.getElementById('contactModal').style.display = 'flex'; }
     function closeContactModal() { document.getElementById('contactModal').style.display = 'none'; }
-    function closeOrderDetailModal() { 
-        document.getElementById('orderDetailModal').style.display = 'none';
-        currentEditingOrderId = null;
-    }
-    function closeReportModal() {
-        document.getElementById('reportModal').style.display = 'none';
-        currentReportingOrderId = null;
-    }
-    function closeUserDetailModal() {
-        document.getElementById('userDetailModal').style.display = 'none';
-        currentUserDetailId = null;
-    }
-
-    function toggleBlockTime() {
-        const type = document.getElementById('blockType').value;
-        document.getElementById('blockTimeGroup').style.display = type === 'time' ? 'block' : 'none';
-    }
-
-    function showAddBlockModal() { 
-        document.getElementById('addBlockModal').style.display = 'flex';
-        document.getElementById('addBlockForm').reset();
-        toggleBlockTime();
-    }
+    function closeOrderDetailModal() { document.getElementById('orderDetailModal').style.display = 'none'; }
+    function closeReportModal() { document.getElementById('reportModal').style.display = 'none'; }
+    function closeUserDetailModal() { document.getElementById('userDetailModal').style.display = 'none'; }
+    function toggleBlockTime() { document.getElementById('blockTimeGroup').style.display = document.getElementById('blockType').value === 'time' ? 'block' : 'none'; }
+    function showAddBlockModal() { document.getElementById('addBlockModal').style.display = 'flex'; }
     function closeAddBlockModal() { document.getElementById('addBlockModal').style.display = 'none'; }
     function closeAddAdminModal() { document.getElementById('addAdminModal').style.display = 'none'; }
     
     function setupPhoneMask(inputId) {
         const phoneInput = document.getElementById(inputId);
-        if (!phoneInput) return;
-        
-        const format = (input) => {
-            let digits = input.value.replace(/\D/g, '');
-            if (digits.startsWith('7') || digits.startsWith('8')) {
-                digits = digits.substring(1);
-            }
+        if (phoneInput) phoneInput.addEventListener('input', () => {
+            let digits = phoneInput.value.replace(/\D/g, '');
+            if (digits.startsWith('7') || digits.startsWith('8')) digits = digits.substring(1);
             let formatted = '+7 (';
             if (digits.length > 0) formatted += digits.substring(0, 3);
-            if (digits.length > 3) formatted += ') ' + digits.substring(3, 6);
-            if (digits.length > 6) formatted += '-' + digits.substring(6, 8);
-            if (digits.length > 8) formatted += '-' + digits.substring(8, 10);
-            input.value = formatted;
-        };
-        
-        phoneInput.addEventListener('input', () => format(phoneInput));
+            if (digits.length > 3) formatted += `) ${digits.substring(3, 6)}`;
+            if (digits.length > 6) formatted += `-${digits.substring(6, 8)}`;
+            if (digits.length > 8) formatted += `-${digits.substring(8, 10)}`;
+            phoneInput.value = formatted;
+        });
     }
 
     async function initializeApp() {
         initTelegram();
-        if (await attemptTelegramAutoLogin()) {
-            showDashboard();
-        } else {
+        if (!(await attemptTelegramAutoLogin())) {
             showWelcomeScreen();
+        } else {
+            showDashboard();
         }
     }
 
     // --- Функции для расписания ---
     function showScheduleForCity(city, element) {
-        document.querySelectorAll('.schedule-city-tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.schedule-city-tab, .schedule-form').forEach(el => el.classList.remove('active'));
         element.classList.add('active');
-        document.querySelectorAll('.schedule-form').forEach(f => f.classList.remove('active'));
         document.getElementById(`schedule-form-${city}`).classList.add('active');
     }
 
@@ -3527,36 +3110,25 @@ Instagram: @${orderData.instagram}
         const tabsContainer = document.getElementById('scheduleCityTabs');
         const formsContainer = document.getElementById('scheduleFormsContainer');
         tabsContainer.innerHTML = '';
-        formsContainer.innerHTML = '<div class="loading-indicator">Загрузка расписания...</div>';
-        
-        const days = { monday: "Понедельник", tuesday: "Вторник", wednesday: "Среда", thursday: "Четверг", friday: "Пятница", saturday: "Суббота", sunday: "Воскресенье" };
+        formsContainer.innerHTML = '<div class="loading-indicator">Загрузка...</div>';
+        const days = { monday: "Пн", tuesday: "Вт", wednesday: "Ср", thursday: "Чт", friday: "Пт", saturday: "Сб", sunday: "Вс" };
         let formsHtml = '';
-
         for (const city of CITIES) {
              const tab = document.createElement('button');
              tab.className = 'schedule-city-tab';
              tab.textContent = city;
              tab.onclick = () => showScheduleForCity(city, tab);
              tabsContainer.appendChild(tab);
-
-            let formHtml = `<div class="schedule-form" id="schedule-form-${city}">`;
-            const scheduleDoc = await db.collection(COLLECTIONS.SCHEDULES).doc(city).get();
-            const scheduleData = scheduleDoc.exists ? scheduleDoc.data() : {};
-            
-            for (const dayKey in days) {
-                formHtml += `
-                    <div class="form-group">
-                        <label for="schedule_${city}_${dayKey}">${days[dayKey]}</label>
-                        <input type="text" id="schedule_${city}_${dayKey}" value="${scheduleData[dayKey] || ''}" placeholder="12:00-18:00">
-                    </div>`;
-            }
-            formHtml += `</div>`;
-            formsHtml += formHtml;
+             let formHtml = `<div class="schedule-form" id="schedule-form-${city}">`;
+             const scheduleDoc = await db.collection(COLLECTIONS.SCHEDULES).doc(city).get();
+             const scheduleData = scheduleDoc.exists ? scheduleDoc.data() : {};
+             for (const dayKey in days) {
+                formHtml += `<div class="form-group"><label>${days[dayKey]}</label><input type="text" id="schedule_${city}_${dayKey}" value="${scheduleData[dayKey] || ''}" placeholder="12:00-18:00"></div>`;
+             }
+             formsHtml += formHtml + `</div>`;
         }
         formsContainer.innerHTML = formsHtml;
-        
-        const firstTab = tabsContainer.querySelector('.schedule-city-tab');
-        if(firstTab) firstTab.click();
+        if(tabsContainer.firstChild) tabsContainer.firstChild.click();
     }
 
     async function saveSchedule(button) {
@@ -3565,15 +3137,13 @@ Instagram: @${orderData.instagram}
             for (const city of CITIES) {
                 const scheduleRef = db.collection(COLLECTIONS.SCHEDULES).doc(city);
                 const scheduleData = {};
-                const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
-                days.forEach(dayKey => {
-                    const input = document.getElementById(`schedule_${city}_${dayKey}`);
-                    scheduleData[dayKey] = input.value.trim();
+                ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].forEach(dayKey => {
+                    scheduleData[dayKey] = document.getElementById(`schedule_${city}_${dayKey}`).value.trim();
                 });
                 batch.set(scheduleRef, scheduleData);
             }
             await batch.commit();
-            showSuccessMessage("Расписание успешно сохранено!");
+            showSuccessMessage("Расписание сохранено!");
         });
     }
 
@@ -3581,34 +3151,18 @@ Instagram: @${orderData.instagram}
     async function showUserDetailModal(userId) {
         currentUserDetailId = userId;
         const userDoc = await db.collection(COLLECTIONS.USERS).doc(userId).get();
-        if (!userDoc.exists) return showError('Ошибка', 'Пользователь не найден');
-        
+        if (!userDoc.exists) return;
         const user = userDoc.data();
         const reg = user.registration || user;
-        
         document.getElementById('userDetailTitle').textContent = reg.firstName;
-        document.getElementById('userDetailBody').innerHTML = `
-            <strong>Телефон:</strong> ${reg.phone}<br>
-            <strong>Instagram:</strong> @${reg.instagramLogin}<br>
-            <strong>Рейтинг:</strong> ⭐ ${calculateBloggerRating(user)}
-        `;
+        document.getElementById('userDetailBody').innerHTML = `<strong>Instagram:</strong> @${reg.instagramLogin}<br><strong>Рейтинг:</strong> ⭐ ${calculateBloggerRating(user)}`;
         renderTags(user.tags || []);
         document.getElementById('userDetailModal').style.display = 'flex';
     }
 
     function renderTags(tags) {
         const container = document.getElementById('userTagsContainer');
-        container.innerHTML = '';
-        if(tags.length === 0) {
-            container.innerHTML = `<p style="font-size: 12px; color: #999;">Тегов пока нет.</p>`;
-            return;
-        }
-        tags.forEach(tag => {
-            const tagEl = document.createElement('span');
-            tagEl.className = 'tag';
-            tagEl.innerHTML = `${tag} <span class="remove-tag" onclick="app.removeUserTag('${tag}')">×</span>`;
-            container.appendChild(tagEl);
-        });
+        container.innerHTML = tags.length ? tags.map(tag => `<span class="tag">${tag} <span class="remove-tag" onclick="app.removeUserTag('${tag}')">×</span></span>`).join('') : `<p style="font-size: 12px; color: #999;">Тегов нет.</p>`;
     }
 
     async function addUserTag() {
@@ -3632,7 +3186,6 @@ Instagram: @${orderData.instagram}
 
     async function removeUserTag(tagToRemove) {
         if (!tagToRemove || !currentUserDetailId) return;
-
         const userRef = db.collection(COLLECTIONS.USERS).doc(currentUserDetailId);
         await db.runTransaction(async (transaction) => {
             const userDoc = await transaction.get(userRef);
@@ -3646,50 +3199,98 @@ Instagram: @${orderData.instagram}
     
     function showReportModal(orderId, orderNumber) {
         currentReportingOrderId = orderId;
-        document.getElementById('reportModalTitle').textContent = `Сдать отчет по заказу ${orderNumber}`;
-        document.getElementById('reportLink').value = '';
+        document.getElementById('reportModalTitle').textContent = `Отчет по заказу ${orderNumber}`;
         document.getElementById('reportModal').style.display = 'flex';
     }
 
     async function submitReport(button) {
         await withLoading(button, async() => {
             const reportLink = document.getElementById('reportLink').value.trim();
-            if (!reportLink || !reportLink.startsWith('http')) {
-                return showError('Ошибка', 'Пожалуйста, введите корректную ссылку.');
-            }
-
+            if (!reportLink.startsWith('http')) return showError('Ошибка', 'Введите корректную ссылку.');
             const orderRef = db.collection(COLLECTIONS.ORDERS).doc(currentReportingOrderId);
             const userRef = db.collection(COLLECTIONS.USERS).doc(currentUserId);
-            
             const batch = db.batch();
             batch.update(orderRef, { status: 'awaiting_review', reportLink: reportLink });
-            
             const userDoc = await userRef.get();
             if (userDoc.exists) {
-                const userDataFromDB = userDoc.data();
-                const orders = userDataFromDB.orders || [];
-                const orderIndex = orders.findIndex(o => o.id === currentReportingOrderId);
-                if (orderIndex > -1) {
-                    orders[orderIndex].status = 'awaiting_review';
-                    batch.update(userRef, { orders: orders });
-                }
+                const orders = (userDoc.data().orders || []).map(o => o.id === currentReportingOrderId ? {...o, status: 'awaiting_review'} : o);
+                batch.update(userRef, { orders: orders });
             }
-
             await batch.commit();
-
             closeReportModal();
-            showSuccessMessage('Отчет успешно отправлен на проверку!');
+            showSuccessMessage('Отчет отправлен на проверку!');
         });
     }
+    
+    async function getTagStats() {
+        const tagStats = {};
+        const usersSnapshot = await db.collection(COLLECTIONS.USERS).get();
+        usersSnapshot.forEach(doc => {
+            (doc.data().tags || []).forEach(tag => {
+                tagStats[tag] = (tagStats[tag] || 0) + 1;
+            });
+        });
+        return tagStats;
+    }
+    
+    // Новая логика для подсказок тегов в рассылке
+    async function setupBroadcastTagInput() {
+        const input = document.getElementById('broadcastTagInput');
+        const suggestionsContainer = document.getElementById('tagSuggestions');
+        const selectedContainer = document.getElementById('broadcastTagsContainer');
+        const tagStats = await getTagStats();
+        const availableTags = Object.keys(tagStats);
+
+        const renderSelectedTags = () => {
+            selectedContainer.innerHTML = Array.from(selectedContainer.children).map(el => el.outerHTML).join('');
+        };
+
+        const addTag = (tag) => {
+            if (!tag || Array.from(selectedContainer.children).some(el => el.dataset.tag === tag)) return;
+            const tagEl = document.createElement('span');
+            tagEl.className = 'tag';
+            tagEl.dataset.tag = tag;
+            tagEl.innerHTML = `${tag} <span class="remove-tag">×</span>`;
+            tagEl.querySelector('.remove-tag').onclick = () => {
+                tagEl.remove();
+                renderSelectedTags();
+            };
+            selectedContainer.appendChild(tagEl);
+            input.value = '';
+            suggestionsContainer.style.display = 'none';
+        };
+
+        input.addEventListener('focus', () => {
+            renderSuggestions('');
+            suggestionsContainer.style.display = 'block';
+        });
+
+        input.addEventListener('keyup', (e) => {
+            if (e.key === 'Enter') addTag(input.value.trim().toLowerCase());
+            else renderSuggestions(input.value.toLowerCase());
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('#broadcastTagInput') && !e.target.closest('#tagSuggestions')) {
+                suggestionsContainer.style.display = 'none';
+            }
+        });
+
+        function renderSuggestions(filter) {
+            suggestionsContainer.innerHTML = '';
+            availableTags.filter(tag => tag.includes(filter)).forEach(tag => {
+                const item = document.createElement('div');
+                item.className = 'tag-suggestion-item';
+                item.innerHTML = `<span>${tag}</span> <span class="user-count">${tagStats[tag]} чел.</span>`;
+                item.onclick = () => addTag(tag);
+                suggestionsContainer.appendChild(item);
+            });
+        }
+    }
+
 
     document.addEventListener('DOMContentLoaded', () => {
-        setupPhoneMask('loginPhone');
-        setupPhoneMask('phone');
-        setupPhoneMask('recipientPhone');
-        setupPhoneMask('editPhone');
-        
-        setupAnalyticsSlider();
-        
+        ['loginPhone', 'phone', 'recipientPhone', 'editPhone'].forEach(setupPhoneMask);
         setTimeout(initializeApp, 100);
     });
 
@@ -3702,12 +3303,12 @@ Instagram: @${orderData.instagram}
         handleCityChange, submitAddressAndShowDateTime, updateTimeSlots, submitOrder, saveProfile,
         closeModal, closeErrorModal, closeRejectionModal, closeOrderHistory, closeEditProfile,
         closeContactModal, showAddBlockModal, closeAddBlockModal, showAddAdminModal, closeAddAdminModal,
-        closeOrderDetailModal, toggleBlockTime,
-        updateOrderStatus, showReportModal, closeReportModal, submitReport,
+        closeOrderDetailModal, toggleBlockTime, updateOrderStatus, showReportModal, closeReportModal, submitReport,
         loadSchedule, saveSchedule, showUserDetailModal, closeUserDetailModal, addUserTag, removeUserTag,
-        showScheduleForCity
+        showScheduleForCity, applyAnalyticsFilters
     };
 })();
     </script>
 </body>
 </html>
+```
