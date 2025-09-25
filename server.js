@@ -9,7 +9,7 @@ const fetch = require('node-fetch');
 const app = express();
 const PORT = process.env.PORT || 10000;
 // ИСПРАВЛЕНИЕ: Токен синхронизирован с index.html
-const TELEGRAM_BOT_TOKEN = '7227812944:AAFy8ydOkUeCj3Qkjg7_Xsq6zyQpcUyMShY'; 
+const TELEGRAM_BOT_TOKEN = '8227812944:AAFy8ydOkUeCj3Qkjg7_Xsq6zyQpcUyMShY'; 
 
 // --- ИНИЦИАЛИЗАЦИЯ FIREBASE ADMIN SDK ---
 try {
