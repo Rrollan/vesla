@@ -7,7 +7,7 @@ const fetch = require('node-fetch');
 
 // --- ИНИЦИАЛИЗАЦИЯ ---
 const app = express();
-const PORT = process.env.PORT || 10000; // Render предоставит этот порт
+const PORT = process.env.PORT || 10000;
 
 // --- ИНИЦИАЛИЗАЦИЯ FIREBASE ADMIN SDK ---
 try {
@@ -17,85 +17,114 @@ try {
   });
 } catch (error) {
   console.error("Ключ сервисного аккаунта Firebase не найден. Cron-задачи не будут работать.");
-  console.log("Это нормально, если вы не настраивали секретный файл.");
 }
 
 const db = admin.firestore();
 const TELEGRAM_BOT_TOKEN = '8227812944:AAFy8ydOkUeCj3Qkjg7_Xsq6zyQpcUyMShY'; // Ваш токен
 
 // --- ЛОГИКА СЕРВЕРА ---
-
-// 1. Отдаем статические файлы (index.html, logo.jpg и т.д.)
 app.use(express.static(path.join(__dirname, '/')));
-
-// 2. Отдаем index.html по основному маршруту
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// --- ЛОГИКА PUSH-УВЕДОМЛЕНИЙ (CRON JOB) ---
+// --- PUSH-УВЕДОМЛЕНИЯ ---
+
+// 1. Уведомление о доступности нового заказа (раз в день)
 async function checkAndNotifyUsers() {
-  if (!admin.apps.length) {
-      console.log('Firebase Admin не инициализирован, пропуск задачи уведомлений.');
-      return;
-  }
-  console.log('Запуск ежедневной проверки уведомлений...');
+  if (!admin.apps.length) return;
+  console.log('Запуск ежедневной проверки доступности заказов...');
   try {
-      // --- НОВАЯ ЛОГИКА: Сначала получаем актуальные настройки ---
       const settingsSnap = await db.collection('settings').doc('config').get();
-      // Если настроек нет, используем значение по умолчанию (7 дней)
       const orderCooldownDays = settingsSnap.exists ? settingsSnap.data().orderCooldownDays : 7;
-      console.log(`Используемый период ожидания: ${orderCooldownDays} дней.`);
       
       const usersQuery = db.collection('users')
                           .where('lastOrderTimestamp', '!=', null)
                           .where('cooldownNotified', '==', false);
-
       const usersSnap = await usersQuery.get();
-      if (usersSnap.empty) {
-          console.log("Нет пользователей для уведомления.");
-          return;
-      }
+      if (usersSnap.empty) return;
 
       const now = new Date();
       const promises = [];
-
       usersSnap.forEach(doc => {
           const user = doc.data();
           const lastOrderDate = new Date(user.lastOrderTimestamp);
-          
-          // --- НОВАЯ ЛОГИКА: Используем переменную orderCooldownDays ---
           const cooldownEndDate = new Date(lastOrderDate.setDate(lastOrderDate.getDate() + orderCooldownDays));
 
           if (now >= cooldownEndDate && user.telegramId) {
               const message = `🎉 Привет, ${user.registration.firstName}! У вас снова доступна возможность сделать заказ по бартеру. Ждем вас!`;
-              const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
-              const body = JSON.stringify({ chat_id: user.telegramId, text: message });
-
-              console.log(`Отправка уведомления: ${user.registration.firstName} (${user.telegramId})`);
-              const sendPromise = fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body })
-                  .then(res => res.json())
-                  .then(json => {
-                      if (json.ok) return doc.ref.update({ cooldownNotified: true });
-                      else console.error(`Ошибка Telegram для ${user.telegramId}: ${json.description}`);
-                  })
-                  .catch(err => console.error(`Ошибка сети для ${user.telegramId}:`, err));
-              promises.push(sendPromise);
+              promises.push(sendNotificationAndUpdate(user.telegramId, message, doc.ref, { cooldownNotified: true }));
           }
       });
-
       await Promise.all(promises);
-      console.log('Проверка завершена.');
+      console.log('Проверка доступности заказов завершена.');
   } catch (error) {
-      console.error('Ошибка в задаче уведомлений:', error);
+      console.error('Ошибка в задаче уведомлений о доступности:', error);
   }
 }
 
-// Запуск планировщика каждый день в 9:00 по времени Алматы
+// 2. Напоминание о сдаче отчета (каждый час)
+async function checkReportReminders() {
+    if (!admin.apps.length) return;
+    console.log('Запуск ежечасной проверки напоминаний об отчетах...');
+    try {
+        const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+        const twentyThreeHoursAgo = new Date(Date.now() - 23 * 60 * 60 * 1000);
+
+        const ordersQuery = db.collection('orders')
+                                .where('status', '==', 'delivered')
+                                .where('reminderSent', '==', false)
+                                .where('createdAt', '<=', twentyThreeHoursAgo.toISOString())
+                                .where('createdAt', '>=', twentyFourHoursAgo.toISOString());
+        
+        const ordersSnap = await ordersQuery.get();
+        if (ordersSnap.empty) return;
+
+        const promises = [];
+        ordersSnap.forEach(doc => {
+            const order = doc.data();
+            if (order.userId) {
+                const message = `⏰ Напоминание: остался 1 час для сдачи отчета по заказу #${order.orderNumber}. Пожалуйста, не забудьте прикрепить ссылку в приложении.`;
+                // Получаем ID пользователя для отправки
+                db.collection('users').doc(order.userId).get().then(userDoc => {
+                    if (userDoc.exists && userDoc.data().telegramId) {
+                       promises.push(sendNotificationAndUpdate(userDoc.data().telegramId, message, doc.ref, { reminderSent: true }));
+                    }
+                });
+            }
+        });
+        await Promise.all(promises);
+        console.log('Проверка напоминаний об отчетах завершена.');
+    } catch (error) {
+        console.error('Ошибка в задаче напоминаний об отчетах:', error);
+    }
+}
+
+// Вспомогательная функция для отправки
+async function sendNotificationAndUpdate(chatId, message, docRef, updateData) {
+    const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
+    const body = JSON.stringify({ chat_id: chatId, text: message, parse_mode: 'Markdown' });
+    try {
+        const response = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body });
+        const json = await response.json();
+        if (json.ok) {
+            await docRef.update(updateData);
+            console.log(`Уведомление для ${chatId} отправлено, документ обновлен.`);
+        } else {
+            console.error(`Ошибка Telegram для ${chatId}: ${json.description}`);
+        }
+    } catch (err) {
+        console.error(`Сетевая ошибка для ${chatId}:`, err);
+    }
+}
+
+
+// --- ПЛАНИРОВЩИКИ ---
 cron.schedule('0 9 * * *', checkAndNotifyUsers, { timezone: "Asia/Almaty" });
+cron.schedule('0 * * * *', checkReportReminders, { timezone: "Asia/Almaty" }); // Каждый час в 00 минут
 
 // --- ЗАПУСК СЕРВЕРА ---
 app.listen(PORT, () => {
     console.log(`Сервер запущен на порту ${PORT}`);
-    console.log('Планировщик уведомлений активен.');
+    console.log('Планировщики активны.');
 });
