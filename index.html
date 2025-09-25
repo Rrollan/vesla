@@ -1814,73 +1814,6 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
     
-    <!--
-        ВАЖНО: Код для автоматической PUSH-рассылки.
-        Этот код НЕЛЬЗЯ вставить сюда. Он должен быть развернут как Firebase Cloud Function.
-        Для этого:
-        1. Установите Firebase CLI: npm install -g firebase-tools
-        2. В папке вашего проекта выполните: firebase init functions
-        3. Выберите JavaScript, установите зависимости.
-        4. Вставьте этот код в файл index.js в папке functions.
-        5. Разверните функцию: firebase deploy --only functions
-
-        exports.dailyCooldownNotifier = functions.pubsub.schedule('every 24 hours').onRun(async (context) => {
-            const admin = require('firebase-admin');
-            admin.initializeApp();
-            const db = admin.firestore();
-            const fetch = require('node-fetch');
-
-            const TELEGRAM_BOT_TOKEN = 'ВАШ_ТОКЕН_ЗДЕСЬ'; 
-
-            // 1. Получаем настройки
-            const settingsSnap = await db.collection('settings').doc('config').get();
-            const orderCooldownDays = settingsSnap.exists ? settingsSnap.data().orderCooldownDays : 7;
-            
-            // 2. Ищем пользователей, у которых есть lastOrderTimestamp и нет флага уведомления
-            const usersQuery = db.collection('users')
-                                .where('lastOrderTimestamp', '!=', null)
-                                .where('cooldownNotified', '==', false);
-
-            const usersSnap = await usersQuery.get();
-            if (usersSnap.empty) {
-                console.log("Нет пользователей для уведомления.");
-                return null;
-            }
-
-            const now = new Date();
-            const promises = [];
-
-            usersSnap.forEach(doc => {
-                const user = doc.data();
-                const lastOrderDate = new Date(user.lastOrderTimestamp);
-                const cooldownEndDate = new Date(lastOrderDate.setDate(lastOrderDate.getDate() + orderCooldownDays));
-
-                // Если кулдаун прошел и у пользователя есть Telegram ID
-                if (now >= cooldownEndDate && user.telegramId) {
-                    const message = `🎉 Привет, ${user.registration.firstName}! У вас снова доступна возможность сделать заказ по бартеру. Ждем вас!`;
-                    
-                    const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
-                    const body = JSON.stringify({ chat_id: user.telegramId, text: message });
-
-                    const sendPromise = fetch(url, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: body
-                    })
-                    .then(() => {
-                        // Ставим флаг, чтобы не отправлять повторно
-                        return doc.ref.update({ cooldownNotified: true });
-                    })
-                    .catch(err => console.error(`Ошибка отправки для ${user.telegramId}:`, err));
-                    
-                    promises.push(sendPromise);
-                }
-            });
-
-            return Promise.all(promises);
-        });
-    -->
-
     <script>
 const app = (function() {
 
@@ -1938,15 +1871,26 @@ const app = (function() {
     
     const CITIES = ["Павлодар", "Петропавловск", "Кокшетау", "Костанай", "Усть-Каменогорск"];
 
-    function generateOrderNumber(city, date, firestoreId) {
+    async function generateOrderNumber(city) {
         const cityCodes = {'Павлодар':'PVL', 'Петропавловск':'PPK', 'Кокшетау':'KOK', 'Костанай':'KSN', 'Усть-Каменогорск':'UKK'};
         const cityCode = cityCodes[city] || 'UNK';
-        const dateObj = new Date(date);
-        const day = String(dateObj.getDate()).padStart(2, '0');
-        const month = String(dateObj.getMonth() + 1).padStart(2, '0');
-        const year = String(dateObj.getFullYear()).slice(-2);
-        const shortId = firestoreId.substring(0, 4).toUpperCase();
-        return `${cityCode}-${day}${month}${year}-${shortId}`;
+        
+        const counterRef = db.collection(COLLECTIONS.SETTINGS).doc('orderCounter');
+        
+        // Транзакция для безопасного увеличения счетчика
+        const newOrderNumber = await db.runTransaction(async (transaction) => {
+            const counterDoc = await transaction.get(counterRef);
+            let nextNumber;
+            if (!counterDoc.exists) {
+                nextNumber = 101; // Начальное значение
+            } else {
+                nextNumber = counterDoc.data().currentNumber + 1;
+            }
+            transaction.set(counterRef, { currentNumber: nextNumber });
+            return nextNumber;
+        });
+
+        return `${cityCode}-${newOrderNumber}`;
     }
 
     async function sendTelegramNotification(chatId, message) {
@@ -2407,8 +2351,8 @@ Instagram: @${orderData.instagram}
         if (userData.orders && userData.orders.length > 0) {
             const latestOrder = [...userData.orders].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0];
             let statusMessage = '';
-            if (latestOrder.status === 'new') statusMessage = `⏳ <strong>Ваш заказ #${latestOrder.orderNumber.split('-')[2]} в обработке.</strong>`;
-            if (latestOrder.status === 'confirmed') statusMessage = `✅ <strong>Ваш заказ #${latestOrder.orderNumber.split('-')[2]} подтвержден!</strong>`;
+            if (latestOrder.status === 'new') statusMessage = `⏳ <strong>Ваш заказ #${latestOrder.orderNumber} в обработке.</strong>`;
+            if (latestOrder.status === 'confirmed') statusMessage = `✅ <strong>Ваш заказ #${latestOrder.orderNumber} подтвержден!</strong>`;
             if (statusMessage) {
                 statusPanel.innerHTML = statusMessage;
                 statusPanel.style.display = 'block';
@@ -3081,10 +3025,14 @@ Instagram: @${orderData.instagram}
             const dataSource = userData.registration || userData;
             
             const newOrder = {
-                ...currentOrderData, id: orderId, status: 'new',
-                orderNumber: generateOrderNumber(currentOrderData.city, currentOrderData.date, orderId),
-                userId: currentUserId, userName: dataSource.firstName,
-                instagram: dataSource.instagramLogin, phone: dataSource.phone,
+                ...currentOrderData, 
+                id: orderId, 
+                status: 'new',
+                orderNumber: await generateOrderNumber(currentOrderData.city),
+                userId: currentUserId, 
+                userName: dataSource.firstName,
+                instagram: dataSource.instagramLogin, 
+                phone: dataSource.phone,
                 followersCount: dataSource.followersCount, 
                 createdAt: new Date().toISOString()
             };
@@ -3231,10 +3179,21 @@ Instagram: @${orderData.instagram}
     async function resetOrderCooldown() {
         if (!currentUserDetailId) return;
         if (confirm("Вы уверены, что хотите сбросить ограничение на следующий заказ для этого пользователя?")) {
-            await db.collection(COLLECTIONS.USERS).doc(currentUserDetailId).update({
-                lastOrderTimestamp: FieldValue.delete()
-            });
-            showSuccessMessage("Ограничение сброшено.");
+            const userRef = db.collection(COLLECTIONS.USERS).doc(currentUserDetailId);
+            const userDoc = await userRef.get();
+            if (userDoc.exists) {
+                const userData = userDoc.data();
+                await userRef.update({
+                    lastOrderTimestamp: FieldValue.delete()
+                });
+                if (userData.telegramId) {
+                    const message = `🎉 Отличные новости, ${userData.registration.firstName}! Мы сбросили для вас ограничение на следующий заказ. Теперь вы можете снова оформить сотрудничество!`;
+                    await sendTelegramNotification(userData.telegramId, message);
+                }
+                showSuccessMessage("Ограничение сброшено, уведомление отправлено.");
+            } else {
+                showError("Ошибка", "Пользователь не найден.");
+            }
             closeUserDetailModal();
         }
     }
