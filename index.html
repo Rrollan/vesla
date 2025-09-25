@@ -2978,7 +2978,7 @@ Instagram: @${orderData.instagram}
                 // --- ЭТО КЛЮЧЕВОЕ ИЗМЕНЕНИЕ ---
                 // Добавляем паузу в 100 миллисекунд после каждого сообщения (это 10 сообщений в секунду)
                 // Этого достаточно, чтобы обойти базовые лимиты Telegram.
-                await new Promise(resolve => setTimeout(resolve, 100)); 
+                await new Promise(resolve => setTimeout(resolve, 300)); 
             }
             
             showCrmSuccess(`Рассылка завершена!`, `Успешно отправлено: ${successCount}. Ошибок: ${errorCount}.`);
