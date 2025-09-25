@@ -8,7 +8,8 @@ const fetch = require('node-fetch');
 // --- ИНИЦИАЛИЗАЦИЯ ---
 const app = express();
 const PORT = process.env.PORT || 10000;
-const TELEGRAM_BOT_TOKEN = '8227812944:AAFy8ydOkUeCj3Qkjg7_Xsq6zyQpcUyMShY'; // Ваш токен бота
+// ИСПРАВЛЕНИЕ: Токен синхронизирован с index.html
+const TELEGRAM_BOT_TOKEN = '7227812944:AAFy8ydOkUeCj3Qkjg7_Xsq6zyQpcUyMShY'; 
 
 // --- ИНИЦИАЛИЗАЦИЯ FIREBASE ADMIN SDK ---
 try {
@@ -215,7 +216,6 @@ async function sendTelegramNotification(chatId, text, returnResponse = false) {
     } catch (error) {
         console.error(`Ошибка отправки в Telegram для ${chatId}:`, error);
         if (returnResponse) return { ok: false, description: error.message };
-        // ** ИСПРАВЛЕНИЕ: ВОЗВРАЩЕНА НЕДОСТАЮЩАЯ СКОБКА **
     }
 }
 
