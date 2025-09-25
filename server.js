@@ -10,8 +10,6 @@ const app = express();
 const PORT = process.env.PORT || 10000; // Render предоставит этот порт
 
 // --- ИНИЦИАЛИЗАЦИЯ FIREBASE ADMIN SDK ---
-// ВАЖНО: Мы используем блок try...catch, чтобы приложение не "падало",
-// если секретный файл не найден (например, при локальном запуске).
 try {
   const serviceAccount = require('/etc/secrets/serviceAccountKey.json'); 
   admin.initializeApp({
@@ -28,25 +26,26 @@ const TELEGRAM_BOT_TOKEN = '8227812944:AAFy8ydOkUeCj3Qkjg7_Xsq6zyQpcUyMShY'; // 
 // --- ЛОГИКА СЕРВЕРА ---
 
 // 1. Отдаем статические файлы (index.html, logo.jpg и т.д.)
-// Express будет искать файлы в той же папке, где лежит server.js
 app.use(express.static(path.join(__dirname, '/')));
 
-// 2. Отдаем index.html при заходе на главную страницу
+// 2. Отдаем index.html по основному маршруту
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 // --- ЛОГИКА PUSH-УВЕДОМЛЕНИЙ (CRON JOB) ---
 async function checkAndNotifyUsers() {
-  // Эта функция будет работать, только если Firebase Admin SDK успешно инициализировался
   if (!admin.apps.length) {
       console.log('Firebase Admin не инициализирован, пропуск задачи уведомлений.');
       return;
   }
   console.log('Запуск ежедневной проверки уведомлений...');
   try {
+      // --- НОВАЯ ЛОГИКА: Сначала получаем актуальные настройки ---
       const settingsSnap = await db.collection('settings').doc('config').get();
+      // Если настроек нет, используем значение по умолчанию (7 дней)
       const orderCooldownDays = settingsSnap.exists ? settingsSnap.data().orderCooldownDays : 7;
+      console.log(`Используемый период ожидания: ${orderCooldownDays} дней.`);
       
       const usersQuery = db.collection('users')
                           .where('lastOrderTimestamp', '!=', null)
@@ -64,6 +63,8 @@ async function checkAndNotifyUsers() {
       usersSnap.forEach(doc => {
           const user = doc.data();
           const lastOrderDate = new Date(user.lastOrderTimestamp);
+          
+          // --- НОВАЯ ЛОГИКА: Используем переменную orderCooldownDays ---
           const cooldownEndDate = new Date(lastOrderDate.setDate(lastOrderDate.getDate() + orderCooldownDays));
 
           if (now >= cooldownEndDate && user.telegramId) {
