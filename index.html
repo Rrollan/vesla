@@ -6,6 +6,8 @@
     <title>Бартер для блогеров</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Библиотека для экспорта в Excel -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -19,6 +21,14 @@
             color: #fff;
             min-height: 100vh;
             overflow-x: hidden;
+        }
+        
+        /* Стиль для корректного копирования текста */
+        .modal-body, .order-info, .user-details, .blocked-slot-info, .report-link, .user-name-phone, .order-id, .subtitle {
+            user-select: text;
+            -webkit-user-select: text;
+            -moz-user-select: text;
+            -ms-user-select: text;
         }
 
         .container {
@@ -1328,7 +1338,7 @@
         <div id="crmScreen" class="crm-screen">
             <div class="crm-header">
                 <h2>🔧 Панель управления</h2>
-                <button class="btn-back" onclick="app.showDashboard()">← Назад</button>
+                <button class="btn-back" onclick="app.showDashboard()">← В личный кабинет</button>
             </div>
 
             <div class="crm-tabs">
@@ -1398,6 +1408,7 @@
                         </select>
                     </div>
                     <button class="btn-primary" onclick="app.applyAnalyticsFilters()">Применить</button>
+                    <button class="btn-secondary" onclick="app.exportAnalyticsToExcel(this)">Экспорт в Excel</button>
                 </div>
 
                 <div class="analytics-grid">
@@ -1422,11 +1433,13 @@
 
             <div id="crmOrders" class="crm-content">
                 <input type="text" id="orderSearch" class="search-input" placeholder="Поиск по имени, телефону, Instagram или номеру заказа..." onkeyup="app.filterOrders()">
+                <button class="btn-secondary" onclick="app.exportOrdersToExcel(this)" style="margin-bottom: 15px; width: 100%;">Экспорт в Excel</button>
                 <div class="orders-list" id="ordersList"></div>
             </div>
 
             <div id="crmUsers" class="crm-content">
                 <input type="text" id="userSearch" class="search-input" placeholder="Поиск пользователей..." onkeyup="app.filterUsers()">
+                <button class="btn-secondary" onclick="app.exportUsersToExcel(this)" style="margin-bottom: 15px; width: 100%;">Экспорт в Excel</button>
                 <div id="usersList"></div>
             </div>
 
@@ -1613,7 +1626,7 @@
                 <div class="success-icon">✅</div>
                 <h2 id="successTitle">Заказ оформлен!</h2>
                 <p class="subtitle" id="successMessage">Через 24 часа после доставки вам придет напоминание об отчете</p>
-                <button class="btn-primary" onclick="app.closeModal()">Закрыть</button>
+                <button id="successModalCloseBtn" class="btn-primary" onclick="app.closeModal()">Закрыть</button>
             </div>
         </div>
 
@@ -1824,7 +1837,7 @@
     <script>
 const app = (function() {
 
-    const TELEGRAM_BOT_TOKEN = '8227812944:AAFy8ydOkUeCj3Qkjg7_Xsq6zyQpcUyMShY';
+    const TELEGRAM_BOT_TOKEN = '7227812944:AAFy8ydOkUeCj3Qkjg7_Xsq6zyQpcUyMShY';
     
     const firebaseConfig = {
         apiKey: "AIzaSyATmIapS6SJi7KnvKrJp5sfD9VMXxKMCgA",
@@ -2699,9 +2712,9 @@ Instagram: @${orderData.instagram}
             if (newStatus === 'completed') {
                 await checkAndUpgradeLoyaltyStatus(orderData.userId);
             }
-
-            showSuccessMessage('Статус обновлен!');
+            
             closeOrderDetailModal();
+            showCrmSuccess('Статус обновлен!');
             updateOrdersList();
         });
     }
@@ -2729,7 +2742,7 @@ Instagram: @${orderData.instagram}
             await db.collection(COLLECTIONS.BLOCKED_SLOTS).doc(blockId).set(newBlock);
             closeAddBlockModal();
             updateBlockedSlotsList();
-            showSuccessMessage('Блокировка добавлена!');
+            showCrmSuccess('Блокировка добавлена!');
         });
     }
 
@@ -2744,7 +2757,7 @@ Instagram: @${orderData.instagram}
         const reason = shouldBlock ? prompt("Причина блокировки:", "") : '';
         if (shouldBlock && reason === null) return;
         await db.collection(COLLECTIONS.USERS).doc(userId).update({ isBlocked: shouldBlock, blockReason: shouldBlock ? reason : '' });
-        showSuccessMessage(`Пользователь ${shouldBlock ? 'заблокирован' : 'разблокирован'}.`);
+        showCrmSuccess(`Пользователь ${shouldBlock ? 'заблокирован' : 'разблокирован'}.`);
         updateUsersList();
     }
     
@@ -2759,7 +2772,7 @@ Instagram: @${orderData.instagram}
                 batch.delete(db.collection(COLLECTIONS.ORDERS).doc(order.id));
             });
             await batch.commit();
-            showSuccessMessage(`Пользователь ${userName} удален.`);
+            showCrmSuccess(`Пользователь ${userName} удален.`);
             updateUsersList();
         }
     }
@@ -2780,7 +2793,7 @@ Instagram: @${orderData.instagram}
 
         closeAddAdminModal();
         updateAdminsList();
-        showSuccessMessage(`${userName} назначен на роль: ${role}!`);
+        showCrmSuccess(`${userName} назначен на роль: ${role}!`);
     }
 
     async function removeAdmin(adminId) {
@@ -2800,7 +2813,7 @@ Instagram: @${orderData.instagram}
 
             await adminRef.delete();
             updateAdminsList();
-            showSuccessMessage('Сотрудник удален!');
+            showCrmSuccess('Сотрудник удален!');
         }
     }
     
@@ -2822,7 +2835,7 @@ Instagram: @${orderData.instagram}
                 await batch.commit();
                 closeOrderDetailModal();
                 updateOrdersList(); 
-                showSuccessMessage('Заказ удален.');
+                showCrmSuccess('Заказ удален.');
             });
         }
     }
@@ -2847,7 +2860,7 @@ Instagram: @${orderData.instagram}
             await batch.commit();
             await checkAndUpgradeLoyaltyStatus(orderData.userId);
             
-            showSuccessMessage('Отчет принят, заказ завершен.');
+            showCrmSuccess('Отчет принят, заказ завершен.');
             closeOrderDetailModal();
             updateOrdersList();
             updateUsersList();
@@ -2907,7 +2920,7 @@ Instagram: @${orderData.instagram}
                 await sendTelegramNotification(userDoc.data().telegramId, message);
             }
 
-            showSuccessMessage('Штрафной балл добавлен, заказ закрыт.');
+            showCrmSuccess('Штрафной балл добавлен, заказ закрыт.');
             closeOrderDetailModal();
             updateUsersList(); 
         });
@@ -2940,7 +2953,7 @@ Instagram: @${orderData.instagram}
                 } catch (e) {}
                 await new Promise(resolve => setTimeout(resolve, 100));
             }
-            showSuccessMessage(`Рассылка завершена. Успешно: ${successCount} из ${usersToSend.length}.`);
+            showCrmSuccess(`Рассылка завершена. Успешно: ${successCount} из ${usersToSend.length}.`);
         });
     }
 
@@ -3163,12 +3176,22 @@ Instagram: @${orderData.instagram}
         userData = {}; currentUserId = null; telegramUser = null; currentUserRole = null;
         window.location.reload();
     }
-
+    
+    // --- Модальные окна ---
     function showSuccessMessage(message) {
         document.getElementById('successTitle').textContent = 'Успешно!';
         document.getElementById('successMessage').textContent = message;
+        document.getElementById('successModalCloseBtn').onclick = () => app.closeModal();
         document.getElementById('successModal').style.display = 'flex';
     }
+
+    function showCrmSuccess(message) {
+        document.getElementById('successTitle').textContent = 'Успешно!';
+        document.getElementById('successMessage').textContent = message;
+        document.getElementById('successModalCloseBtn').onclick = () => app.closeSimpleModal('successModal');
+        document.getElementById('successModal').style.display = 'flex';
+    }
+
     function showError(title, message) {
         document.getElementById('errorTitle').textContent = title;
         document.getElementById('errorMessage').textContent = message;
@@ -3180,7 +3203,7 @@ Instagram: @${orderData.instagram}
         if(!orderDoc.exists) return;
         const order = orderDoc.data();
         document.getElementById('orderDetailTitle').textContent = `Заказ ${order.orderNumber}`;
-        document.getElementById('orderDetailBody').innerHTML = `<strong>Блогер:</strong> ${order.userName}<br><strong>Город:</strong> ${order.city}<br><strong>Адрес:</strong> ${order.street}<br>`;
+        document.getElementById('orderDetailBody').innerHTML = `<strong>Блогер:</strong> ${order.userName}<br><strong>Телефон:</strong> ${order.phone}<br><strong>Город:</strong> ${order.city}<br><strong>Адрес:</strong> ${order.street}<br><strong>Комментарий:</strong> ${order.comment || '-'}<br><strong>Ссылка на отчет:</strong> ${order.reportLink ? `<a href="${order.reportLink}" target="_blank" class="report-link">${order.reportLink}</a>` : '-'}`;
         document.getElementById('orderStatusSelect').value = order.status;
         document.getElementById('deleteOrderBtn').onclick = () => removeOrder(order.id);
         document.getElementById('markNoReportBtn').onclick = () => markNoReport(order.id, order.orderNumber);
@@ -3224,16 +3247,17 @@ Instagram: @${orderData.instagram}
                     const message = `🎉 Отличные новости, ${userData.registration.firstName}! Мы сбросили для вас ограничение на следующий заказ. Теперь вы можете снова оформить сотрудничество!`;
                     await sendTelegramNotification(userData.telegramId, message);
                 }
-                showSuccessMessage("Ограничение сброшено, уведомление отправлено.");
+                showCrmSuccess("Ограничение сброшено, уведомление отправлено.");
             } else {
                 showError("Ошибка", "Пользователь не найден.");
             }
             closeUserDetailModal();
         }
     }
-
-    function showRejectionModal() { document.getElementById('rejectionModal').style.display = 'flex'; }
+    
     function closeModal() { document.getElementById('successModal').style.display = 'none'; showDashboard(); }
+    function closeSimpleModal(modalId) { document.getElementById(modalId).style.display = 'none'; }
+    function showRejectionModal() { document.getElementById('rejectionModal').style.display = 'flex'; }
     function closeErrorModal() { document.getElementById('errorModal').style.display = 'none'; }
     function closeRejectionModal() { document.getElementById('rejectionModal').style.display = 'none'; }
     function closeOrderHistory() { document.getElementById('orderHistoryModal').style.display = 'none'; }
@@ -3282,7 +3306,7 @@ Instagram: @${orderData.instagram}
             }
             await db.collection(COLLECTIONS.SETTINGS).doc('config').set({ orderCooldownDays: newCooldown }, { merge: true });
             appSettings.orderCooldownDays = newCooldown;
-            showSuccessMessage("Настройки сохранены!");
+            showCrmSuccess("Настройки сохранены!");
         });
     }
 
@@ -3340,7 +3364,7 @@ Instagram: @${orderData.instagram}
                 batch.set(scheduleRef, scheduleData);
             }
             await batch.commit();
-            showSuccessMessage("Расписание сохранено!");
+            showCrmSuccess("Расписание сохранено!");
         });
     }
 
@@ -3352,7 +3376,7 @@ Instagram: @${orderData.instagram}
         const user = userDoc.data();
         const reg = user.registration || user;
         document.getElementById('userDetailTitle').textContent = reg.firstName;
-        document.getElementById('userDetailBody').innerHTML = `<strong>Instagram:</strong> @${reg.instagramLogin}<br><strong>Рейтинг:</strong> ⭐ ${calculateBloggerRating(user)}`;
+        document.getElementById('userDetailBody').innerHTML = `<strong>Телефон:</strong> ${reg.phone}<br><strong>Instagram:</strong> @${reg.instagramLogin}<br><strong>Подписчики:</strong> ${reg.followersCount}<br><strong>Просмотры:</strong> ${reg.avgViews}<br><strong>Рейтинг:</strong> ⭐ ${calculateBloggerRating(user)}`;
         renderTags(user.tags || []);
         document.getElementById('userDetailModal').style.display = 'flex';
     }
@@ -3484,6 +3508,111 @@ Instagram: @${orderData.instagram}
         }
     }
 
+    // --- Функции экспорта в Excel ---
+    async function exportAnalyticsToExcel(button) {
+         await withLoading(button, async() => {
+            const wb = XLSX.utils.book_new();
+
+            const startDate = document.getElementById('analyticsStartDate').value;
+            const endDate = document.getElementById('analyticsEndDate').value;
+            const city = document.getElementById('analyticsCity').value;
+
+            let ordersQuery = db.collection(COLLECTIONS.ORDERS);
+            if (startDate) ordersQuery = ordersQuery.where('createdAt', '>=', new Date(startDate).toISOString());
+            if (endDate) ordersQuery = ordersQuery.where('createdAt', '<=', new Date(endDate).toISOString());
+            if (city && city !== 'all') ordersQuery = ordersQuery.where('city', '==', city);
+
+            const [ordersSnap, usersSnap] = await Promise.all([ordersQuery.get(), db.collection(COLLECTIONS.USERS).get()]);
+            
+            // 1. Динамика заказов
+            const ordersByDate = {};
+            ordersSnap.forEach(doc => {
+                const dateString = new Date(doc.data().createdAt).toISOString().split('T')[0];
+                ordersByDate[dateString] = (ordersByDate[dateString] || 0) + 1;
+            });
+            const dynamicsData = Object.keys(ordersByDate).sort().map(date => ({ 'Дата': date, 'Количество заказов': ordersByDate[date] }));
+            const dynamicsWs = XLSX.utils.json_to_sheet(dynamicsData);
+            XLSX.utils.book_append_sheet(wb, dynamicsWs, "Динамика заказов");
+            
+            // 2. Заказы по городам
+            const cityCounts = {};
+            ordersSnap.forEach(doc => { const c = doc.data().city; if (c) cityCounts[c] = (cityCounts[c] || 0) + 1; });
+            const cityData = Object.keys(cityCounts).map(c => ({ 'Город': c, 'Количество заказов': cityCounts[c] }));
+            const cityWs = XLSX.utils.json_to_sheet(cityData);
+            XLSX.utils.book_append_sheet(wb, cityWs, "Заказы по городам");
+
+            // 3. Уровни блогеров
+            const levelCounts = { 'Микроблогер': 0, 'Макроблогер тип A': 0, 'Макроблогер тип B': 0 };
+            usersSnap.forEach(doc => { const lvl = determineBloggerLevel((doc.data().registration || doc.data()).followersCount || 0).text; if (levelCounts.hasOwnProperty(lvl)) levelCounts[lvl]++; });
+            const levelData = Object.keys(levelCounts).map(l => ({ 'Уровень': l, 'Количество': levelCounts[l] }));
+            const levelWs = XLSX.utils.json_to_sheet(levelData);
+            XLSX.utils.book_append_sheet(wb, levelWs, "Уровни блогеров");
+
+            XLSX.writeFile(wb, "Аналитика_Бартер.xlsx");
+        });
+    }
+
+    async function exportOrdersToExcel(button) {
+         await withLoading(button, async() => {
+            const ordersSnapshot = await db.collection(COLLECTIONS.ORDERS).orderBy('createdAt', 'desc').get();
+            if (ordersSnapshot.empty) return showError("Ошибка", "Нет заказов для экспорта.");
+
+            const ordersData = ordersSnapshot.docs.map(doc => {
+                const order = doc.data();
+                return {
+                    'Номер заказа': order.orderNumber,
+                    'Статус': getStatusInfo(order.status).text,
+                    'Имя блогера': order.userName,
+                    'Instagram': order.instagram,
+                    'Телефон': order.phone,
+                    'Город': order.city,
+                    'Адрес': order.street,
+                    'Дата доставки': order.date,
+                    'Время доставки': order.time,
+                    'Выбранный сет': order.setName || 'Не указан',
+                    'Комментарий': order.comment,
+                    'Дата создания': new Date(order.createdAt).toLocaleString('ru-RU')
+                };
+            });
+
+            const ws = XLSX.utils.json_to_sheet(ordersData);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Заказы");
+            XLSX.writeFile(wb, "Все_Заказы.xlsx");
+        });
+    }
+
+    async function exportUsersToExcel(button) {
+         await withLoading(button, async() => {
+            const usersSnapshot = await db.collection(COLLECTIONS.USERS).orderBy('registrationDate', 'desc').get();
+            if (usersSnapshot.empty) return showError("Ошибка", "Нет пользователей для экспорта.");
+
+            const usersData = usersSnapshot.docs.map(doc => {
+                const user = doc.data();
+                const reg = user.registration || {};
+                return {
+                    'Имя': reg.firstName,
+                    'Телефон': reg.phone,
+                    'Instagram': reg.instagramLogin,
+                    'Подписчики': reg.followersCount,
+                    'Просмотры': reg.avgViews,
+                    'Уровень': determineBloggerLevel(reg.followersCount).text,
+                    'Статус лояльности': user.loyaltyStatus || 'standard',
+                    'Штрафы': user.strikes || 0,
+                    'Заблокирован': user.isBlocked ? 'Да' : 'Нет',
+                    'Причина блокировки': user.blockReason || '',
+                    'Дата регистрации': new Date(user.registrationDate).toLocaleDateString('ru-RU'),
+                    'Теги': (user.tags || []).join(', ')
+                };
+            });
+
+            const ws = XLSX.utils.json_to_sheet(usersData);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Пользователи");
+            XLSX.writeFile(wb, "Все_Пользователи.xlsx");
+        });
+    }
+
 
     document.addEventListener('DOMContentLoaded', () => {
         ['loginPhone', 'phone', 'recipientPhone', 'editPhone'].forEach(setupPhoneMask);
@@ -3497,11 +3626,11 @@ Instagram: @${orderData.instagram}
         removeBlock, removeAdmin, removeUser, toggleUserBlock, sendBroadcast, saveSettings,
         addBlock, addAdmin, selectSet, showSetSelection, showAddressForm, showDateTimeSelection, showInstructions,
         handleCityChange, submitAddressAndShowDateTime, updateTimeSlots, submitOrder, saveProfile,
-        closeModal, closeErrorModal, closeRejectionModal, closeOrderHistory, closeEditProfile,
+        closeModal, closeSimpleModal, closeErrorModal, closeRejectionModal, closeOrderHistory, closeEditProfile,
         closeContactModal, showAddBlockModal, closeAddBlockModal, showAddAdminModal, closeAddAdminModal,
         closeOrderDetailModal, toggleBlockTime, updateOrderStatus, showReportModal, closeReportModal, submitReport,
         loadSchedule, saveSchedule, showUserDetailModal, closeUserDetailModal, addUserTag, removeUserTag, resetOrderCooldown,
-        showScheduleForCity, applyAnalyticsFilters
+        showScheduleForCity, applyAnalyticsFilters, exportAnalyticsToExcel, exportOrdersToExcel, exportUsersToExcel
     };
 })();
     </script>
