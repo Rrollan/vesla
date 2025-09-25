@@ -176,14 +176,18 @@
             color: #ff6b6b;
         }
 
-        /* СТИЛИ ДЛЯ ИКОНОК БЛОКИРОВКИ */
-        .btn-icon-block, .btn-icon-unblock {
+        /* СТИЛИ ДЛЯ ИКОНОК */
+        .btn-icon, .btn-icon-block, .btn-icon-unblock {
              background: transparent;
              border: none;
              font-size: 20px;
              cursor: pointer;
              padding: 5px;
-             transition: color 0.2s;
+             transition: color 0.2s, opacity 0.2s;
+        }
+        .btn-icon:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
         }
         .btn-icon-block {
             color: #ffc107;
@@ -1475,7 +1479,7 @@
                 <div class="telegram-info" style="margin-top: 20px;">
                      <h4 style="color: #ffc107; margin-bottom: 10px;">⚠️ Внимание!</h4>
                      <p style="color: #ccc; font-size: 14px; line-height: 1.5;">
-                         Эта функция отправляет сообщения напрямую из вашего браузера. Не закрывайте вкладку до завершения рассылки.
+                         Эта функция запускает рассылку на сервере. Вы можете закрыть окно после нажатия кнопки. Отчет придет в личные сообщения.
                      </p>
                 </div>
             </div>
@@ -1503,7 +1507,8 @@
                 <div class="set-title">Сет 2</div>
                 <div class="set-description">Классическая Фила, Запечённый с креветкой, Сэндвич с курицей</div>
             </div>
-
+            
+            <!-- ИЗМЕНЕНИЕ: Исправлен вызов функции, чтобы навигация работала корректно -->
             <button type="button" id="nextFromSet" class="btn-primary" onclick="app.proceedToAddressFromSet()" disabled>Далее</button>
         </div>
 
@@ -1656,8 +1661,8 @@
                 <div class="modal-header">
                      <h2 id="orderDetailTitle">Детали заказа</h2>
                      <div style="display: flex; gap: 10px; align-items: center;">
-                        <button id="markReportAcceptedBtn" class="btn-icon-unblock" title="Отчет сдан и принят">✔️</button>
-                        <button id="markNoReportBtn" class="btn-icon-block" title="Отчет не сдан">🚩</button>
+                        <button id="markReportAcceptedBtn" class="btn-icon btn-icon-unblock" title="Отчет сдан и принят">✔️</button>
+                        <button id="markNoReportBtn" class="btn-icon btn-icon-block" title="Отчет не сдан">🚩</button>
                         <button class="btn-danger-icon" id="deleteOrderBtn" title="Удалить заказ">🗑️</button>
                      </div>
                 </div>
@@ -1925,10 +1930,18 @@ const app = (function() {
         }
     }
     
+    // ИЗМЕНЕНИЕ: Функция теперь будет отправлять уведомления только тем админам, у которых включена эта опция
     async function sendAdminNotification(orderData, screenshotFile) {
-        const adminSnapshot = await db.collection(COLLECTIONS.ADMINS).get();
+        const adminSnapshot = await db.collection(COLLECTIONS.ADMINS)
+                                      .where('receivesNotifications', '==', true)
+                                      .get();
+
+        if (adminSnapshot.empty) {
+            console.log("Нет администраторов, подписанных на уведомления.");
+            return;
+        }
+
         const adminChatIds = adminSnapshot.docs.map(doc => doc.id);
-        if (adminChatIds.length === 0) return;
 
         let message = `*Новая заявка на бартер*
 
@@ -1946,7 +1959,8 @@ Instagram: @${orderData.instagram}
         message += `\n\n🗓 *Доставка:*
 Дата: ${orderData.date} в ${orderData.time}
 Город: ${orderData.city}
-Адрес: ${orderData.street}`;
+Адрес: ${orderData.street}, п. ${orderData.entrance}, эт. ${orderData.floor}
+Комментарий: ${orderData.comment || '-'}`;
         
         for (const chatId of adminChatIds) {
             try {
@@ -2379,6 +2393,8 @@ Instagram: @${orderData.instagram}
             let statusMessage = '';
             if (latestOrder.status === 'new') statusMessage = `⏳ <strong>Ваш заказ #${latestOrder.orderNumber} в обработке.</strong>`;
             if (latestOrder.status === 'confirmed') statusMessage = `✅ <strong>Ваш заказ #${latestOrder.orderNumber} подтвержден!</strong>`;
+            if (latestOrder.status === 'delivered') statusMessage = `🚚 <strong>Ваш заказ #${latestOrder.orderNumber} доставлен!</strong>`;
+            
             if (statusMessage) {
                 statusPanel.innerHTML = statusMessage;
                 statusPanel.style.display = 'block';
@@ -2662,6 +2678,7 @@ Instagram: @${orderData.instagram}
             list.innerHTML = '';
             snapshot.forEach(doc => {
                 const admin = { id: doc.id, ...doc.data() };
+                const receivesNotifications = admin.receivesNotifications !== false; // По умолчанию true
                 const el = document.createElement('div');
                 el.className = 'user-item';
                 el.innerHTML = `
@@ -2670,6 +2687,12 @@ Instagram: @${orderData.instagram}
                         <div style="margin-top: 5px;"><span class="user-admin-badge">${admin.role}</span></div>
                     </div>
                     <div class="user-controls">
+                        <!-- НОВЫЙ БЛОК: Кнопка для управления уведомлениями -->
+                        <button class="btn-icon" 
+                                title="${receivesNotifications ? 'Отключить уведомления' : 'Включить уведомления'}" 
+                                onclick="app.toggleAdminNotifications('${admin.id}', ${receivesNotifications})">
+                            ${receivesNotifications ? '🔔' : '🔕'}
+                        </button>
                         ${admin.id !== '1345815453' ? `<button class="btn-danger-icon" onclick="app.removeAdmin('${admin.id}')">🗑️</button>` : ''}
                     </div>`;
                 list.appendChild(el);
@@ -2781,7 +2804,13 @@ Instagram: @${orderData.instagram}
         const telegramId = userDoc?.telegramId;
         if(!telegramId) return showError("Ошибка", "У пользователя нет Telegram ID.");
         
-        const newAdmin = { name: userName, role: role, addedAt: new Date().toISOString() };
+        // ИЗМЕНЕНИЕ: По умолчанию включаем уведомления для нового админа
+        const newAdmin = { 
+            name: userName, 
+            role: role, 
+            addedAt: new Date().toISOString(),
+            receivesNotifications: true 
+        };
         await db.collection(COLLECTIONS.ADMINS).doc(String(telegramId)).set(newAdmin);
 
         const userRef = db.collection(COLLECTIONS.USERS).doc(userId);
@@ -2792,6 +2821,19 @@ Instagram: @${orderData.instagram}
         closeAddAdminModal();
         updateAdminsList();
         showCrmSuccess(`${userName} назначен на роль: ${role}!`);
+    }
+
+    // НОВАЯ ФУНКЦИЯ: Управление уведомлениями для администраторов
+    async function toggleAdminNotifications(adminId, currentState) {
+        const adminRef = db.collection(COLLECTIONS.ADMINS).doc(adminId);
+        try {
+            await adminRef.update({ receivesNotifications: !currentState });
+            showCrmSuccess('Настройки уведомлений обновлены.');
+            updateAdminsList();
+        } catch (error) {
+            console.error('Ошибка при изменении настроек уведомлений:', error);
+            showError('Ошибка', 'Не удалось обновить настройки.');
+        }
     }
 
     async function removeAdmin(adminId) {
@@ -2884,14 +2926,18 @@ Instagram: @${orderData.instagram}
         }
     }
 
-
+    // ИЗМЕНЕНИЕ: Добавлена проверка, чтобы нельзя было начислить штраф дважды
     async function markNoReport(orderId, orderNumber) {
-        if (!confirm('Отчет по заказу не сдан? Это добавит штрафной балл.')) return;
-        await withLoading(document.getElementById('markNoReportBtn'), async () => {
-            const orderRef = db.collection(COLLECTIONS.ORDERS).doc(orderId);
-            const orderDoc = await orderRef.get();
-            if (!orderDoc.exists) return;
+        const orderRef = db.collection(COLLECTIONS.ORDERS).doc(orderId);
+        const orderDoc = await orderRef.get();
+        if (orderDoc.exists && orderDoc.data().reportMissed) {
+            showError('Ошибка', 'На этот заказ уже был наложен штраф.');
+            return;
+        }
 
+        if (!confirm('Отчет по заказу не сдан? Это добавит штрафной балл.')) return;
+        
+        await withLoading(document.getElementById('markNoReportBtn'), async () => {
             const orderData = orderDoc.data();
             const userRef = db.collection(COLLECTIONS.USERS).doc(orderData.userId);
             
@@ -2909,6 +2955,7 @@ Instagram: @${orderData.instagram}
             batch.update(userRef, updates);
             const orders = (userDoc.data().orders || []).map(o => o.id === orderId ? {...o, status: 'completed'} : o);
             batch.update(userRef, { orders: orders });
+            // Устанавливаем флаг, что штраф начислен
             batch.update(orderRef, { reportMissed: true, status: 'completed' });
             
             await batch.commit();
@@ -2945,11 +2992,11 @@ Instagram: @${orderData.instagram}
                     body: JSON.stringify({
                         message: message,
                         tags: selectedTags,
-                        senderChatId: telegramUser.id // Отправляем ID админа для получения отчета
+                        senderChatId: telegramUser.id
                     })
                 });
 
-                if (response.status !== 202) { // Статус 202 означает "Принято к обработке"
+                if (response.status !== 202) {
                     const errorResult = await response.json();
                     throw new Error(errorResult.error || `Сервер вернул ошибку ${response.status}`);
                 }
@@ -2963,29 +3010,30 @@ Instagram: @${orderData.instagram}
         });
     }
 
+    // ИЗМЕНЕНИЕ: Улучшена логика для разделения потоков микро/макро блогеров
     function startCollaboration() {
         if(userData.isBlocked) return;
         currentOrderData = {};
         
-        const bloggerLevel = (userData.registration || userData).level;
+        const bloggerLevel = userData.level;
+        
         if (bloggerLevel === 'micro') {
             showSetSelection();
-        } else {
-            // Устанавливаем правильную кнопку "Назад" для макроблогеров
+        } else { // Для макроблогеров всех типов
             document.getElementById('backFromAddress').onclick = () => app.showDashboard();
             showAddressForm();
+            handleCityChange(); 
         }
     }
     
-    // Новая функция для перехода к адресу от микроблогера
     function proceedToAddressFromSet() {
-        // Устанавливаем кнопку "Назад", чтобы она вела на выбор сета
         document.getElementById('backFromAddress').onclick = () => app.showSetSelection();
         showAddressForm();
+        handleCityChange();
     }
 
     function handleCityChange() {
-        const isMacro = (userData.registration || userData).level !== 'micro';
+        const isMacro = userData.level !== 'micro';
         document.getElementById('orderScreenshotGroup').style.display = isMacro ? 'block' : 'none';
     }
 
@@ -3072,7 +3120,7 @@ Instagram: @${orderData.instagram}
             showError('Ошибка', 'Заполните: город, улица, телефон.');
             return false;
         }
-        const isMacro = (userData.registration || userData).level !== 'micro';
+        const isMacro = userData.level !== 'micro';
         const screenshotInput = document.getElementById('orderScreenshot');
         if (isMacro && (!screenshotInput.files || screenshotInput.files.length === 0)) {
             showError('Ошибка', 'Для макроблогеров нужен скриншот заказа.');
@@ -3212,6 +3260,8 @@ Instagram: @${orderData.instagram}
         document.getElementById('errorMessage').textContent = message;
         document.getElementById('errorModal').style.display = 'flex';
     }
+
+    // ИЗМЕНЕНИЕ: Добавлена логика для отключения кнопок штрафа/принятия отчета
     async function showOrderDetailModal(orderId) {
         currentEditingOrderId = orderId;
         const orderDoc = await db.collection(COLLECTIONS.ORDERS).doc(orderId).get();
@@ -3220,9 +3270,19 @@ Instagram: @${orderData.instagram}
         document.getElementById('orderDetailTitle').textContent = `Заказ ${order.orderNumber}`;
         document.getElementById('orderDetailBody').innerHTML = `<strong>Блогер:</strong> ${order.userName}<br><strong>Телефон:</strong> ${order.phone}<br><strong>Город:</strong> ${order.city}<br><strong>Адрес:</strong> ${order.street}<br><strong>Комментарий:</strong> ${order.comment || '-'}<br><strong>Ссылка на отчет:</strong> ${order.reportLink ? `<a href="${order.reportLink}" target="_blank" class="report-link">${order.reportLink}</a>` : '-'}`;
         document.getElementById('orderStatusSelect').value = order.status;
+        
+        const markNoReportBtn = document.getElementById('markNoReportBtn');
+        const markReportAcceptedBtn = document.getElementById('markReportAcceptedBtn');
+
+        const isActionable = !order.reportMissed && order.status !== 'completed';
+        
+        markNoReportBtn.disabled = !isActionable;
+        markReportAcceptedBtn.disabled = !isActionable;
+
         document.getElementById('deleteOrderBtn').onclick = () => removeOrder(order.id);
-        document.getElementById('markNoReportBtn').onclick = () => markNoReport(order.id, order.orderNumber);
-        document.getElementById('markReportAcceptedBtn').onclick = () => markReportAccepted(order.id);
+        markNoReportBtn.onclick = () => markNoReport(order.id, order.orderNumber);
+        markReportAcceptedBtn.onclick = () => markReportAccepted(order.id);
+        
         document.getElementById('orderDetailModal').style.display = 'flex';
     }
     async function showAddAdminModal() { 
@@ -3542,7 +3602,8 @@ Instagram: @${orderData.instagram}
         showAddAdminModal, closeAddAdminModal, closeOrderDetailModal, toggleBlockTime, 
         updateOrderStatus, showReportModal, closeReportModal, submitReport, loadSchedule, 
         saveSchedule, showUserDetailModal, closeUserDetailModal, addUserTag, removeUserTag, 
-        resetOrderCooldown, showScheduleForCity, applyAnalyticsFilters
+        resetOrderCooldown, showScheduleForCity, applyAnalyticsFilters, toggleAdminNotifications,
+        markNoReport, markReportAccepted
     };
 })();
     </script>
