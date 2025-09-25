@@ -1831,7 +1831,7 @@
     
     <script>
 const app = (function() {
-
+    
     const BACKEND_URL = 'https://vesla.onrender.com';
 
     const TELEGRAM_BOT_TOKEN = '7227812944:AAFy8ydOkUeCj3Qkjg7_Xsq6zyQpcUyMShY';
@@ -2923,18 +2923,6 @@ Instagram: @${orderData.instagram}
         });
     }
 
-    // НАЙДИТЕ СТАРУЮ ФУНКЦИЮ sendBroadcast И ЗАМЕНИТЕ ЕЕ НА ЭТУ:
-
-   const app = (function() {
-
-    // --- ДОБАВЬТЕ ЭТУ СТРОКУ ВВЕРХУ ---
-    const BACKEND_URL = 'https://vesla.onrender.com'; // ВАШ URL С RENDER УЖЕ ВЕРНЫЙ
-
-    const TELEGRAM_BOT_TOKEN = '8227812944:AAFy8ydOkUeCj3Qkjg7_Xsq6zyQpcUyMShY';
-    // ... остальной код ...
-
-
-    // --- НАЙДИТЕ И ПОЛНОСТЬЮ ЗАМЕНИТЕ ФУНКЦИЮ sendBroadcast НА ЭТУ ---
     async function sendBroadcast(button) {
         const message = document.getElementById('broadcastMessage').value.trim();
         const selectedTags = Array.from(document.querySelectorAll('#broadcastTagsContainer .tag')).map(el => el.textContent.replace(' ×', ''));
@@ -2949,6 +2937,7 @@ Instagram: @${orderData.instagram}
 
         await withLoading(button, async () => {
             try {
+                // Отправляем запрос на наш сервер
                 const response = await fetch(`${BACKEND_URL}/api/broadcast`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -2973,14 +2962,6 @@ Instagram: @${orderData.instagram}
         });
     }
 
-    // ... остальной ваш JS-код ...
-    return {
-        // ... все ваши функции ...
-        sendBroadcast
-        // ...
-    };
-})();
-    
     function startCollaboration() {
         if(userData.isBlocked) return;
         currentOrderData = {};
@@ -3209,9 +3190,9 @@ Instagram: @${orderData.instagram}
         document.getElementById('successModal').style.display = 'flex';
     }
 
-    function showCrmSuccess(message) {
-        document.getElementById('successTitle').textContent = 'Успешно!';
-        document.getElementById('successMessage').textContent = message;
+    function showCrmSuccess(title, message) {
+        document.getElementById('successTitle').textContent = title;
+        document.getElementById('successMessage').textContent = message || '';
         document.getElementById('successModalCloseBtn').onclick = () => app.closeSimpleModal('successModal');
         document.getElementById('successModal').style.display = 'flex';
     }
