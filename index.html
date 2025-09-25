@@ -1393,7 +1393,7 @@
                         <h3>Динамика заказов</h3>
                         <canvas id="ordersTrendChart"></canvas>
                     </div>
-                    <div class="chart-container">
+                    <div class="chart-container" id="cityChartContainer">
                         <h3>Заказы по городам</h3>
                         <canvas id="cityChart"></canvas>
                     </div>
@@ -2304,8 +2304,36 @@ Instagram: @${orderData.instagram}
         };
         return statuses[status] || { text: status, className: '' };
     }
+    
+    async function checkAndUpdateUserLevelTag() {
+        if (!userData || !currentUserId) return;
+
+        const levelTags = ['micro', 'macro-a', 'macro-b'];
+        const userTags = userData.tags || [];
+
+        const hasLevelTag = levelTags.some(tag => userTags.includes(tag));
+
+        if (!hasLevelTag) {
+            const followersCount = (userData.registration || userData).followersCount || 0;
+            const levelInfo = determineBloggerLevel(followersCount);
+            const newLevelTag = levelInfo.level;
+            
+            const updatedTags = userTags.filter(t => !levelTags.includes(t));
+            if (!updatedTags.includes(newLevelTag)) {
+                updatedTags.push(newLevelTag);
+            }
+
+            try {
+                await db.collection(COLLECTIONS.USERS).doc(currentUserId).update({ tags: updatedTags });
+            } catch (error) {
+                console.error("Failed to update user level tag:", error);
+            }
+        }
+    }
+
 
     function updateDashboard() {
+        checkAndUpdateUserLevelTag();
         const dataSource = userData.registration || userData;
         if (!dataSource || !dataSource.firstName) return;
 
@@ -2326,7 +2354,6 @@ Instagram: @${orderData.instagram}
         document.getElementById('followersDisplay').textContent = (followersCount || 0).toLocaleString('ru-RU');
         document.getElementById('viewsDisplay').textContent = (avgViews || 0).toLocaleString('ru-RU');
 
-        // Логика отображения статуса и отчетов (без изменений)
         const statusPanel = document.getElementById('statusPanel');
         statusPanel.style.display = 'none';
         if (userData.orders && userData.orders.length > 0) {
@@ -2370,7 +2397,6 @@ Instagram: @${orderData.instagram}
         } catch (error) { console.error("Error updating CRM stats:", error); }
     }
     
-    // Новая функция для аналитики
     async function applyAnalyticsFilters() {
         const startDate = document.getElementById('analyticsStartDate').value;
         const endDate = document.getElementById('analyticsEndDate').value;
@@ -2379,6 +2405,13 @@ Instagram: @${orderData.instagram}
     }
 
     async function updateAllAnalytics(filters = {}) {
+        const cityChartContainer = document.getElementById('cityChartContainer');
+        if (filters.city && filters.city !== 'all') {
+            cityChartContainer.style.display = 'none';
+        } else {
+            cityChartContainer.style.display = 'flex';
+        }
+        
         try {
             let ordersQuery = db.collection(COLLECTIONS.ORDERS);
             if (filters.startDate) ordersQuery = ordersQuery.where('createdAt', '>=', new Date(filters.startDate).toISOString());
@@ -2787,7 +2820,6 @@ Instagram: @${orderData.instagram}
         await withLoading(button, async () => {
             let usersQuery = db.collection(COLLECTIONS.USERS);
             if (selectedTags.length > 0) {
-                // 'array-contains-any' имеет лимит 10. Для большего количества нужна другая логика.
                 if (selectedTags.length > 10) throw new Error("Можно выбрать не более 10 тегов для одной рассылки.");
                 usersQuery = usersQuery.where("tags", "array-contains-any", selectedTags);
             }
@@ -2804,7 +2836,7 @@ Instagram: @${orderData.instagram}
                     await sendTelegramNotification(usersToSend[i], message);
                     successCount++;
                 } catch (e) {}
-                await new Promise(resolve => setTimeout(resolve, 100)); // Задержка для избежания лимитов Telegram
+                await new Promise(resolve => setTimeout(resolve, 100));
             }
             showSuccessMessage(`Рассылка завершена. Успешно: ${successCount} из ${usersToSend.length}.`);
         });
@@ -2929,7 +2961,6 @@ Instagram: @${orderData.instagram}
             const userOrders = userData.orders || [];
             userOrders.push({ id: orderId, orderNumber: newOrder.orderNumber, status: 'new', createdAt: newOrder.createdAt });
             
-            // Авто-тег города
             const cityTag = newOrder.city.toLowerCase().replace(/\s/g, '-');
             const userTags = userData.tags || [];
             if (!userTags.includes(cityTag)) userTags.push(cityTag);
@@ -3233,7 +3264,6 @@ Instagram: @${orderData.instagram}
         return tagStats;
     }
     
-    // Новая логика для подсказок тегов в рассылке
     async function setupBroadcastTagInput() {
         const input = document.getElementById('broadcastTagInput');
         const suggestionsContainer = document.getElementById('tagSuggestions');
