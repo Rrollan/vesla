@@ -142,4 +142,90 @@ async function checkAndNotifyUsers() {
 
           if (now >= cooldownEndDate && user.telegramId) {
               const message = `🎉 Привет, ${user.registration.firstName}! У вас снова доступна возможность сделать заказ по бартеру. Ждем вас!`;
-              sendAn
+              sendAndUpdate(user.telegramId, message, doc.ref, { cooldownNotified: true });
+          }
+      });
+  } catch (error) {
+      console.error('Ошибка в задаче уведомлений о доступности:', error);
+  }
+}
+
+// 2. Напоминание о сдаче отчета (каждый час)
+async function checkReportReminders() {
+    if (!admin.apps.length) return;
+    console.log('Запуск ежечасной проверки напоминаний об отчетах...');
+    try {
+        const twentyFiveHoursAgo = new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString();
+        const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+
+        const ordersQuery = db.collectionGroup('orders')
+                                .where('status', '==', 'delivered')
+                                .where('reminderSent', '==', false)
+                                .where('createdAt', '<=', twentyFourHoursAgo)
+                                .where('createdAt', '>', twentyFiveHoursAgo);
+        
+        const ordersSnap = await ordersQuery.get();
+        if (ordersSnap.empty) {
+            console.log('Проверка напоминаний: не найдено заказов для напоминания.');
+            return;
+        }
+
+        ordersSnap.forEach(async (doc) => {
+            const order = doc.data();
+            if (order.userId) {
+                const userDoc = await db.collection('users').doc(order.userId).get();
+                if (userDoc.exists && userDoc.data().telegramId) {
+                   const message = `⏰ Напоминание: остался 1 час для сдачи отчета по заказу #${order.orderNumber}. Пожалуйста, не забудьте прикрепить ссылку в приложении.`;
+                   sendAndUpdate(userDoc.data().telegramId, message, doc.ref, { reminderSent: true });
+                }
+            }
+        });
+    } catch (error) {
+        console.error('Ошибка в задаче напоминаний об отчетах:', error);
+    }
+}
+
+// Общая вспомогательная функция для отправки
+async function sendAndUpdate(chatId, message, docRef, updateData) {
+    try {
+        const response = await sendTelegramNotification(chatId, message, true);
+        if (response.ok) {
+            await docRef.update(updateData);
+            console.log(`Уведомление для ${chatId} отправлено, документ обновлен.`);
+        } else {
+            console.error(`Ошибка Telegram для ${chatId}: ${response.description}`);
+        }
+    } catch (err) {
+        console.error(`Сетевая ошибка для ${chatId}:`, err);
+    }
+}
+
+// Универсальная функция отправки в Telegram
+async function sendTelegramNotification(chatId, text, returnResponse = false) {
+    const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ chat_id: chatId, text: text, parse_mode: 'Markdown' })
+        });
+        const result = await response.json();
+        if (returnResponse) return result;
+        if (!result.ok) throw new Error(result.description);
+    } catch (error) {
+        console.error(`Ошибка отправки в Telegram для ${chatId}:`, error);
+        if (returnResponse) return { ok: false, description: error.message };
+        // ** ИСПРАВЛЕНИЕ: ВОЗВРАЩЕНА НЕДОСТАЮЩАЯ СКОБКА **
+    }
+}
+
+
+// --- ПЛАНИРОВЩИКИ ---
+cron.schedule('0 9 * * *', checkAndNotifyUsers, { timezone: "Asia/Almaty" });
+cron.schedule('0 * * * *', checkReportReminders, { timezone: "Asia/Almaty" }); 
+
+// --- ЗАПУСК СЕРВЕРА ---
+app.listen(PORT, () => {
+    console.log(`Сервер запущен на порту ${PORT}`);
+    console.log('Планировщики активны.');
+});
