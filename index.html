@@ -1147,7 +1147,7 @@
 </head>
 <body>
     <div class="container">
-        <!-- Welcome, Login, Registration, Migration Screens (без изменений) -->
+        <!-- Welcome, Login, Registration, Migration Screens -->
         <div id="welcomeScreen" class="welcome-screen">
             <div class="logo-container">
                 <div class="logo-icon">
@@ -1226,13 +1226,11 @@
                 <div class="form-group">
                     <label for="followersCount">Количество подписчиков *</label>
                     <input type="number" id="followersCount" required placeholder="Например: 5000" min="1" max="10000000">
-                    <div class="error-message" id="followersError">Введите реальное количество подписчиков (от 1 до 10,000,000)</div>
                 </div>
 
                 <div class="form-group">
                     <label for="avgViews">Среднее количество просмотров сторис *</label>
                     <input type="number" id="avgViews" required placeholder="Например: 500" min="1" max="10000000">
-                    <div class="error-message" id="viewsError">Введите реальное количество просмотров (от 1 до 10,000,000)</div>
                 </div>
 
                 <button type="button" class="btn-primary" onclick="app.submitRegistration(this)">Зарегистрироваться</button>
@@ -1254,13 +1252,11 @@
                 <div class="form-group">
                     <label for="migrationPassword">Новый пароль *</label>
                     <input type="password" id="migrationPassword" required placeholder="Придумайте пароль (минимум 6 символов)">
-                    <div class="error-message" id="migrationPasswordError">Пароль должен содержать минимум 6 символов</div>
                 </div>
 
                 <div class="form-group">
                     <label for="migrationPasswordConfirm">Повторите пароль *</label>
                     <input type="password" id="migrationPasswordConfirm" required placeholder="Повторите пароль">
-                    <div class="error-message" id="migrationPasswordConfirmError">Пароли не совпадают</div>
                 </div>
 
                 <button type="button" class="btn-primary" onclick="app.submitMigration(this)">Установить пароль</button>
@@ -1288,6 +1284,7 @@
              <div id="blockedPanel" class="blocked-message" style="display: none;"></div>
              <div id="statusPanel" class="action-card" style="display: none; border-color: #00b4d8; text-align: left;"></div>
              <div id="cooldownPanel" class="action-card" style="display: none; background: #4a4a4a; border-color: #5a5a5a; text-align: center; cursor: default;"></div>
+             <div id="loyaltyPanel" class="action-card" style="display: none; border-color: #ffc107; text-align: center; cursor: default;"></div>
              <div id="reportActionsPanel" class="dashboard-actions" style="margin-top: 20px;"></div>
 
             <div class="dashboard-actions">
@@ -1366,7 +1363,6 @@
                         <button class="btn-primary" onclick="app.saveSettings(this)" style="margin-top: 15px;">Сохранить настройку</button>
                     </div>
                 </div>
-
             </div>
             
             <div id="crmAnalytics" class="crm-content">
@@ -1380,7 +1376,7 @@
                     </div>
                     <div class="form-group">
                         <label for="analyticsCity">Город:</label>
-                        <select id="analyticsCity">
+                        <select id="analyticsCity" onchange="app.applyAnalyticsFilters()">
                             <option value="all">Все города</option>
                             <option value="Павлодар">Павлодар</option>
                             <option value="Петропавловск">Петропавловск</option>
@@ -1470,7 +1466,7 @@
             </div>
         </div>
         
-        <!-- Address, DateTime, Instructions Screens (без изменений) -->
+        <!-- Address, DateTime, Instructions Screens -->
         <div id="setSelectionScreen" class="form-screen set-selection">
             <button class="btn-back" onclick="app.showDashboard()">← Назад</button>
             
@@ -1645,7 +1641,8 @@
                 <div class="modal-header">
                      <h2 id="orderDetailTitle">Детали заказа</h2>
                      <div style="display: flex; gap: 10px; align-items: center;">
-                        <button id="markNoReportBtn" class="btn-icon-block" title="Отметить, что отчет не сдан">🚩</button>
+                        <button id="markReportAcceptedBtn" class="btn-icon-unblock" title="Отчет сдан и принят">✔️</button>
+                        <button id="markNoReportBtn" class="btn-icon-block" title="Отчет не сдан">🚩</button>
                         <button class="btn-danger-icon" id="deleteOrderBtn" title="Удалить заказ">🗑️</button>
                      </div>
                 </div>
@@ -1688,7 +1685,8 @@
                     </div>
                 </div>
 
-                <button class="btn-secondary" onclick="app.closeUserDetailModal()" style="margin-top: 20px;">Закрыть</button>
+                <button class="btn-secondary" id="resetCooldownBtn" onclick="app.resetOrderCooldown()" style="margin-top: 10px;">Сбросить ограничение заказа</button>
+                <button class="btn-secondary" onclick="app.closeUserDetailModal()" style="margin-top: 10px;">Закрыть</button>
             </div>
         </div>
 
@@ -1802,7 +1800,7 @@
         <div id="contactModal" class="modal">
             <div class="modal-content">
                 <h2>Связаться с администратором</h2>
-                <p class="subtitle">Выберите удобный способ связи</p>
+                <p class="subtitle">Напишите нам в Telegram</p>
                 <a href="https://t.me/oderefyu" class="contact-link" target="_blank">💬 Telegram поддержка</a>
                 <button class="btn-secondary" onclick="app.closeContactModal()">Закрыть</button>
             </div>
@@ -1815,6 +1813,73 @@
 
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    
+    <!--
+        ВАЖНО: Код для автоматической PUSH-рассылки.
+        Этот код НЕЛЬЗЯ вставить сюда. Он должен быть развернут как Firebase Cloud Function.
+        Для этого:
+        1. Установите Firebase CLI: npm install -g firebase-tools
+        2. В папке вашего проекта выполните: firebase init functions
+        3. Выберите JavaScript, установите зависимости.
+        4. Вставьте этот код в файл index.js в папке functions.
+        5. Разверните функцию: firebase deploy --only functions
+
+        exports.dailyCooldownNotifier = functions.pubsub.schedule('every 24 hours').onRun(async (context) => {
+            const admin = require('firebase-admin');
+            admin.initializeApp();
+            const db = admin.firestore();
+            const fetch = require('node-fetch');
+
+            const TELEGRAM_BOT_TOKEN = 'ВАШ_ТОКЕН_ЗДЕСЬ'; 
+
+            // 1. Получаем настройки
+            const settingsSnap = await db.collection('settings').doc('config').get();
+            const orderCooldownDays = settingsSnap.exists ? settingsSnap.data().orderCooldownDays : 7;
+            
+            // 2. Ищем пользователей, у которых есть lastOrderTimestamp и нет флага уведомления
+            const usersQuery = db.collection('users')
+                                .where('lastOrderTimestamp', '!=', null)
+                                .where('cooldownNotified', '==', false);
+
+            const usersSnap = await usersQuery.get();
+            if (usersSnap.empty) {
+                console.log("Нет пользователей для уведомления.");
+                return null;
+            }
+
+            const now = new Date();
+            const promises = [];
+
+            usersSnap.forEach(doc => {
+                const user = doc.data();
+                const lastOrderDate = new Date(user.lastOrderTimestamp);
+                const cooldownEndDate = new Date(lastOrderDate.setDate(lastOrderDate.getDate() + orderCooldownDays));
+
+                // Если кулдаун прошел и у пользователя есть Telegram ID
+                if (now >= cooldownEndDate && user.telegramId) {
+                    const message = `🎉 Привет, ${user.registration.firstName}! У вас снова доступна возможность сделать заказ по бартеру. Ждем вас!`;
+                    
+                    const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
+                    const body = JSON.stringify({ chat_id: user.telegramId, text: message });
+
+                    const sendPromise = fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: body
+                    })
+                    .then(() => {
+                        // Ставим флаг, чтобы не отправлять повторно
+                        return doc.ref.update({ cooldownNotified: true });
+                    })
+                    .catch(err => console.error(`Ошибка отправки для ${user.telegramId}:`, err));
+                    
+                    promises.push(sendPromise);
+                }
+            });
+
+            return Promise.all(promises);
+        });
+    -->
 
     <script>
 const app = (function() {
@@ -1833,6 +1898,7 @@ const app = (function() {
     
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
+    const FieldValue = firebase.firestore.FieldValue;
 
     const COLLECTIONS = {
         USERS: 'users',
@@ -1868,17 +1934,12 @@ const app = (function() {
     let currentUserDetailId = null;
     let userListenerUnsubscribe = null;
     let appSettings = { orderCooldownDays: 7 };
+    const LOYALTY_THRESHOLD = 5;
     
     const CITIES = ["Павлодар", "Петропавловск", "Кокшетау", "Костанай", "Усть-Каменогорск"];
 
     function generateOrderNumber(city, date, firestoreId) {
-        const cityCodes = {
-            'Павлодар': 'PVL',
-            'Петропавловск': 'PPK',
-            'Кокшетау': 'KOK',
-            'Костанай': 'KSN',
-            'Усть-Каменогорск': 'UKK'
-        };
+        const cityCodes = {'Павлодар':'PVL', 'Петропавловск':'PPK', 'Кокшетау':'KOK', 'Костанай':'KSN', 'Усть-Каменогорск':'UKK'};
         const cityCode = cityCodes[city] || 'UNK';
         const dateObj = new Date(date);
         const day = String(dateObj.getDate()).padStart(2, '0');
@@ -2289,7 +2350,10 @@ Instagram: @${orderData.instagram}
                 isBlocked: false,
                 blockReason: '',
                 strikes: 0,
-                tags: [bloggerData.level]
+                tags: [bloggerData.level],
+                loyaltyStatus: 'standard',
+                lastOrderTimestamp: null,
+                cooldownNotified: true
             };
 
             await saveUser(currentUserId, newUser);
@@ -2311,6 +2375,14 @@ Instagram: @${orderData.instagram}
         return statuses[status] || { text: status, className: '' };
     }
 
+    function getStartOfWeek() {
+        const now = new Date();
+        const day = now.getDay() || 7; 
+        if (day !== 1) now.setHours(-24 * (day - 1));
+        now.setHours(0, 0, 0, 0);
+        return now;
+    }
+
     function updateDashboard() {
         const dataSource = userData.registration || userData;
         if (!dataSource || !dataSource.firstName) return;
@@ -2318,16 +2390,14 @@ Instagram: @${orderData.instagram}
         const { firstName, followersCount, avgViews } = dataSource;
         const levelInfo = determineBloggerLevel(followersCount);
         
-        document.getElementById('blockedPanel').style.display = 'none';
+        document.getElementById('blockedPanel').style.display = userData.isBlocked ? 'block' : 'none';
         if (userData.isBlocked) {
             document.getElementById('blockedPanel').innerHTML = `<h4>🔒 Ваш аккаунт заблокирован</h4><p>${userData.blockReason || 'Свяжитесь с администратором.'}</p>`;
-            document.getElementById('blockedPanel').style.display = 'block';
         }
 
         document.getElementById('userName').textContent = firstName;
         const userAvatar = document.getElementById('userAvatar');
         userAvatar.innerHTML = telegramUser?.photo_url ? `<img src="${telegramUser.photo_url}" alt="${firstName}">` : (firstName ? firstName.charAt(0).toUpperCase() : '👤');
-
         document.getElementById('userLevel').textContent = levelInfo.text;
         document.getElementById('followersDisplay').textContent = (followersCount || 0).toLocaleString('ru-RU');
         document.getElementById('viewsDisplay').textContent = (avgViews || 0).toLocaleString('ru-RU');
@@ -2355,38 +2425,46 @@ Instagram: @${orderData.instagram}
             reportPanel.appendChild(card);
         });
 
-        // Cooldown Logic
+        // Cooldown & Loyalty Logic
         const newCollabCard = document.getElementById('newCollaborationBtn');
         const cooldownPanel = document.getElementById('cooldownPanel');
-        const sortedOrders = (userData.orders || []).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-        
-        if (sortedOrders.length > 0) {
-            const lastOrderDate = new Date(sortedOrders[0].createdAt);
-            const nextAvailableDate = new Date(lastOrderDate.setDate(lastOrderDate.getDate() + appSettings.orderCooldownDays));
+        const loyaltyPanel = document.getElementById('loyaltyPanel');
+        cooldownPanel.style.display = 'none';
+        loyaltyPanel.style.display = 'none';
+        newCollabCard.style.opacity = '1';
+        newCollabCard.style.cursor = 'pointer';
+        newCollabCard.onclick = () => app.startCollaboration();
+
+        if (userData.loyaltyStatus === 'premium') {
+            const startOfWeek = getStartOfWeek();
+            const ordersThisWeek = (userData.orders || []).filter(o => new Date(o.createdAt) >= startOfWeek).length;
+            const availableOrders = 2 - ordersThisWeek;
             
-            if (new Date() < nextAvailableDate) {
+            loyaltyPanel.innerHTML = `⭐ У вас премиум-статус!<br>Доступно заказов на этой неделе: <strong>${availableOrders} из 2</strong>`;
+            loyaltyPanel.style.display = 'block';
+
+            if (availableOrders <= 0) {
                 newCollabCard.style.opacity = '0.5';
                 newCollabCard.style.cursor = 'not-allowed';
                 newCollabCard.onclick = null;
-                cooldownPanel.innerHTML = `⏳ Следующий заказ будет доступен: <strong>${nextAvailableDate.toLocaleDateString('ru-RU')}</strong>`;
-                cooldownPanel.style.display = 'block';
-            } else {
-                newCollabCard.style.opacity = '1';
-                newCollabCard.style.cursor = 'pointer';
-                newCollabCard.onclick = () => app.startCollaboration();
-                cooldownPanel.style.display = 'none';
             }
         } else {
-            newCollabCard.style.opacity = '1';
-            newCollabCard.style.cursor = 'pointer';
-            newCollabCard.onclick = () => app.startCollaboration();
-            cooldownPanel.style.display = 'none';
+            if (userData.lastOrderTimestamp) {
+                const lastOrderDate = new Date(userData.lastOrderTimestamp);
+                const nextAvailableDate = new Date(lastOrderDate.setDate(lastOrderDate.getDate() + appSettings.orderCooldownDays));
+                
+                if (new Date() < nextAvailableDate) {
+                    newCollabCard.style.opacity = '0.5';
+                    newCollabCard.style.cursor = 'not-allowed';
+                    newCollabCard.onclick = null;
+                    cooldownPanel.innerHTML = `⏳ Следующий заказ будет доступен: <strong>${nextAvailableDate.toLocaleDateString('ru-RU')}</strong>`;
+                    cooldownPanel.style.display = 'block';
+                }
+            }
         }
     }
 
-    async function updateCRMData() {
-        updateCRMStats();
-    }
+    async function updateCRMData() { updateCRMStats(); }
 
     async function updateCRMStats() {
         try {
@@ -2407,9 +2485,7 @@ Instagram: @${orderData.instagram}
         const startDate = document.getElementById('analyticsStartDate').value;
         const endDate = document.getElementById('analyticsEndDate').value;
         const city = document.getElementById('analyticsCity').value;
-        
         document.getElementById('cityChartContainer').style.display = (city && city !== 'all') ? 'none' : 'flex';
-
         updateAllAnalytics({ startDate, endDate, city });
     }
 
@@ -2548,7 +2624,8 @@ Instagram: @${orderData.instagram}
                 el.onclick = () => showUserDetailModal(user.userId);
                 
                 let badges = '';
-                if(adminInfo) badges += `<span class="user-admin-badge">${adminInfo.role}</span>`;
+                if (user.loyaltyStatus === 'premium') badges += `<span class="user-admin-badge" style="background-color: #ffc107;">Premium</span>`;
+                if(adminInfo) badges += `<span class="user-admin-badge" style="margin-left: 5px;">${adminInfo.role}</span>`;
                 if(user.isBlocked) badges += `<span class="user-blocked-badge" style="margin-left: 5px;">Заблокирован</span>`;
 
                 el.innerHTML = `
@@ -2658,6 +2735,11 @@ Instagram: @${orderData.instagram}
                 }
             }
             await batch.commit();
+
+            if (newStatus === 'completed') {
+                await checkAndUpgradeLoyaltyStatus(orderData.userId);
+            }
+
             showSuccessMessage('Статус обновлен!');
             closeOrderDetailModal();
             updateOrdersList();
@@ -2785,6 +2867,53 @@ Instagram: @${orderData.instagram}
         }
     }
     
+    async function markReportAccepted(orderId) {
+        if (!confirm('Отчет принят? Это засчитает заказ в программе лояльности.')) return;
+        await withLoading(document.getElementById('markReportAcceptedBtn'), async () => {
+            const orderRef = db.collection(COLLECTIONS.ORDERS).doc(orderId);
+            const orderDoc = await orderRef.get();
+            if (!orderDoc.exists) return;
+            const orderData = orderDoc.data();
+            const userRef = db.collection(COLLECTIONS.USERS).doc(orderData.userId);
+
+            const batch = db.batch();
+            batch.update(orderRef, { status: 'completed', reportAccepted: true });
+            
+            const userDoc = await userRef.get();
+            if(userDoc.exists) {
+                const orders = (userDoc.data().orders || []).map(o => o.id === orderId ? {...o, status: 'completed'} : o);
+                batch.update(userRef, { orders: orders });
+            }
+            await batch.commit();
+            await checkAndUpgradeLoyaltyStatus(orderData.userId);
+            
+            showSuccessMessage('Отчет принят, заказ завершен.');
+            closeOrderDetailModal();
+            updateOrdersList();
+            updateUsersList();
+        });
+    }
+
+    async function checkAndUpgradeLoyaltyStatus(userId) {
+        const userRef = db.collection(COLLECTIONS.USERS).doc(userId);
+        const userDoc = await userRef.get();
+        if (!userDoc.exists) return;
+
+        const user = userDoc.data();
+        if (user.loyaltyStatus === 'premium') return;
+
+        const completedOrders = (user.orders || []).filter(o => o.status === 'completed').length;
+        
+        if (completedOrders >= LOYALTY_THRESHOLD) {
+            await userRef.update({ loyaltyStatus: 'premium' });
+            if (user.telegramId) {
+                const message = `⭐ Поздравляем, ${user.registration.firstName}! Вы достигли премиум-статуса. Теперь вам доступно 2 заказа в неделю. Спасибо за ваше активное участие!`;
+                await sendTelegramNotification(user.telegramId, message);
+            }
+        }
+    }
+
+
     async function markNoReport(orderId) {
         if (!confirm('Отчет по заказу не сдан? Это добавит штрафной балл.')) return;
         await withLoading(document.getElementById('markNoReportBtn'), async () => {
@@ -2969,7 +3098,12 @@ Instagram: @${orderData.instagram}
 
             const batch = db.batch();
             batch.set(db.collection(COLLECTIONS.ORDERS).doc(orderId), newOrder);
-            batch.update(db.collection(COLLECTIONS.USERS).doc(currentUserId), { orders: userOrders, tags: userTags });
+            batch.update(db.collection(COLLECTIONS.USERS).doc(currentUserId), { 
+                orders: userOrders, 
+                tags: userTags,
+                lastOrderTimestamp: newOrder.createdAt,
+                cooldownNotified: false
+            });
             await batch.commit();
 
             const screenshotFile = document.getElementById('orderScreenshot').files[0] || null;
@@ -3068,6 +3202,7 @@ Instagram: @${orderData.instagram}
         document.getElementById('orderStatusSelect').value = order.status;
         document.getElementById('deleteOrderBtn').onclick = () => removeOrder(order.id);
         document.getElementById('markNoReportBtn').onclick = () => markNoReport(order.id);
+        document.getElementById('markReportAcceptedBtn').onclick = () => markReportAccepted(order.id);
         document.getElementById('orderDetailModal').style.display = 'flex';
     }
     async function showAddAdminModal() { 
@@ -3093,6 +3228,17 @@ Instagram: @${orderData.instagram}
         });
     }
     
+    async function resetOrderCooldown() {
+        if (!currentUserDetailId) return;
+        if (confirm("Вы уверены, что хотите сбросить ограничение на следующий заказ для этого пользователя?")) {
+            await db.collection(COLLECTIONS.USERS).doc(currentUserDetailId).update({
+                lastOrderTimestamp: FieldValue.delete()
+            });
+            showSuccessMessage("Ограничение сброшено.");
+            closeUserDetailModal();
+        }
+    }
+
     function showRejectionModal() { document.getElementById('rejectionModal').style.display = 'flex'; }
     function closeModal() { document.getElementById('successModal').style.display = 'none'; showDashboard(); }
     function closeErrorModal() { document.getElementById('errorModal').style.display = 'none'; }
@@ -3361,7 +3507,7 @@ Instagram: @${orderData.instagram}
         closeModal, closeErrorModal, closeRejectionModal, closeOrderHistory, closeEditProfile,
         closeContactModal, showAddBlockModal, closeAddBlockModal, showAddAdminModal, closeAddAdminModal,
         closeOrderDetailModal, toggleBlockTime, updateOrderStatus, showReportModal, closeReportModal, submitReport,
-        loadSchedule, saveSchedule, showUserDetailModal, closeUserDetailModal, addUserTag, removeUserTag,
+        loadSchedule, saveSchedule, showUserDetailModal, closeUserDetailModal, addUserTag, removeUserTag, resetOrderCooldown,
         showScheduleForCity, applyAnalyticsFilters
     };
 })();
