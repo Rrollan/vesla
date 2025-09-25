@@ -2921,34 +2921,67 @@ Instagram: @${orderData.instagram}
         });
     }
 
+    // НАЙДИТЕ СТАРУЮ ФУНКЦИЮ sendBroadcast И ЗАМЕНИТЕ ЕЕ НА ЭТУ:
+
     async function sendBroadcast(button) {
         const message = document.getElementById('broadcastMessage').value.trim();
         const selectedTags = Array.from(document.querySelectorAll('#broadcastTagsContainer .tag')).map(el => el.textContent.replace(' ×', ''));
-        if (!message) return showError('Ошибка', 'Сообщение не может быть пустым.');
-        if (!confirm(`Начать рассылку? Не закрывайте вкладку до завершения.`)) return;
+        if (!message) {
+            return showError('Ошибка', 'Сообщение не может быть пустым.');
+        }
+
+        if (!confirm(`Начать рассылку для пользователей с выбранными тегами? Не закрывайте вкладку до завершения.`)) {
+            return;
+        }
 
         await withLoading(button, async () => {
             let usersQuery = db.collection(COLLECTIONS.USERS);
             if (selectedTags.length > 0) {
-                if (selectedTags.length > 10) throw new Error("Можно выбрать не более 10 тегов для одной рассылки.");
+                // Ограничение Firestore на 10 элементов в 'array-contains-any'
+                if (selectedTags.length > 10) {
+                    throw new Error("Для рассылки можно выбрать не более 10 тегов одновременно.");
+                }
                 usersQuery = usersQuery.where("tags", "array-contains-any", selectedTags);
             }
+            
             const usersSnapshot = await usersQuery.get();
-            if (usersSnapshot.empty) return showError('Не найдено', 'Пользователи с такими тегами не найдены.');
+            if (usersSnapshot.empty) {
+                showError('Не найдено', 'Пользователи с такими тегами не найдены.');
+                return;
+            }
 
-            const usersToSend = usersSnapshot.docs.map(doc => doc.data().telegramId).filter(id => id);
-            if (usersToSend.length === 0) return showError('Не найдено', 'У найденных пользователей нет Telegram ID.');
+            const usersToSend = usersSnapshot.docs
+                .map(doc => doc.data().telegramId)
+                .filter(id => id); // Отбираем только тех, у кого есть telegramId
+
+            if (usersToSend.length === 0) {
+                showError('Не найдено', 'У найденных пользователей нет Telegram ID для отправки.');
+                return;
+            }
 
             let successCount = 0;
-            for (let i = 0; i < usersToSend.length; i++) {
-                button.innerHTML = `Отправка... ${i + 1} / ${usersToSend.length}`;
+            let errorCount = 0;
+            const totalUsers = usersToSend.length;
+
+            for (let i = 0; i < totalUsers; i++) {
+                // Обновляем текст на кнопке, чтобы показать прогресс
+                button.innerHTML = `Отправка... ${i + 1} / ${totalUsers}`;
+                
                 try {
                     await sendTelegramNotification(usersToSend[i], message);
                     successCount++;
-                } catch (e) {}
-                await new Promise(resolve => setTimeout(resolve, 100));
+                } catch (e) {
+                    console.warn(`Ошибка отправки для ID ${usersToSend[i]}:`, e);
+                    errorCount++;
+                }
+                
+                // --- ЭТО КЛЮЧЕВОЕ ИЗМЕНЕНИЕ ---
+                // Добавляем паузу в 100 миллисекунд после каждого сообщения (это 10 сообщений в секунду)
+                // Этого достаточно, чтобы обойти базовые лимиты Telegram.
+                await new Promise(resolve => setTimeout(resolve, 100)); 
             }
-            showCrmSuccess(`Рассылка завершена. Успешно: ${successCount} из ${usersToSend.length}.`);
+            
+            showCrmSuccess(`Рассылка завершена!`, `Успешно отправлено: ${successCount}. Ошибок: ${errorCount}.`);
         });
     }
 
