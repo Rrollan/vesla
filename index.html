@@ -1169,7 +1169,7 @@
         <div id="loginScreen" class="form-screen">
             <div class="form-header">
                 <h2>Вход в аккаунт</h2>
-                <p class="subtitle">Введите данные для входа</p>
+                <p class="subtitle">Для старых аккаунтов с паролем</p>
             </div>
 
             <form id="loginForm">
@@ -1196,7 +1196,7 @@
                 <h4 style="color: #00b4d8; margin-bottom: 10px;">💡 Автоматический вход</h4>
                 <p style="color: #ccc; font-size: 14px; line-height: 1.5;">
                     Если вы открыли приложение через Telegram бот, система попытается найти ваш аккаунт автоматически. 
-                    Если это не сработало, введите телефон, Instagram и пароль из вашей регистрации.
+                    Эта форма входа нужна только для аккаунтов, у которых был установлен пароль.
                 </p>
             </div>
         </div>
@@ -1221,12 +1221,6 @@
                 <div class="form-group">
                     <label for="instagramLogin">Логин Instagram *</label>
                     <input type="text" id="instagramLogin" required placeholder="@username">
-                </div>
-
-                <div class="form-group">
-                    <label for="password">Пароль *</label>
-                    <input type="password" id="password" required placeholder="Придумайте пароль (минимум 6 символов)">
-                    <div class="error-message" id="passwordError">Пароль должен содержать минимум 6 символов</div>
                 </div>
 
                 <div class="form-group">
@@ -1293,10 +1287,11 @@
 
              <div id="blockedPanel" class="blocked-message" style="display: none;"></div>
              <div id="statusPanel" class="action-card" style="display: none; border-color: #00b4d8; text-align: left;"></div>
+             <div id="cooldownPanel" class="action-card" style="display: none; background: #4a4a4a; border-color: #5a5a5a; text-align: center; cursor: default;"></div>
              <div id="reportActionsPanel" class="dashboard-actions" style="margin-top: 20px;"></div>
 
             <div class="dashboard-actions">
-                <div class="action-card" onclick="app.startCollaboration()">
+                <div id="newCollaborationBtn" class="action-card" onclick="app.startCollaboration()">
                     <div class="action-icon">🎯</div>
                     <div class="action-title">Новое сотрудничество</div>
                     <div class="action-desc">Оформить заказ на бартер</div>
@@ -1360,9 +1355,18 @@
 
                 <div class="admin-contact">
                     <h3>Контакты для пользователей</h3>
-                    <a href="https://t.me/AdamRogozhin" class="contact-link" target="_blank">💬 Telegram поддержка</a>
-                    <a href="mailto:adamrogozhin@gmail.com" class="contact-link">📧 Email поддержка</a>
+                    <a href="https://t.me/oderefyu" class="contact-link" target="_blank">💬 Telegram поддержка</a>
                 </div>
+
+                <div style="background: #3a3a3a; padding: 20px; border-radius: 15px; margin-top: 20px;">
+                    <h3>Общие настройки</h3>
+                    <div class="form-group" style="margin-top: 15px;">
+                        <label for="cooldownSetting">Период ожидания между заказами (в днях)</label>
+                        <input type="number" id="cooldownSetting" min="0" placeholder="Например: 7">
+                        <button class="btn-primary" onclick="app.saveSettings(this)" style="margin-top: 15px;">Сохранить настройку</button>
+                    </div>
+                </div>
+
             </div>
             
             <div id="crmAnalytics" class="crm-content">
@@ -1800,7 +1804,6 @@
                 <h2>Связаться с администратором</h2>
                 <p class="subtitle">Выберите удобный способ связи</p>
                 <a href="https://t.me/oderefyu" class="contact-link" target="_blank">💬 Telegram поддержка</a>
-                <a href="mailto:adamrogozhin@gmail.com" class="contact-link">📧 Email поддержка</a>
                 <button class="btn-secondary" onclick="app.closeContactModal()">Закрыть</button>
             </div>
         </div>
@@ -1836,7 +1839,8 @@ const app = (function() {
         ORDERS: 'orders',
         ADMINS: 'admins',
         BLOCKED_SLOTS: 'blockedSlots',
-        SCHEDULES: 'schedules'
+        SCHEDULES: 'schedules',
+        SETTINGS: 'settings'
     };
     const SCREENS = {
         WELCOME: 'welcomeScreen',
@@ -1857,12 +1861,13 @@ const app = (function() {
     let userData = {};
     let migrationUser = null;
     let currentOrderData = {};
-    let currentUserRole = null; // Замена для isCurrentUserAdmin
+    let currentUserRole = null;
     let cityChart, ordersTrendChart, bloggerLevelChart, followersDistributionChart;
     let currentEditingOrderId = null;
     let currentReportingOrderId = null;
     let currentUserDetailId = null;
     let userListenerUnsubscribe = null;
+    let appSettings = { orderCooldownDays: 7 };
     
     const CITIES = ["Павлодар", "Петропавловск", "Кокшетау", "Костанай", "Усть-Каменогорск"];
 
@@ -2158,7 +2163,6 @@ Instagram: @${orderData.instagram}
             tab.style.display = isVisible ? 'flex' : 'none';
         });
 
-        // Активировать первую видимую вкладку
         const firstVisibleTab = document.querySelector('.crm-tab[style*="display: flex"]');
         if (firstVisibleTab) {
             showCrmTab(firstVisibleTab.dataset.tab, firstVisibleTab);
@@ -2173,7 +2177,10 @@ Instagram: @${orderData.instagram}
         element.classList.add('active');
         
         switch(tabName) {
-            case 'overview': updateCRMStats(); break;
+            case 'overview': 
+                updateCRMStats(); 
+                document.getElementById('cooldownSetting').value = appSettings.orderCooldownDays;
+                break;
             case 'analytics': applyAnalyticsFilters(); break;
             case 'orders': updateOrdersList(); break;
             case 'users': updateUsersList(); break;
@@ -2256,11 +2263,10 @@ Instagram: @${orderData.instagram}
             const firstName = document.getElementById('firstName').value.trim();
             const phone = document.getElementById('phone').value.trim();
             const instagramLogin = document.getElementById('instagramLogin').value.trim().toLowerCase();
-            const password = document.getElementById('password').value.trim();
             const followersCount = parseInt(document.getElementById('followersCount').value);
             const avgViews = parseInt(document.getElementById('avgViews').value);
 
-            if (!firstName || !phone || !instagramLogin || !password || isNaN(followersCount) || isNaN(avgViews)) {
+            if (!firstName || !phone || !instagramLogin || isNaN(followersCount) || isNaN(avgViews)) {
                 return showError('Ошибка', 'Пожалуйста, заполните все обязательные поля');
             }
             if (avgViews < 300) return showRejectionModal();
@@ -2274,7 +2280,7 @@ Instagram: @${orderData.instagram}
             if (!currentUserId) currentUserId = (telegramUser ? 'tg_' + telegramUser.id : db.collection(COLLECTIONS.USERS).doc().id);
             
             const newUser = {
-                registration: { firstName, phone, instagramLogin, followersCount, avgViews, password: hashPassword(password) },
+                registration: { firstName, phone, instagramLogin, followersCount, avgViews, password: null },
                 level: bloggerData.level,
                 orders: [],
                 telegramId: telegramUser ? telegramUser.id : null,
@@ -2283,7 +2289,7 @@ Instagram: @${orderData.instagram}
                 isBlocked: false,
                 blockReason: '',
                 strikes: 0,
-                tags: [bloggerData.level] // Автоматический тег уровня
+                tags: [bloggerData.level]
             };
 
             await saveUser(currentUserId, newUser);
@@ -2304,36 +2310,8 @@ Instagram: @${orderData.instagram}
         };
         return statuses[status] || { text: status, className: '' };
     }
-    
-    async function checkAndUpdateUserLevelTag() {
-        if (!userData || !currentUserId) return;
-
-        const levelTags = ['micro', 'macro-a', 'macro-b'];
-        const userTags = userData.tags || [];
-
-        const hasLevelTag = levelTags.some(tag => userTags.includes(tag));
-
-        if (!hasLevelTag) {
-            const followersCount = (userData.registration || userData).followersCount || 0;
-            const levelInfo = determineBloggerLevel(followersCount);
-            const newLevelTag = levelInfo.level;
-            
-            const updatedTags = userTags.filter(t => !levelTags.includes(t));
-            if (!updatedTags.includes(newLevelTag)) {
-                updatedTags.push(newLevelTag);
-            }
-
-            try {
-                await db.collection(COLLECTIONS.USERS).doc(currentUserId).update({ tags: updatedTags });
-            } catch (error) {
-                console.error("Failed to update user level tag:", error);
-            }
-        }
-    }
-
 
     function updateDashboard() {
-        checkAndUpdateUserLevelTag();
         const dataSource = userData.registration || userData;
         if (!dataSource || !dataSource.firstName) return;
 
@@ -2366,6 +2344,7 @@ Instagram: @${orderData.instagram}
                 statusPanel.style.display = 'block';
             }
         }
+
         const reportPanel = document.getElementById('reportActionsPanel');
         reportPanel.innerHTML = '';
         (userData.orders || []).filter(o => o.status === 'delivered').forEach(order => {
@@ -2375,9 +2354,36 @@ Instagram: @${orderData.instagram}
             card.innerHTML = `<div class="action-icon">📤</div><div class="action-title">Сдать отчет по заказу</div><div class="action-desc">${order.orderNumber}</div>`;
             reportPanel.appendChild(card);
         });
+
+        // Cooldown Logic
+        const newCollabCard = document.getElementById('newCollaborationBtn');
+        const cooldownPanel = document.getElementById('cooldownPanel');
+        const sortedOrders = (userData.orders || []).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        
+        if (sortedOrders.length > 0) {
+            const lastOrderDate = new Date(sortedOrders[0].createdAt);
+            const nextAvailableDate = new Date(lastOrderDate.setDate(lastOrderDate.getDate() + appSettings.orderCooldownDays));
+            
+            if (new Date() < nextAvailableDate) {
+                newCollabCard.style.opacity = '0.5';
+                newCollabCard.style.cursor = 'not-allowed';
+                newCollabCard.onclick = null;
+                cooldownPanel.innerHTML = `⏳ Следующий заказ будет доступен: <strong>${nextAvailableDate.toLocaleDateString('ru-RU')}</strong>`;
+                cooldownPanel.style.display = 'block';
+            } else {
+                newCollabCard.style.opacity = '1';
+                newCollabCard.style.cursor = 'pointer';
+                newCollabCard.onclick = () => app.startCollaboration();
+                cooldownPanel.style.display = 'none';
+            }
+        } else {
+            newCollabCard.style.opacity = '1';
+            newCollabCard.style.cursor = 'pointer';
+            newCollabCard.onclick = () => app.startCollaboration();
+            cooldownPanel.style.display = 'none';
+        }
     }
 
-    // --- CRM Функции ---
     async function updateCRMData() {
         updateCRMStats();
     }
@@ -2401,17 +2407,13 @@ Instagram: @${orderData.instagram}
         const startDate = document.getElementById('analyticsStartDate').value;
         const endDate = document.getElementById('analyticsEndDate').value;
         const city = document.getElementById('analyticsCity').value;
+        
+        document.getElementById('cityChartContainer').style.display = (city && city !== 'all') ? 'none' : 'flex';
+
         updateAllAnalytics({ startDate, endDate, city });
     }
 
     async function updateAllAnalytics(filters = {}) {
-        const cityChartContainer = document.getElementById('cityChartContainer');
-        if (filters.city && filters.city !== 'all') {
-            cityChartContainer.style.display = 'none';
-        } else {
-            cityChartContainer.style.display = 'flex';
-        }
-        
         try {
             let ordersQuery = db.collection(COLLECTIONS.ORDERS);
             if (filters.startDate) ordersQuery = ordersQuery.where('createdAt', '>=', new Date(filters.startDate).toISOString());
@@ -2729,7 +2731,6 @@ Instagram: @${orderData.instagram}
         const newAdmin = { name: userName, role: role, addedAt: new Date().toISOString() };
         await db.collection(COLLECTIONS.ADMINS).doc(String(telegramId)).set(newAdmin);
 
-        // Авто-добавление тега
         const userRef = db.collection(COLLECTIONS.USERS).doc(userId);
         const tags = userDoc.tags || [];
         if (!tags.includes(role)) tags.push(role);
@@ -2955,6 +2956,7 @@ Instagram: @${orderData.instagram}
                 orderNumber: generateOrderNumber(currentOrderData.city, currentOrderData.date, orderId),
                 userId: currentUserId, userName: dataSource.firstName,
                 instagram: dataSource.instagramLogin, phone: dataSource.phone,
+                followersCount: dataSource.followersCount, 
                 createdAt: new Date().toISOString()
             };
             
@@ -3045,7 +3047,6 @@ Instagram: @${orderData.instagram}
         window.location.reload();
     }
 
-    // --- Модальные окна (Утилиты)---
     function showSuccessModal() { document.getElementById('successModal').style.display = 'flex'; }
     function showSuccessMessage(message) {
         document.getElementById('successTitle').textContent = 'Успешно!';
@@ -3066,6 +3067,7 @@ Instagram: @${orderData.instagram}
         document.getElementById('orderDetailBody').innerHTML = `<strong>Блогер:</strong> ${order.userName}<br><strong>Город:</strong> ${order.city}<br><strong>Адрес:</strong> ${order.street}<br>`;
         document.getElementById('orderStatusSelect').value = order.status;
         document.getElementById('deleteOrderBtn').onclick = () => removeOrder(order.id);
+        document.getElementById('markNoReportBtn').onclick = () => markNoReport(order.id);
         document.getElementById('orderDetailModal').style.display = 'flex';
     }
     async function showAddAdminModal() { 
@@ -3120,8 +3122,33 @@ Instagram: @${orderData.instagram}
             phoneInput.value = formatted;
         });
     }
+    
+    async function fetchSettings() {
+        try {
+            const settingsDoc = await db.collection(COLLECTIONS.SETTINGS).doc('config').get();
+            if (settingsDoc.exists) {
+                appSettings = { ...appSettings, ...settingsDoc.data() };
+            }
+        } catch(error) {
+            console.error("Error fetching settings:", error);
+        }
+    }
+
+    async function saveSettings(button) {
+        await withLoading(button, async() => {
+            const cooldownInput = document.getElementById('cooldownSetting');
+            const newCooldown = parseInt(cooldownInput.value);
+            if (isNaN(newCooldown) || newCooldown < 0) {
+                return showError("Ошибка", "Введите корректное число дней (0 или больше).");
+            }
+            await db.collection(COLLECTIONS.SETTINGS).doc('config').set({ orderCooldownDays: newCooldown }, { merge: true });
+            appSettings.orderCooldownDays = newCooldown;
+            showSuccessMessage("Настройки сохранены!");
+        });
+    }
 
     async function initializeApp() {
+        await fetchSettings();
         initTelegram();
         if (!(await attemptTelegramAutoLogin())) {
             showWelcomeScreen();
@@ -3328,7 +3355,7 @@ Instagram: @${orderData.instagram}
         showRegistration, showLogin, showWelcomeScreen, submitLogin, submitRegistration, 
         submitMigration, showDashboard, logout, startCollaboration, showOrderHistory, editProfile,
         contactAdmin, showCRM, showCrmTab, filterOrders, filterUsers, filterAdminUsers,
-        removeBlock, removeAdmin, removeUser, toggleUserBlock, sendBroadcast,
+        removeBlock, removeAdmin, removeUser, toggleUserBlock, sendBroadcast, saveSettings,
         addBlock, addAdmin, selectSet, showSetSelection, showAddressForm, showDateTimeSelection, showInstructions,
         handleCityChange, submitAddressAndShowDateTime, updateTimeSlots, submitOrder, saveProfile,
         closeModal, closeErrorModal, closeRejectionModal, closeOrderHistory, closeEditProfile,
