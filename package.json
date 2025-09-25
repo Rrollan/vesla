@@ -1,21 +1,18 @@
 {
-  "name": "telegram-barter-food-app",
+  "name": "vesla-app",
   "version": "1.0.0",
-  "description": "Telegram Mini App для оформления заказов еды по бартеру",
-  "main": "index.html",
+  "description": "Vesla Mini App and Notifier",
+  "main": "server.js",
   "scripts": {
-    "start": "python -m http.server 8000",
-    "serve": "npx serve ."
+    "start": "node server.js"
   },
-  "keywords": [
-    "telegram",
-    "mini-app",
-    "food-delivery",
-    "barter"
-  ],
-  "author": "Your Name",
-  "license": "MIT",
-  "devDependencies": {
-    "serve": "^14.2.0"
+  "dependencies": {
+    "express": "^4.18.2",
+    "firebase-admin": "^11.11.1",
+    "node-cron": "^3.0.2",
+    "node-fetch": "^2.6.1"
+  },
+  "engines": {
+    "node": "18.x"
   }
 }
