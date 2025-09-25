@@ -2923,68 +2923,62 @@ Instagram: @${orderData.instagram}
 
     // НАЙДИТЕ СТАРУЮ ФУНКЦИЮ sendBroadcast И ЗАМЕНИТЕ ЕЕ НА ЭТУ:
 
+   const app = (function() {
+
+    // --- ДОБАВЬТЕ ЭТУ СТРОКУ ВВЕРХУ ---
+    const BACKEND_URL = 'https://vesla.onrender.com'; // ВАШ URL С RENDER УЖЕ ВЕРНЫЙ
+
+    const TELEGRAM_BOT_TOKEN = '8227812944:AAFy8ydOkUeCj3Qkjg7_Xsq6zyQpcUyMShY';
+    // ... остальной код ...
+
+
+    // --- НАЙДИТЕ И ПОЛНОСТЬЮ ЗАМЕНИТЕ ФУНКЦИЮ sendBroadcast НА ЭТУ ---
     async function sendBroadcast(button) {
         const message = document.getElementById('broadcastMessage').value.trim();
         const selectedTags = Array.from(document.querySelectorAll('#broadcastTagsContainer .tag')).map(el => el.textContent.replace(' ×', ''));
+        
         if (!message) {
             return showError('Ошибка', 'Сообщение не может быть пустым.');
         }
 
-        if (!confirm(`Начать рассылку для пользователей с выбранными тегами? Не закрывайте вкладку до завершения.`)) {
-            return;
+        if (!telegramUser || !telegramUser.id) {
+            return showError('Ошибка', 'Не удалось определить ваш Telegram ID. Пожалуйста, перезапустите приложение.');
         }
 
         await withLoading(button, async () => {
-            let usersQuery = db.collection(COLLECTIONS.USERS);
-            if (selectedTags.length > 0) {
-                // Ограничение Firestore на 10 элементов в 'array-contains-any'
-                if (selectedTags.length > 10) {
-                    throw new Error("Для рассылки можно выбрать не более 10 тегов одновременно.");
-                }
-                usersQuery = usersQuery.where("tags", "array-contains-any", selectedTags);
-            }
-            
-            const usersSnapshot = await usersQuery.get();
-            if (usersSnapshot.empty) {
-                showError('Не найдено', 'Пользователи с такими тегами не найдены.');
-                return;
-            }
+            try {
+                const response = await fetch(`${BACKEND_URL}/api/broadcast`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        message: message,
+                        tags: selectedTags,
+                        senderChatId: telegramUser.id // Отправляем ID админа для получения отчета
+                    })
+                });
 
-            const usersToSend = usersSnapshot.docs
-                .map(doc => doc.data().telegramId)
-                .filter(id => id); // Отбираем только тех, у кого есть telegramId
-
-            if (usersToSend.length === 0) {
-                showError('Не найдено', 'У найденных пользователей нет Telegram ID для отправки.');
-                return;
-            }
-
-            let successCount = 0;
-            let errorCount = 0;
-            const totalUsers = usersToSend.length;
-
-            for (let i = 0; i < totalUsers; i++) {
-                // Обновляем текст на кнопке, чтобы показать прогресс
-                button.innerHTML = `Отправка... ${i + 1} / ${totalUsers}`;
-                
-                try {
-                    await sendTelegramNotification(usersToSend[i], message);
-                    successCount++;
-                } catch (e) {
-                    console.warn(`Ошибка отправки для ID ${usersToSend[i]}:`, e);
-                    errorCount++;
+                if (response.status !== 202) { // Статус 202 означает "Принято к обработке"
+                    const errorResult = await response.json();
+                    throw new Error(errorResult.error || `Сервер вернул ошибку ${response.status}`);
                 }
                 
-                // --- ЭТО КЛЮЧЕВОЕ ИЗМЕНЕНИЕ ---
-                // Добавляем паузу в 100 миллисекунд после каждого сообщения (это 10 сообщений в секунду)
-                // Этого достаточно, чтобы обойти базовые лимиты Telegram.
-                await new Promise(resolve => setTimeout(resolve, 300)); 
+                showCrmSuccess("Запрос принят!", "Рассылка запущена на сервере. Когда она завершится, бот пришлет вам отчет. Можете закрыть это окно.");
+
+            } catch (error) {
+                console.error("Ошибка при запуске рассылки:", error);
+                showError("Ошибка", `Не удалось запустить рассылку: ${error.message}`);
             }
-            
-            showCrmSuccess(`Рассылка завершена!`, `Успешно отправлено: ${successCount}. Ошибок: ${errorCount}.`);
         });
     }
 
+    // ... остальной ваш JS-код ...
+    return {
+        // ... все ваши функции ...
+        sendBroadcast
+        // ...
+    };
+})();
+    
     function startCollaboration() {
         if(userData.isBlocked) return;
         currentOrderData = {};
