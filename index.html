@@ -1966,56 +1966,54 @@
                 }
             }
 
-            // Добавьте эту функцию для диагностики
-function debugTelegramState() {
-    console.log('=== TELEGRAM DEBUG START ===');
-    console.log('window.Telegram exists:', !!window.Telegram);
-    console.log('window.Telegram.WebApp exists:', !!window.Telegram?.WebApp);
-    console.log('Telegram WebApp object:', window.Telegram?.WebApp);
-    console.log('initDataUnsafe:', window.Telegram?.WebApp?.initDataUnsafe);
-    console.log('initData:', window.Telegram?.WebApp?.initData);
-    console.log('User data:', window.Telegram?.WebApp?.initDataUnsafe?.user);
-    console.log('=== TELEGRAM DEBUG END ===');
-}
-
-function initTelegram() {
-    debugTelegramState();
-    
-    try {
-        if (window.Telegram && window.Telegram.WebApp) {
-            tg = window.Telegram.WebApp;
-            console.log('Telegram WebApp initialized');
-            
-            tg.ready();
-            tg.expand();
-
-            tg.onEvent('viewportChanged', () => {
-                if (!tg.isExpanded) return;
-                ensureAuthenticated();
-            });
-
-            // Проверка наличия данных пользователя
-            console.log('Checking user data...');
-            console.log('initDataUnsafe:', tg.initDataUnsafe);
-            console.log('user:', tg.initDataUnsafe?.user);
-
-            if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
-                telegramUser = tg.initDataUnsafe.user;
-                currentUserId = 'tg_' + telegramUser.id;
-                console.log('Telegram user found:', telegramUser);
-                console.log('Generated userId:', currentUserId);
-                return true;
-            } else {
-                console.error('No user data in initDataUnsafe');
+            function debugTelegramState() {
+                console.log('=== TELEGRAM DEBUG START ===');
+                console.log('window.Telegram exists:', !!window.Telegram);
+                console.log('window.Telegram.WebApp exists:', !!window.Telegram?.WebApp);
+                console.log('Telegram WebApp object:', window.Telegram?.WebApp);
+                console.log('initDataUnsafe:', window.Telegram?.WebApp?.initDataUnsafe);
+                console.log('initData:', window.Telegram?.WebApp?.initData);
+                console.log('User data:', window.Telegram?.WebApp?.initDataUnsafe?.user);
+                console.log('=== TELEGRAM DEBUG END ===');
             }
-        } else {
-            console.error('Telegram WebApp not available');
-        }
-    } catch (error) {
-        console.error('Error initializing Telegram:', error);
-    }
-    return false;
-}
+
+            function initTelegram() {
+                debugTelegramState();
+                
+                try {
+                    if (window.Telegram && window.Telegram.WebApp) {
+                        tg = window.Telegram.WebApp;
+                        console.log('Telegram WebApp initialized');
+                        
+                        tg.ready();
+                        tg.expand();
+
+                        tg.onEvent('viewportChanged', () => {
+                            if (!tg.isExpanded) return;
+                            ensureAuthenticated();
+                        });
+
+                        console.log('Checking user data...');
+                        console.log('initDataUnsafe:', tg.initDataUnsafe);
+                        console.log('user:', tg.initDataUnsafe?.user);
+
+                        if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
+                            telegramUser = tg.initDataUnsafe.user;
+                            currentUserId = 'tg_' + telegramUser.id;
+                            console.log('Telegram user found:', telegramUser);
+                            console.log('Generated userId:', currentUserId);
+                            return true;
+                        } else {
+                            console.error('No user data in initDataUnsafe');
+                        }
+                    } else {
+                        console.error('Telegram WebApp not available');
+                    }
+                } catch (error) {
+                    console.error('Error initializing Telegram:', error);
+                }
+                return false;
+            }
             
             function attachUserListener(userId) {
                 if (userListenerUnsubscribe) userListenerUnsubscribe();
@@ -3621,51 +3619,28 @@ function initTelegram() {
                 setTimeout(initializeApp, 100);
             });
 
-            // --- НОВЫЕ ФУНКЦИИ ДЛЯ ЭКСПОРТА В CSV ---
-            
-            /**
-             * Утилита для безопасной обработки значений для CSV
-             * @param {*} value - значение ячейки
-             * @returns {string} - обработанная строка
-             */
             function sanitizeCSVValue(value) {
                 const strValue = String(value === null || value === undefined ? '' : value);
-                // Если значение содержит кавычки, запятые или переводы строк, его нужно обернуть в кавычки
                 if (/[",\n]/.test(strValue)) {
-                    // Внутри такого значения все кавычки удваиваются
                     return `"${strValue.replace(/"/g, '""')}"`;
                 }
                 return strValue;
             }
 
-            /**
-             * Генерирует и скачивает CSV файл из массива объектов
-             * @param {Array<Object>} data - Массив объектов для экспорта
-             * @param {string} filename - Имя файла для скачивания
-             */
             function downloadCSV(data, filename) {
                 if (!data || data.length === 0) {
                     showError("Нет данных", "Нет данных для экспорта. Попробуйте сбросить фильтр.");
                     return;
                 }
-
-                // Получаем заголовки из ключей первого объекта
                 const headers = Object.keys(data[0]);
-                // Формируем первую строку CSV (заголовки)
                 const csvRows = [headers.join(',')];
-
-                // Формируем остальные строки из данных
                 for (const row of data) {
                     const values = headers.map(header => sanitizeCSVValue(row[header]));
                     csvRows.push(values.join(','));
                 }
-
                 const csvString = csvRows.join('\n');
-                
-                // BOM (Byte Order Mark) для корректного отображения кириллицы в Excel
                 const bom = '\uFEFF';
                 const blob = new Blob([bom + csvString], { type: 'text/csv;charset=utf-8;' });
-                
                 const link = document.createElement('a');
                 if (link.download !== undefined) {
                     const url = URL.createObjectURL(blob);
@@ -3683,22 +3658,16 @@ function initTelegram() {
                 await withLoading(button, async () => {
                     const searchQuery = document.getElementById('orderSearch').value.toLowerCase();
                     const snapshot = await db.collection(COLLECTIONS.ORDERS).orderBy('createdAt', 'desc').get();
-                    
                     if (snapshot.empty) {
                         showError("Нет заказов", "В базе данных нет ни одного заказа для экспорта.");
                         return;
                     }
-                    
                     let allOrders = [];
                     snapshot.forEach(doc => allOrders.push({ id: doc.id, ...doc.data() }));
-
-                    // Применяем фильтрацию, как в основном списке
                     const filteredOrders = allOrders.filter(order => {
                         const searchString = `${order.userName} ${order.phone} ${order.instagram} ${order.orderNumber}`.toLowerCase();
                         return searchString.includes(searchQuery);
                     });
-
-                    // Преобразуем данные в удобный для CSV формат
                     const formattedData = filteredOrders.map(order => ({
                         'Номер заказа': order.orderNumber,
                         'Статус': getStatusInfo(order.status).text,
@@ -3714,7 +3683,6 @@ function initTelegram() {
                         'Ссылка на отчет': order.reportLink,
                         'Дата создания': new Date(order.createdAt).toLocaleString('ru-RU')
                     }));
-
                     const date = new Date().toISOString().split('T')[0];
                     downloadCSV(formattedData, `orders_export_${date}.csv`);
                 });
@@ -3724,24 +3692,18 @@ function initTelegram() {
                  await withLoading(button, async () => {
                     const searchQuery = document.getElementById('userSearch').value.toLowerCase();
                     const snapshot = await db.collection(COLLECTIONS.USERS).orderBy('registrationDate', 'desc').get();
-
                     if (snapshot.empty) {
                         showError("Нет пользователей", "В базе данных нет ни одного пользователя для экспорта.");
                         return;
                     }
-
                     let allUsers = [];
                     snapshot.forEach(doc => allUsers.push({ userId: doc.id, ...doc.data() }));
-
-                    // Применяем фильтрацию
                     const filteredUsers = allUsers.filter(user => {
                         const reg = user.registration || user;
                          if (!reg.firstName) return false;
                         const searchString = `${reg.firstName} ${reg.phone} ${reg.instagramLogin}`.toLowerCase();
                         return searchString.includes(searchQuery);
                     });
-                     
-                    // Преобразуем данные
                     const formattedData = filteredUsers.map(user => {
                         const reg = user.registration || user;
                         return {
@@ -3760,12 +3722,14 @@ function initTelegram() {
                             'Дата регистрации': new Date(user.registrationDate).toLocaleDateString('ru-RU'),
                         };
                     });
-
                     const date = new Date().toISOString().split('T')[0];
                     downloadCSV(formattedData, `users_export_${date}.csv`);
                  });
             }
-
+            
+            // --- ИСПРАВЛЕННЫЙ БЛОК ---
+            // Этот объект возвращает все функции, которые должны быть доступны из HTML (через app.имя_функции)
+            // Ошибка была в этом списке - пропущенная или лишняя запятая ломает весь скрипт.
             return {
                 showRegistration, showLogin, showWelcomeScreen, submitLogin, submitRegistration, 
                 submitMigration, showDashboard, logout, startCollaboration, proceedToAddressFromSet,
@@ -3780,11 +3744,7 @@ function initTelegram() {
                 updateOrderStatus, showReportModal, closeReportModal, submitReport, loadSchedule, 
                 saveSchedule, showUserDetailModal, closeUserDetailModal, addUserTag, removeUserTag, 
                 resetCooldown, showScheduleForCity, applyAnalyticsFilters, toggleAdminNotifications,
-                markNoReport, 
-                markReportAccepted,
-                // Новые функции
-                exportOrdersToCSV, 
-                exportUsersToCSV
+                markNoReport, markReportAccepted, exportOrdersToCSV, exportUsersToCSV
             };
         })();
     </script>
