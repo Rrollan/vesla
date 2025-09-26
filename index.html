@@ -732,6 +732,21 @@
             color: #fff;
         }
         
+        #csvDataModal .modal-content {
+            max-width: 400px;
+        }
+        #csvDataTextarea {
+            height: 40vh;
+            resize: none;
+            user-select: all;
+            -webkit-user-select: all;
+        }
+        .copy-hint {
+            font-size: 12px;
+            color: #999;
+            margin-top: 15px;
+        }
+        
         /* Теги */
         .tags-container {
             margin-top: 10px;
@@ -1087,7 +1102,7 @@
             flex: 1;
         }
 
-         .search-container {
+        .search-container {
             display: flex;
             gap: 10px;
             align-items: center;
@@ -1105,7 +1120,7 @@
             font-size: 14px;
             border-radius: 8px;
         }
-
+        
         .search-input {
             width: 100%;
             background: #3a3a3a;
@@ -1801,6 +1816,15 @@
                 <button class="btn-secondary" onclick="app.closeContactModal()">Закрыть</button>
             </div>
         </div>
+        <div id="csvDataModal" class="modal">
+            <div class="modal-content">
+                <h2>Данные для экспорта</h2>
+                <p class="subtitle">Скопируйте текст ниже и вставьте его в Excel или Google Sheets.</p>
+                <textarea id="csvDataTextarea" readonly></textarea>
+                <p class="copy-hint">Подсказка: нажмите на текст, а затем Cmd+A, чтобы выделить все.</p>
+                <button class="btn-primary" onclick="app.closeSimpleModal('csvDataModal')">Закрыть</button>
+            </div>
+        </div>
     </div>
 
     <div class="admin-panel" id="adminPanel" style="display: none;">
@@ -1966,56 +1990,54 @@
                 }
             }
 
-            // Добавьте эту функцию для диагностики
-function debugTelegramState() {
-    console.log('=== TELEGRAM DEBUG START ===');
-    console.log('window.Telegram exists:', !!window.Telegram);
-    console.log('window.Telegram.WebApp exists:', !!window.Telegram?.WebApp);
-    console.log('Telegram WebApp object:', window.Telegram?.WebApp);
-    console.log('initDataUnsafe:', window.Telegram?.WebApp?.initDataUnsafe);
-    console.log('initData:', window.Telegram?.WebApp?.initData);
-    console.log('User data:', window.Telegram?.WebApp?.initDataUnsafe?.user);
-    console.log('=== TELEGRAM DEBUG END ===');
-}
-
-function initTelegram() {
-    debugTelegramState();
-    
-    try {
-        if (window.Telegram && window.Telegram.WebApp) {
-            tg = window.Telegram.WebApp;
-            console.log('Telegram WebApp initialized');
-            
-            tg.ready();
-            tg.expand();
-
-            tg.onEvent('viewportChanged', () => {
-                if (!tg.isExpanded) return;
-                ensureAuthenticated();
-            });
-
-            // Проверка наличия данных пользователя
-            console.log('Checking user data...');
-            console.log('initDataUnsafe:', tg.initDataUnsafe);
-            console.log('user:', tg.initDataUnsafe?.user);
-
-            if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
-                telegramUser = tg.initDataUnsafe.user;
-                currentUserId = 'tg_' + telegramUser.id;
-                console.log('Telegram user found:', telegramUser);
-                console.log('Generated userId:', currentUserId);
-                return true;
-            } else {
-                console.error('No user data in initDataUnsafe');
+            function debugTelegramState() {
+                console.log('=== TELEGRAM DEBUG START ===');
+                console.log('window.Telegram exists:', !!window.Telegram);
+                console.log('window.Telegram.WebApp exists:', !!window.Telegram?.WebApp);
+                console.log('Telegram WebApp object:', window.Telegram?.WebApp);
+                console.log('initDataUnsafe:', window.Telegram?.WebApp?.initDataUnsafe);
+                console.log('initData:', window.Telegram?.WebApp?.initData);
+                console.log('User data:', window.Telegram?.WebApp?.initDataUnsafe?.user);
+                console.log('=== TELEGRAM DEBUG END ===');
             }
-        } else {
-            console.error('Telegram WebApp not available');
-        }
-    } catch (error) {
-        console.error('Error initializing Telegram:', error);
-    }
-    return false;
-}
+
+            function initTelegram() {
+                debugTelegramState();
+                
+                try {
+                    if (window.Telegram && window.Telegram.WebApp) {
+                        tg = window.Telegram.WebApp;
+                        console.log('Telegram WebApp initialized');
+                        
+                        tg.ready();
+                        tg.expand();
+
+                        tg.onEvent('viewportChanged', () => {
+                            if (!tg.isExpanded) return;
+                            ensureAuthenticated();
+                        });
+
+                        console.log('Checking user data...');
+                        console.log('initDataUnsafe:', tg.initDataUnsafe);
+                        console.log('user:', tg.initDataUnsafe?.user);
+
+                        if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
+                            telegramUser = tg.initDataUnsafe.user;
+                            currentUserId = 'tg_' + telegramUser.id;
+                            console.log('Telegram user found:', telegramUser);
+                            console.log('Generated userId:', currentUserId);
+                            return true;
+                        } else {
+                            console.error('No user data in initDataUnsafe');
+                        }
+                    } else {
+                        console.error('Telegram WebApp not available');
+                    }
+                } catch (error) {
+                    console.error('Error initializing Telegram:', error);
+                }
+                return false;
+            }
             
             function attachUserListener(userId) {
                 if (userListenerUnsubscribe) userListenerUnsubscribe();
@@ -3208,205 +3230,91 @@ function initTelegram() {
                 });
             }
             
-            function showOrderHistory() {
-                const list = document.getElementById('orderHistoryList');
-                const sortedOrders = (userData.orders || []).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-                if (sortedOrders.length === 0) {
-                    list.innerHTML = '<div class="empty-state">Нет заказов.</div>';
-                } else {
-                    list.innerHTML = sortedOrders.map(order => {
-                        const statusInfo = getStatusInfo(order.status);
-                        return `<div class="order-item">
-                            <div class="order-header">
-                                <span class="order-id">${order.orderNumber}</span>
-                                <span class="order-status ${statusInfo.className}">${statusInfo.text}</span>
-                            </div>
-                        </div>`;
-                    }).join('');
-                }
-                document.getElementById('orderHistoryModal').style.display = 'flex';
+            function showReportModal(orderId, orderNumber) {
+                currentReportingOrderId = orderId;
+                document.getElementById('reportModalTitle').textContent = `Отчет по заказу ${orderNumber}`;
+                document.getElementById('reportModal').style.display = 'flex';
             }
 
-            function editProfile() {
-                const reg = userData.registration || userData;
-                document.getElementById('editFirstName').value = reg.firstName;
-                document.getElementById('editPhone').value = reg.phone;
-                document.getElementById('editInstagram').value = reg.instagramLogin;
-                document.getElementById('editFollowers').value = reg.followersCount;
-                document.getElementById('editViews').value = reg.avgViews;
-                document.getElementById('editPassword').value = '';
-                document.getElementById('editProfileModal').style.display = 'flex';
-            }
-
-            async function saveProfile(button) {
-                await withLoading(button, async () => {
-                    const reg = userData.registration || userData;
-                    const newPhone = document.getElementById('editPhone').value.trim();
-                    const newInstagram = document.getElementById('editInstagram').value.trim().toLowerCase();
-                    if (newPhone !== reg.phone || newInstagram !== reg.instagramLogin) {
-                        const { canRegister } = await checkForDuplicateRegistration(newPhone, newInstagram, currentUserId);
-                        if (!canRegister) return showError('Данные заняты', 'Телефон или Instagram уже используются.');
-                    }
-                    
-                    const newFollowers = parseInt(document.getElementById('editFollowers').value);
-                    const levelData = determineBloggerLevel(newFollowers);
-                    const oldLevelTags = ['micro', 'macro-a', 'macro-b'];
-                    const currentTags = userData.tags || [];
-                    const updatedTags = currentTags.filter(t => !oldLevelTags.includes(t));
-                    if(!updatedTags.includes(levelData.level)) updatedTags.push(levelData.level);
-
-                    const updates = {
-                        'registration.firstName': document.getElementById('editFirstName').value.trim(),
-                        'registration.phone': newPhone, 'registration.instagramLogin': newInstagram,
-                        'registration.followersCount': newFollowers,
-                        'registration.avgViews': parseInt(document.getElementById('editViews').value),
-                        'level': levelData.level, 'tags': updatedTags
-                    };
-                    const newPassword = document.getElementById('editPassword').value.trim();
-                    if (validatePassword(newPassword)) updates['registration.password'] = hashPassword(newPassword);
-                    
-                    await db.collection(COLLECTIONS.USERS).doc(currentUserId).update(updates);
-                    closeEditProfile();
-                    showSuccessMessage('Профиль обновлен!');
-                });
-            }
-
-            function logout() {
-                if (userListenerUnsubscribe) userListenerUnsubscribe();
-                userData = {}; currentUserId = null; telegramUser = null; currentUserRole = null;
-                window.location.reload();
-            }
-            
-            function showSuccessMessage(message) {
-                document.getElementById('successTitle').textContent = 'Успешно!';
-                document.getElementById('successMessage').textContent = message;
-                document.getElementById('successModalCloseBtn').onclick = () => app.closeModal();
-                document.getElementById('successModal').style.display = 'flex';
-            }
-
-            function showCrmSuccess(title, message) {
-                document.getElementById('successTitle').textContent = title;
-                document.getElementById('successMessage').textContent = message || '';
-                document.getElementById('successModalCloseBtn').onclick = () => app.closeSimpleModal('successModal');
-                document.getElementById('successModal').style.display = 'flex';
-            }
-
-            function showError(title, message) {
-                document.getElementById('errorTitle').textContent = title;
-                document.getElementById('errorMessage').textContent = message;
-                document.getElementById('errorModal').style.display = 'flex';
-            }
-            
-            async function showOrderDetailModal(orderId) {
-                currentEditingOrderId = orderId;
-                const orderDoc = await db.collection(COLLECTIONS.ORDERS).doc(orderId).get();
-                if(!orderDoc.exists) return;
-                const order = orderDoc.data();
-                document.getElementById('orderDetailTitle').textContent = `Заказ ${order.orderNumber}`;
-                document.getElementById('orderDetailBody').innerHTML = `<strong>Блогер:</strong> ${order.userName}<br><strong>Телефон:</strong> ${order.phone}<br><strong>Город:</strong> ${order.city}<br><strong>Адрес:</strong> ${order.street}<br><strong>Комментарий:</strong> ${order.comment || '-'}<br><strong>Ссылка на отчет:</strong> ${order.reportLink ? `<a href="${order.reportLink}" target="_blank" class="report-link">${order.reportLink}</a>` : '-'}`;
-                document.getElementById('orderStatusSelect').value = order.status;
-                
-                const markNoReportBtn = document.getElementById('markNoReportBtn');
-                const markReportAcceptedBtn = document.getElementById('markReportAcceptedBtn');
-
-                const isActionable = !order.reportMissed && order.status !== 'completed';
-                
-                markNoReportBtn.disabled = !isActionable;
-                markReportAcceptedBtn.disabled = !isActionable;
-
-                document.getElementById('deleteOrderBtn').onclick = () => removeOrder(order.id);
-                markNoReportBtn.onclick = () => markNoReport(markNoReportBtn, order.id, order.orderNumber);
-                markReportAcceptedBtn.onclick = () => markReportAccepted(markReportAcceptedBtn);
-                
-                document.getElementById('orderDetailModal').style.display = 'flex';
-            }
-            async function showAddAdminModal() { 
-                document.getElementById('addAdminModal').style.display = 'flex';
-                const list = document.getElementById('adminUsersList');
-                list.innerHTML = '<div class="loading-indicator">Загрузка...</div>';
-                const [usersSnapshot, adminsSnapshot] = await Promise.all([
-                     db.collection(COLLECTIONS.USERS).get(), db.collection(COLLECTIONS.ADMINS).get()
-                ]);
-                const adminIds = new Set(adminsSnapshot.docs.map(doc => doc.id));
-                list.innerHTML = '';
-                usersSnapshot.forEach(doc => {
-                    const user = { userId: doc.id, ...doc.data() };
-                    const reg = user.registration || user;
-                    if (!reg.firstName || !user.telegramId) return;
-                    const isAlreadyAdmin = adminIds.has(String(user.telegramId));
-                    const el = document.createElement('div');
-                    el.className = 'user-item';
-                    el.dataset.search = `${reg.firstName} ${reg.instagramLogin}`.toLowerCase();
-                    el.innerHTML = `<div><strong>${reg.firstName}</strong><div style="font-size: 12px; color: #999;">@${reg.instagramLogin}</div></div>
-                        ${isAlreadyAdmin ? '<span class="user-admin-badge">Сотрудник</span>' : `<button class="btn-primary btn-small" onclick="app.addAdmin('${user.userId}', '${reg.firstName}', document.getElementById('adminRoleSelect').value)">Назначить</button>`}`;
-                    list.appendChild(el);
-                });
-            }
-            
-            async function resetOrderCooldown() {
-                if (!currentUserDetailId) return;
-                if (confirm("Вы уверены, что хотите сбросить ограничение на следующий заказ для этого пользователя?")) {
-                    const userRef = db.collection(COLLECTIONS.USERS).doc(currentUserDetailId);
+            async function submitReport(button) {
+                await withLoading(button, async() => {
+                    const reportLink = document.getElementById('reportLink').value.trim();
+                    if (!reportLink.startsWith('http')) return showError('Ошибка', 'Введите корректную ссылку.');
+                    const orderRef = db.collection(COLLECTIONS.ORDERS).doc(currentReportingOrderId);
+                    const userRef = db.collection(COLLECTIONS.USERS).doc(currentUserId);
+                    const batch = db.batch();
+                    batch.update(orderRef, { status: 'awaiting_review', reportLink: reportLink });
                     const userDoc = await userRef.get();
                     if (userDoc.exists) {
-                        const userData = userDoc.data();
-                        await userRef.update({
-                            lastOrderTimestamp: FieldValue.delete()
-                        });
-                        if (userData.telegramId) {
-                            const message = `🎉 Отличные новости, ${userData.registration.firstName}! Мы сбросили для вас ограничение на следующий заказ. Теперь вы можете снова оформить сотрудничество!`;
-                            await sendTelegramNotification(userData.telegramId, message);
-                        }
-                        showCrmSuccess("Ограничение сброшено, уведомление отправлено.");
-                    } else {
-                        showError("Ошибка", "Пользователь не найден.");
+                        const orders = (userDoc.data().orders || []).map(o => o.id === currentReportingOrderId ? {...o, status: 'awaiting_review'} : o);
+                        batch.update(userRef, { orders: orders });
                     }
-                    closeUserDetailModal();
-                }
-            }
-            
-            function closeModal() { document.getElementById('successModal').style.display = 'none'; showDashboard(); }
-            function closeSimpleModal(modalId) { document.getElementById(modalId).style.display = 'none'; }
-            function showRejectionModal() { document.getElementById('rejectionModal').style.display = 'flex'; }
-            function closeErrorModal() { document.getElementById('errorModal').style.display = 'none'; }
-            function closeRejectionModal() { document.getElementById('rejectionModal').style.display = 'none'; }
-            function closeOrderHistory() { document.getElementById('orderHistoryModal').style.display = 'none'; }
-            function closeEditProfile() { document.getElementById('editProfileModal').style.display = 'none'; }
-            function contactAdmin() { document.getElementById('contactModal').style.display = 'flex'; }
-            function closeContactModal() { document.getElementById('contactModal').style.display = 'none'; }
-            function closeOrderDetailModal() { document.getElementById('orderDetailModal').style.display = 'none'; }
-            function closeReportModal() { document.getElementById('reportModal').style.display = 'none'; }
-            function closeUserDetailModal() { document.getElementById('userDetailModal').style.display = 'none'; }
-            function toggleBlockTime() { document.getElementById('blockTimeGroup').style.display = document.getElementById('blockType').value === 'time' ? 'block' : 'none'; }
-            function showAddBlockModal() { document.getElementById('addBlockModal').style.display = 'flex'; }
-            function closeAddBlockModal() { document.getElementById('addBlockModal').style.display = 'none'; }
-            function closeAddAdminModal() { document.getElementById('addAdminModal').style.display = 'none'; }
-            
-            function setupPhoneMask(inputId) {
-                const phoneInput = document.getElementById(inputId);
-                if (phoneInput) phoneInput.addEventListener('input', () => {
-                    let digits = phoneInput.value.replace(/\D/g, '');
-                    if (digits.startsWith('7') || digits.startsWith('8')) digits = digits.substring(1);
-                    let formatted = '+7 (';
-                    if (digits.length > 0) formatted += digits.substring(0, 3);
-                    if (digits.length > 3) formatted += `) ${digits.substring(3, 6)}`;
-                    if (digits.length > 6) formatted += `-${digits.substring(6, 8)}`;
-                    if (digits.length > 8) formatted += `-${digits.substring(8, 10)}`;
-                    phoneInput.value = formatted;
+                    await batch.commit();
+                    closeReportModal();
+                    showSuccessMessage("Ваш отчет отправлен на проверку!");
                 });
             }
             
-            async function fetchSettings() {
-                try {
-                    const settingsDoc = await db.collection(COLLECTIONS.SETTINGS).doc('config').get();
-                    if (settingsDoc.exists) {
-                        appSettings = { ...appSettings, ...settingsDoc.data() };
+            async function getTagStats() {
+                const tagStats = {};
+                const usersSnapshot = await db.collection(COLLECTIONS.USERS).get();
+                usersSnapshot.forEach(doc => {
+                    (doc.data().tags || []).forEach(tag => {
+                        tagStats[tag] = (tagStats[tag] || 0) + 1;
+                    });
+                });
+                return tagStats;
+            }
+            
+            async function setupBroadcastTagInput() {
+                const input = document.getElementById('broadcastTagInput');
+                const suggestionsContainer = document.getElementById('tagSuggestions');
+                const selectedContainer = document.getElementById('broadcastTagsContainer');
+                const tagStats = await getTagStats();
+                const availableTags = Object.keys(tagStats);
+
+                const addTag = (tag) => {
+                    if (!tag || Array.from(selectedContainer.children).some(el => el.dataset.tag === tag)) return;
+                    const tagEl = document.createElement('span');
+                    tagEl.className = 'tag';
+                    tagEl.dataset.tag = tag;
+                    tagEl.innerHTML = `${tag} <span class="remove-tag">×</span>`;
+                    tagEl.querySelector('.remove-tag').onclick = () => {
+                        tagEl.remove();
+                    };
+                    selectedContainer.appendChild(tagEl);
+                    input.value = '';
+                    suggestionsContainer.style.display = 'none';
+                };
+
+                input.addEventListener('focus', () => {
+                    renderSuggestions('');
+                    suggestionsContainer.style.display = 'block';
+                });
+
+                input.addEventListener('keyup', (e) => {
+                    if (e.key === 'Enter') addTag(input.value.trim().toLowerCase());
+                    else renderSuggestions(input.value.toLowerCase());
+                });
+
+                document.addEventListener('click', (e) => {
+                    if (!e.target.closest('#broadcastTagInput') && !e.target.closest('#tagSuggestions')) {
+                        suggestionsContainer.style.display = 'none';
                     }
-                } catch(error) {
-                    console.error("Error fetching settings:", error);
+                });
+
+                function renderSuggestions(filter) {
+                    suggestionsContainer.innerHTML = '';
+                    availableTags.filter(tag => tag.includes(filter)).forEach(tag => {
+                        const item = document.createElement('div');
+                        item.className = 'tag-suggestion-item';
+                        item.innerHTML = `<span>${tag}</span> <span class="user-count">${tagStats[tag]} чел.</span>`;
+                        item.onclick = () => addTag(tag);
+                        suggestionsContainer.appendChild(item);
+                    });
                 }
             }
-
+            
             async function saveSettings(button) {
                 await withLoading(button, async() => {
                     const cooldownInput = document.getElementById('cooldownSetting');
@@ -3418,20 +3326,6 @@ function initTelegram() {
                     appSettings.orderCooldownDays = newCooldown;
                     showCrmSuccess("Настройки сохранены!");
                 });
-            }
-
-            async function initializeApp() {
-                await fetchSettings();
-                if (!initTelegram()) {
-                    showCriticalError("Приложение можно запустить только внутри Telegram.");
-                    return;
-                }
-                
-                if (!(await attemptTelegramAutoLogin())) {
-                    showWelcomeScreen();
-                } else {
-                    showDashboard();
-                }
             }
 
             function showScheduleForCity(city, element) {
@@ -3530,92 +3424,29 @@ function initTelegram() {
                 });
             }
             
-            function showReportModal(orderId, orderNumber) {
-                currentReportingOrderId = orderId;
-                document.getElementById('reportModalTitle').textContent = `Отчет по заказу ${orderNumber}`;
-                document.getElementById('reportModal').style.display = 'flex';
-            }
-
-            async function submitReport(button) {
-                await withLoading(button, async() => {
-                    const reportLink = document.getElementById('reportLink').value.trim();
-                    if (!reportLink.startsWith('http')) return showError('Ошибка', 'Введите корректную ссылку.');
-                    const orderRef = db.collection(COLLECTIONS.ORDERS).doc(currentReportingOrderId);
-                    const userRef = db.collection(COLLECTIONS.USERS).doc(currentUserId);
-                    const batch = db.batch();
-                    batch.update(orderRef, { status: 'awaiting_review', reportLink: reportLink });
+            async function resetOrderCooldown() {
+                if (!currentUserDetailId) return;
+                if (confirm("Вы уверены, что хотите сбросить ограничение на следующий заказ для этого пользователя?")) {
+                    const userRef = db.collection(COLLECTIONS.USERS).doc(currentUserDetailId);
                     const userDoc = await userRef.get();
                     if (userDoc.exists) {
-                        const orders = (userDoc.data().orders || []).map(o => o.id === currentReportingOrderId ? {...o, status: 'awaiting_review'} : o);
-                        batch.update(userRef, { orders: orders });
+                        const userData = userDoc.data();
+                        await userRef.update({
+                            lastOrderTimestamp: FieldValue.delete()
+                        });
+                        if (userData.telegramId) {
+                            const message = `🎉 Отличные новости, ${userData.registration.firstName}! Мы сбросили для вас ограничение на следующий заказ. Теперь вы можете снова оформить сотрудничество!`;
+                            await sendTelegramNotification(userData.telegramId, message);
+                        }
+                        showCrmSuccess("Ограничение сброшено, уведомление отправлено.");
+                    } else {
+                        showError("Ошибка", "Пользователь не найден.");
                     }
-                    await batch.commit();
-                    closeReportModal();
-                    showSuccessMessage("Ваш отчет отправлен на проверку!");
-                });
-            }
-            
-            async function getTagStats() {
-                const tagStats = {};
-                const usersSnapshot = await db.collection(COLLECTIONS.USERS).get();
-                usersSnapshot.forEach(doc => {
-                    (doc.data().tags || []).forEach(tag => {
-                        tagStats[tag] = (tagStats[tag] || 0) + 1;
-                    });
-                });
-                return tagStats;
-            }
-            
-            async function setupBroadcastTagInput() {
-                const input = document.getElementById('broadcastTagInput');
-                const suggestionsContainer = document.getElementById('tagSuggestions');
-                const selectedContainer = document.getElementById('broadcastTagsContainer');
-                const tagStats = await getTagStats();
-                const availableTags = Object.keys(tagStats);
-
-                const addTag = (tag) => {
-                    if (!tag || Array.from(selectedContainer.children).some(el => el.dataset.tag === tag)) return;
-                    const tagEl = document.createElement('span');
-                    tagEl.className = 'tag';
-                    tagEl.dataset.tag = tag;
-                    tagEl.innerHTML = `${tag} <span class="remove-tag">×</span>`;
-                    tagEl.querySelector('.remove-tag').onclick = () => {
-                        tagEl.remove();
-                    };
-                    selectedContainer.appendChild(tagEl);
-                    input.value = '';
-                    suggestionsContainer.style.display = 'none';
-                };
-
-                input.addEventListener('focus', () => {
-                    renderSuggestions('');
-                    suggestionsContainer.style.display = 'block';
-                });
-
-                input.addEventListener('keyup', (e) => {
-                    if (e.key === 'Enter') addTag(input.value.trim().toLowerCase());
-                    else renderSuggestions(input.value.toLowerCase());
-                });
-
-                document.addEventListener('click', (e) => {
-                    if (!e.target.closest('#broadcastTagInput') && !e.target.closest('#tagSuggestions')) {
-                        suggestionsContainer.style.display = 'none';
-                    }
-                });
-
-                function renderSuggestions(filter) {
-                    suggestionsContainer.innerHTML = '';
-                    availableTags.filter(tag => tag.includes(filter)).forEach(tag => {
-                        const item = document.createElement('div');
-                        item.className = 'tag-suggestion-item';
-                        item.innerHTML = `<span>${tag}</span> <span class="user-count">${tagStats[tag]} чел.</span>`;
-                        item.onclick = () => addTag(tag);
-                        suggestionsContainer.appendChild(item);
-                    });
+                    closeUserDetailModal();
                 }
             }
 
-function sanitizeCSVValue(value) {
+            function sanitizeCSVValue(value) {
                 const strValue = String(value === null || value === undefined ? '' : value);
                 if (/[",\n]/.test(strValue)) {
                     return `"${strValue.replace(/"/g, '""')}"`;
@@ -3623,43 +3454,39 @@ function sanitizeCSVValue(value) {
                 return strValue;
             }
 
-            function downloadCSV(data, filename) {
+            function displayCSVInModal(csvString) {
+                const textarea = document.getElementById('csvDataTextarea');
+                textarea.value = csvString;
+                document.getElementById('csvDataModal').style.display = 'flex';
+                textarea.focus();
+                textarea.select();
+            }
+            
+            function handleCSVData(data) {
                 if (!data || data.length === 0) {
                     showError("Нет данных", "Нет данных для экспорта. Попробуйте сбросить фильтр.");
                     return;
                 }
+
                 const headers = Object.keys(data[0]);
                 const csvRows = [headers.join(',')];
+
                 for (const row of data) {
                     const values = headers.map(header => sanitizeCSVValue(row[header]));
                     csvRows.push(values.join(','));
                 }
+
                 const csvString = csvRows.join('\n');
-                const bom = '\uFEFF';
-                const blob = new Blob([bom + csvString], { type: 'text/csv;charset=utf-8;' });
-                const link = document.createElement('a');
-                if (link.download !== undefined) {
-                    const url = URL.createObjectURL(blob);
-                    link.setAttribute('href', url);
-                    link.setAttribute('download', filename);
-                    link.style.visibility = 'hidden';
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
-                    URL.revokeObjectURL(url);
-                }
+                displayCSVInModal(csvString);
             }
 
-           async function exportOrdersToCSV(button) {
-                let formattedData;
+            async function exportOrdersToCSV(button) {
                 await withLoading(button, async () => {
                     const searchQuery = document.getElementById('orderSearch').value.toLowerCase();
                     const snapshot = await db.collection(COLLECTIONS.ORDERS).orderBy('createdAt', 'desc').get();
                     
                     if (snapshot.empty) {
-                        showError("Нет заказов", "В базе данных нет ни одного заказа для экспорта.");
-                        formattedData = []; // Устанавливаем пустой массив, чтобы скачивание не сработало
-                        return;
+                        return showError("Нет заказов", "В базе данных нет ни одного заказа для экспорта.");
                     }
                     
                     let allOrders = [];
@@ -3670,7 +3497,7 @@ function sanitizeCSVValue(value) {
                         return searchString.includes(searchQuery);
                     });
 
-                    formattedData = filteredOrders.map(order => ({
+                    const formattedData = filteredOrders.map(order => ({
                         'Номер заказа': order.orderNumber,
                         'Статус': getStatusInfo(order.status).text,
                         'Имя блогера': order.userName,
@@ -3685,25 +3512,18 @@ function sanitizeCSVValue(value) {
                         'Ссылка на отчет': order.reportLink,
                         'Дата создания': new Date(order.createdAt).toLocaleString('ru-RU')
                     }));
+                    
+                    handleCSVData(formattedData);
                 });
-
-                // Вызываем скачивание ПОСЛЕ того, как withLoading завершился
-                if (formattedData && formattedData.length > 0) {
-                    const date = new Date().toISOString().split('T')[0];
-                    downloadCSV(formattedData, `orders_export_${date}.csv`);
-                }
             }
 
-                       async function exportUsersToCSV(button) {
-                let formattedData;
+            async function exportUsersToCSV(button) {
                  await withLoading(button, async () => {
                     const searchQuery = document.getElementById('userSearch').value.toLowerCase();
                     const snapshot = await db.collection(COLLECTIONS.USERS).orderBy('registrationDate', 'desc').get();
 
                     if (snapshot.empty) {
-                        showError("Нет пользователей", "В базе данных нет ни одного пользователя для экспорта.");
-                        formattedData = []; // Устанавливаем пустой массив
-                        return;
+                        return showError("Нет пользователей", "В базе данных нет ни одного пользователя для экспорта.");
                     }
 
                     let allUsers = [];
@@ -3716,7 +3536,7 @@ function sanitizeCSVValue(value) {
                         return searchString.includes(searchQuery);
                     });
                      
-                    formattedData = filteredUsers.map(user => {
+                    const formattedData = filteredUsers.map(user => {
                         const reg = user.registration || user;
                         return {
                             'Имя': reg.firstName,
@@ -3734,19 +3554,10 @@ function sanitizeCSVValue(value) {
                             'Дата регистрации': new Date(user.registrationDate).toLocaleDateString('ru-RU'),
                         };
                     });
+                    
+                    handleCSVData(formattedData);
                  });
-
-                // Вызываем скачивание ПОСЛЕ того, как withLoading завершился
-                if (formattedData && formattedData.length > 0) {
-                    const date = new Date().toISOString().split('T')[0];
-                    downloadCSV(formattedData, `users_export_${date}.csv`);
-                }
             }
-
-            document.addEventListener('DOMContentLoaded', () => {
-                ['loginPhone', 'phone', 'recipientPhone', 'editPhone'].forEach(setupPhoneMask);
-                setTimeout(initializeApp, 100);
-            });
 
             return {
                 showRegistration, showLogin, showWelcomeScreen, submitLogin, submitRegistration, 
@@ -3761,7 +3572,7 @@ function sanitizeCSVValue(value) {
                 showAddAdminModal, closeAddAdminModal, closeOrderDetailModal, toggleBlockTime, 
                 updateOrderStatus, showReportModal, closeReportModal, submitReport, loadSchedule, 
                 saveSchedule, showUserDetailModal, closeUserDetailModal, addUserTag, removeUserTag, 
-                resetOrderCooldown, showScheduleForCity, applyAnalyticsFilters, toggleAdminNotifications,
+                resetCooldown, showScheduleForCity, applyAnalyticsFilters, toggleAdminNotifications,
                 markNoReport, markReportAccepted, exportOrdersToCSV, exportUsersToCSV
             };
         })();
