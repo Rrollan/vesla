@@ -147,6 +147,7 @@
             cursor: pointer;
             transition: all 0.3s ease;
             margin-top: 10px;
+            width: 100%;
         }
 
         .btn-secondary:hover {
@@ -1185,13 +1186,14 @@
         <div id="welcomeScreen" class="welcome-screen">
             <div class="logo-container">
                 <div class="logo-icon">
-                    <img src="https://i.ibb.co/bJCb3N5/logo.png" alt="logo">
+                    <img src="https://i.ibb.co/4Z5Z8pD/logo.png" alt="logo">
                 </div>
             </div>
             <h1>Бартер для блогеров</h1>
             <p class="subtitle">Эксклюзивное предложение<br>для блогеров и инфлюенсеров</p>
             <div class="welcome-buttons">
                  <button class="btn-primary" onclick="app.showRegistration()">Начать</button>
+                 <button class="btn-secondary" onclick="app.showLogin()">У меня уже есть аккаунт</button>
             </div>
             <div class="auto-login-info" id="autoLoginInfo" style="display: none;">
                 <div class="loading-indicator">
