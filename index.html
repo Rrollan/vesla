@@ -1489,6 +1489,16 @@
                     <label for="broadcastMessage">Текст сообщения</label>
                     <textarea id="broadcastMessage" rows="6" placeholder="Введите ваше сообщение здесь..."></textarea>
                 </div>
+                <!-- START: Блок с информацией о плейсхолдерах -->
+                <div class="telegram-info" style="margin-top: -10px; margin-bottom: 20px; font-size: 13px; padding: 15px; border-left-color: #ffc107;">
+                    <h4 style="color: #00b4d8; margin-bottom: 10px;">✨ Персонализация</h4>
+                    <p style="color: #ccc; line-height: 1.6;">
+                        Используйте плейсхолдеры, и система автоматически подставит данные пользователя.
+                        <br><strong>Доступные плейсхолдеры:</strong><br>
+                        <code>{firstName}</code>, <code>{instagramLogin}</code>, <code>{followersCount}</code>, <code>{level}</code>, <code>{rating}</code>
+                    </p>
+                </div>
+                <!-- END: Блок с информацией о плейсхолдерах -->
                 <button class="btn-primary" onclick="app.sendBroadcast(this)">Отправить рассылку</button>
                 <div class="telegram-info" style="margin-top: 20px;">
                      <h4 style="color: #ffc107; margin-bottom: 10px;">⚠️ Внимание!</h4>
