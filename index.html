@@ -2659,7 +2659,11 @@
                                <span class="user-name-phone">${reg.firstName}</span>
                                <span class="user-rating">⭐ ${rating}</span>
                             </div>
-                            <div style="font-size: 14px; color: #ccc;">@${reg.instagramLogin}</div>
+                            <div style="font-size: 14px; color: #ccc;">
+                                <a href="https://www.instagram.com/${reg.instagramLogin.replace('@','')}" target="_blank" style="color: #ccc; text-decoration: none;">
+                                    @${reg.instagramLogin}
+                                </a>
+                            </div>
                             ${badges ? `<div style="margin-top:5px;">${badges}</div>` : ''}
                         </div>
                         <div class="user-controls">
@@ -3311,7 +3315,7 @@
             if(!orderDoc.exists) return;
             const order = orderDoc.data();
             document.getElementById('orderDetailTitle').textContent = `Заказ ${order.orderNumber}`;
-            document.getElementById('orderDetailBody').innerHTML = `<strong>Блогер:</strong> ${order.userName}<br><strong>Телефон:</strong> ${order.phone}<br><strong>Город:</strong> ${order.city}<br><strong>Адрес:</strong> ${order.street}<br><strong>Комментарий:</strong> ${order.comment || '-'}<br><strong>Ссылка на отчет:</strong> ${order.reportLink ? `<a href="${order.reportLink}" target="_blank" class="report-link">${order.reportLink}</a>` : '-'}`;
+            document.getElementById('orderDetailBody').innerHTML = `<strong>Блогер:</strong> ${order.userName}<br><strong>Instagram:</strong> <a href="https://www.instagram.com/${order.instagram.replace('@','')}" target="_blank" style="color: #00b4d8; text-decoration: none;">@${order.instagram}</a><br><strong>Телефон:</strong> ${order.phone}<br><strong>Город:</strong> ${order.city}<br><strong>Адрес:</strong> ${order.street}<br><strong>Комментарий:</strong> ${order.comment || '-'}<br><strong>Ссылка на отчет:</strong> ${order.reportLink ? `<a href="${order.reportLink}" target="_blank" class="report-link">${order.reportLink}</a>` : '-'}`;
             document.getElementById('orderStatusSelect').value = order.status;
             
             const markNoReportBtn = document.getElementById('markNoReportBtn');
@@ -3496,7 +3500,7 @@
             const user = userDoc.data();
             const reg = user.registration || user;
             document.getElementById('userDetailTitle').textContent = reg.firstName;
-            document.getElementById('userDetailBody').innerHTML = `<strong>Телефон:</strong> ${reg.phone}<br><strong>Instagram:</strong> @${reg.instagramLogin}<br><strong>Подписчики:</strong> ${reg.followersCount}<br><strong>Просмотры:</strong> ${reg.avgViews}<br><strong>Рейтинг:</strong> ⭐ ${calculateBloggerRating(user)}`;
+            document.getElementById('userDetailBody').innerHTML = `<strong>Телефон:</strong> ${reg.phone}<br><strong>Instagram:</strong> <a href="https://www.instagram.com/${reg.instagramLogin.replace('@','')}" target="_blank" style="color: #00b4d8; text-decoration: none;">@${reg.instagramLogin}</a><br><strong>Подписчики:</strong> ${reg.followersCount}<br><strong>Просмотры:</strong> ${reg.avgViews}<br><strong>Рейтинг:</strong> ⭐ ${calculateBloggerRating(user)}`;
             renderTags(user.tags || []);
             document.getElementById('userDetailModal').style.display = 'flex';
         }
