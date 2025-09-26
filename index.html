@@ -1940,29 +1940,56 @@
                 }
             }
 
-            function initTelegram() {
-                try {
-                    if (window.Telegram && window.Telegram.WebApp) {
-                        tg = window.Telegram.WebApp;
-                        tg.ready();
-                        tg.expand();
+            // Добавьте эту функцию для диагностики
+function debugTelegramState() {
+    console.log('=== TELEGRAM DEBUG START ===');
+    console.log('window.Telegram exists:', !!window.Telegram);
+    console.log('window.Telegram.WebApp exists:', !!window.Telegram?.WebApp);
+    console.log('Telegram WebApp object:', window.Telegram?.WebApp);
+    console.log('initDataUnsafe:', window.Telegram?.WebApp?.initDataUnsafe);
+    console.log('initData:', window.Telegram?.WebApp?.initData);
+    console.log('User data:', window.Telegram?.WebApp?.initDataUnsafe?.user);
+    console.log('=== TELEGRAM DEBUG END ===');
+}
 
-                        tg.onEvent('viewportChanged', () => {
-                            if (!tg.isExpanded) return;
-                            ensureAuthenticated();
-                        });
+function initTelegram() {
+    debugTelegramState();
+    
+    try {
+        if (window.Telegram && window.Telegram.WebApp) {
+            tg = window.Telegram.WebApp;
+            console.log('Telegram WebApp initialized');
+            
+            tg.ready();
+            tg.expand();
 
-                        if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
-                            telegramUser = tg.initDataUnsafe.user;
-                            currentUserId = 'tg_' + telegramUser.id;
-                            return true;
-                        }
-                    }
-                } catch (error) {
-                    console.error('Error initializing Telegram:', error);
-                }
-                return false;
+            tg.onEvent('viewportChanged', () => {
+                if (!tg.isExpanded) return;
+                ensureAuthenticated();
+            });
+
+            // Проверка наличия данных пользователя
+            console.log('Checking user data...');
+            console.log('initDataUnsafe:', tg.initDataUnsafe);
+            console.log('user:', tg.initDataUnsafe?.user);
+
+            if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
+                telegramUser = tg.initDataUnsafe.user;
+                currentUserId = 'tg_' + telegramUser.id;
+                console.log('Telegram user found:', telegramUser);
+                console.log('Generated userId:', currentUserId);
+                return true;
+            } else {
+                console.error('No user data in initDataUnsafe');
             }
+        } else {
+            console.error('Telegram WebApp not available');
+        }
+    } catch (error) {
+        console.error('Error initializing Telegram:', error);
+    }
+    return false;
+}
             
             function attachUserListener(userId) {
                 if (userListenerUnsubscribe) userListenerUnsubscribe();
