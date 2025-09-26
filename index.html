@@ -1086,25 +1086,6 @@
         .form-row .form-group {
             flex: 1;
         }
-        
-        .search-container {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-        .search-container .search-input {
-            margin-bottom: 0;
-            flex-grow: 1;
-        }
-        .search-container .btn-secondary {
-            margin-top: 0;
-            width: auto;
-            flex-shrink: 0;
-            padding: 10px 15px;
-            font-size: 14px;
-            border-radius: 8px;
-        }
 
         .search-input {
             width: 100%;
@@ -1445,17 +1426,11 @@
                 </div>
             </div>
             <div id="crmOrders" class="crm-content">
-                <div class="search-container">
-                    <input type="text" id="orderSearch" class="search-input" placeholder="Поиск по имени, телефону, Instagram или номеру заказа..." onkeyup="app.filterOrders()">
-                    <button id="exportOrdersBtn" class="btn-secondary" onclick="app.exportOrdersToCSV(this)">Экспорт в CSV</button>
-                </div>
+                <input type="text" id="orderSearch" class="search-input" placeholder="Поиск по имени, телефону, Instagram или номеру заказа..." onkeyup="app.filterOrders()">
                 <div class="orders-list" id="ordersList"></div>
             </div>
             <div id="crmUsers" class="crm-content">
-                <div class="search-container">
-                    <input type="text" id="userSearch" class="search-input" placeholder="Поиск пользователей..." onkeyup="app.filterUsers()">
-                    <button id="exportUsersBtn" class="btn-secondary" onclick="app.exportUsersToCSV(this)">Экспорт в CSV</button>
-                </div>
+                <input type="text" id="userSearch" class="search-input" placeholder="Поиск пользователей..." onkeyup="app.filterUsers()">
                 <div id="usersList"></div>
             </div>
              <div id="crmSchedule" class="crm-content">
@@ -1966,54 +1941,56 @@
                 }
             }
 
-            function debugTelegramState() {
-                console.log('=== TELEGRAM DEBUG START ===');
-                console.log('window.Telegram exists:', !!window.Telegram);
-                console.log('window.Telegram.WebApp exists:', !!window.Telegram?.WebApp);
-                console.log('Telegram WebApp object:', window.Telegram?.WebApp);
-                console.log('initDataUnsafe:', window.Telegram?.WebApp?.initDataUnsafe);
-                console.log('initData:', window.Telegram?.WebApp?.initData);
-                console.log('User data:', window.Telegram?.WebApp?.initDataUnsafe?.user);
-                console.log('=== TELEGRAM DEBUG END ===');
+            // Добавьте эту функцию для диагностики
+function debugTelegramState() {
+    console.log('=== TELEGRAM DEBUG START ===');
+    console.log('window.Telegram exists:', !!window.Telegram);
+    console.log('window.Telegram.WebApp exists:', !!window.Telegram?.WebApp);
+    console.log('Telegram WebApp object:', window.Telegram?.WebApp);
+    console.log('initDataUnsafe:', window.Telegram?.WebApp?.initDataUnsafe);
+    console.log('initData:', window.Telegram?.WebApp?.initData);
+    console.log('User data:', window.Telegram?.WebApp?.initDataUnsafe?.user);
+    console.log('=== TELEGRAM DEBUG END ===');
+}
+
+function initTelegram() {
+    debugTelegramState();
+    
+    try {
+        if (window.Telegram && window.Telegram.WebApp) {
+            tg = window.Telegram.WebApp;
+            console.log('Telegram WebApp initialized');
+            
+            tg.ready();
+            tg.expand();
+
+            tg.onEvent('viewportChanged', () => {
+                if (!tg.isExpanded) return;
+                ensureAuthenticated();
+            });
+
+            // Проверка наличия данных пользователя
+            console.log('Checking user data...');
+            console.log('initDataUnsafe:', tg.initDataUnsafe);
+            console.log('user:', tg.initDataUnsafe?.user);
+
+            if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
+                telegramUser = tg.initDataUnsafe.user;
+                currentUserId = 'tg_' + telegramUser.id;
+                console.log('Telegram user found:', telegramUser);
+                console.log('Generated userId:', currentUserId);
+                return true;
+            } else {
+                console.error('No user data in initDataUnsafe');
             }
-
-            function initTelegram() {
-                debugTelegramState();
-                
-                try {
-                    if (window.Telegram && window.Telegram.WebApp) {
-                        tg = window.Telegram.WebApp;
-                        console.log('Telegram WebApp initialized');
-                        
-                        tg.ready();
-                        tg.expand();
-
-                        tg.onEvent('viewportChanged', () => {
-                            if (!tg.isExpanded) return;
-                            ensureAuthenticated();
-                        });
-
-                        console.log('Checking user data...');
-                        console.log('initDataUnsafe:', tg.initDataUnsafe);
-                        console.log('user:', tg.initDataUnsafe?.user);
-
-                        if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
-                            telegramUser = tg.initDataUnsafe.user;
-                            currentUserId = 'tg_' + telegramUser.id;
-                            console.log('Telegram user found:', telegramUser);
-                            console.log('Generated userId:', currentUserId);
-                            return true;
-                        } else {
-                            console.error('No user data in initDataUnsafe');
-                        }
-                    } else {
-                        console.error('Telegram WebApp not available');
-                    }
-                } catch (error) {
-                    console.error('Error initializing Telegram:', error);
-                }
-                return false;
-            }
+        } else {
+            console.error('Telegram WebApp not available');
+        }
+    } catch (error) {
+        console.error('Error initializing Telegram:', error);
+    }
+    return false;
+}
             
             function attachUserListener(userId) {
                 if (userListenerUnsubscribe) userListenerUnsubscribe();
@@ -3619,117 +3596,6 @@
                 setTimeout(initializeApp, 100);
             });
 
-            function sanitizeCSVValue(value) {
-                const strValue = String(value === null || value === undefined ? '' : value);
-                if (/[",\n]/.test(strValue)) {
-                    return `"${strValue.replace(/"/g, '""')}"`;
-                }
-                return strValue;
-            }
-
-            function downloadCSV(data, filename) {
-                if (!data || data.length === 0) {
-                    showError("Нет данных", "Нет данных для экспорта. Попробуйте сбросить фильтр.");
-                    return;
-                }
-                const headers = Object.keys(data[0]);
-                const csvRows = [headers.join(',')];
-                for (const row of data) {
-                    const values = headers.map(header => sanitizeCSVValue(row[header]));
-                    csvRows.push(values.join(','));
-                }
-                const csvString = csvRows.join('\n');
-                const bom = '\uFEFF';
-                const blob = new Blob([bom + csvString], { type: 'text/csv;charset=utf-8;' });
-                const link = document.createElement('a');
-                if (link.download !== undefined) {
-                    const url = URL.createObjectURL(blob);
-                    link.setAttribute('href', url);
-                    link.setAttribute('download', filename);
-                    link.style.visibility = 'hidden';
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
-                    URL.revokeObjectURL(url);
-                }
-            }
-
-            async function exportOrdersToCSV(button) {
-                await withLoading(button, async () => {
-                    const searchQuery = document.getElementById('orderSearch').value.toLowerCase();
-                    const snapshot = await db.collection(COLLECTIONS.ORDERS).orderBy('createdAt', 'desc').get();
-                    if (snapshot.empty) {
-                        showError("Нет заказов", "В базе данных нет ни одного заказа для экспорта.");
-                        return;
-                    }
-                    let allOrders = [];
-                    snapshot.forEach(doc => allOrders.push({ id: doc.id, ...doc.data() }));
-                    const filteredOrders = allOrders.filter(order => {
-                        const searchString = `${order.userName} ${order.phone} ${order.instagram} ${order.orderNumber}`.toLowerCase();
-                        return searchString.includes(searchQuery);
-                    });
-                    const formattedData = filteredOrders.map(order => ({
-                        'Номер заказа': order.orderNumber,
-                        'Статус': getStatusInfo(order.status).text,
-                        'Имя блогера': order.userName,
-                        'Телефон блогера': order.phone,
-                        'Instagram': order.instagram,
-                        'Город': order.city,
-                        'Адрес': `${order.street}, п. ${order.entrance || '-'}, эт. ${order.floor || '-'}`,
-                        'Дата доставки': order.date,
-                        'Время доставки': order.time,
-                        'Выбранный набор': order.setName || 'Свой заказ',
-                        'Комментарий': order.comment,
-                        'Ссылка на отчет': order.reportLink,
-                        'Дата создания': new Date(order.createdAt).toLocaleString('ru-RU')
-                    }));
-                    const date = new Date().toISOString().split('T')[0];
-                    downloadCSV(formattedData, `orders_export_${date}.csv`);
-                });
-            }
-
-            async function exportUsersToCSV(button) {
-                 await withLoading(button, async () => {
-                    const searchQuery = document.getElementById('userSearch').value.toLowerCase();
-                    const snapshot = await db.collection(COLLECTIONS.USERS).orderBy('registrationDate', 'desc').get();
-                    if (snapshot.empty) {
-                        showError("Нет пользователей", "В базе данных нет ни одного пользователя для экспорта.");
-                        return;
-                    }
-                    let allUsers = [];
-                    snapshot.forEach(doc => allUsers.push({ userId: doc.id, ...doc.data() }));
-                    const filteredUsers = allUsers.filter(user => {
-                        const reg = user.registration || user;
-                         if (!reg.firstName) return false;
-                        const searchString = `${reg.firstName} ${reg.phone} ${reg.instagramLogin}`.toLowerCase();
-                        return searchString.includes(searchQuery);
-                    });
-                    const formattedData = filteredUsers.map(user => {
-                        const reg = user.registration || user;
-                        return {
-                            'Имя': reg.firstName,
-                            'Телефон': reg.phone,
-                            'Instagram': reg.instagramLogin,
-                            'Подписчики': reg.followersCount,
-                            'Просмотры': reg.avgViews,
-                            'Рейтинг': calculateBloggerRating(user),
-                            'Уровень': determineBloggerLevel(reg.followersCount).text,
-                            'Статус лояльности': user.loyaltyStatus || 'standard',
-                            'Заблокирован': user.isBlocked ? 'Да' : 'Нет',
-                            'Причина блокировки': user.blockReason,
-                            'Штрафы': user.strikes || 0,
-                            'Теги': (user.tags || []).join('; '),
-                            'Дата регистрации': new Date(user.registrationDate).toLocaleDateString('ru-RU'),
-                        };
-                    });
-                    const date = new Date().toISOString().split('T')[0];
-                    downloadCSV(formattedData, `users_export_${date}.csv`);
-                 });
-            }
-            
-            // --- ИСПРАВЛЕННЫЙ БЛОК ---
-            // Этот объект возвращает все функции, которые должны быть доступны из HTML (через app.имя_функции)
-            // Ошибка была в этом списке - пропущенная или лишняя запятая ломает весь скрипт.
             return {
                 showRegistration, showLogin, showWelcomeScreen, submitLogin, submitRegistration, 
                 submitMigration, showDashboard, logout, startCollaboration, proceedToAddressFromSet,
@@ -3743,8 +3609,8 @@
                 showAddAdminModal, closeAddAdminModal, closeOrderDetailModal, toggleBlockTime, 
                 updateOrderStatus, showReportModal, closeReportModal, submitReport, loadSchedule, 
                 saveSchedule, showUserDetailModal, closeUserDetailModal, addUserTag, removeUserTag, 
-                resetCooldown, showScheduleForCity, applyAnalyticsFilters, toggleAdminNotifications,
-                markNoReport, markReportAccepted, exportOrdersToCSV, exportUsersToCSV
+                resetOrderCooldown, showScheduleForCity, applyAnalyticsFilters, toggleAdminNotifications,
+                markNoReport, markReportAccepted
             };
         })();
     </script>
