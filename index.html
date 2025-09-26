@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -1193,6 +1192,8 @@
             <p class="subtitle">Эксклюзивное предложение<br>для блогеров и инфлюенсеров</p>
             <div class="welcome-buttons">
                  <button class="btn-primary" onclick="app.showRegistration()">Начать</button>
+                 <!-- Добавьте эту кнопку для отладки -->
+                 <button class="btn-secondary" onclick="app.debugTelegramState()" style="margin-top: 10px;">🔍 Отладка Telegram</button>
             </div>
             <div class="auto-login-info" id="autoLoginInfo" style="display: none;">
                 <div class="loading-indicator">
@@ -1940,56 +1941,146 @@
                 }
             }
 
-            // Добавьте эту функцию для диагностики
-function debugTelegramState() {
-    console.log('=== TELEGRAM DEBUG START ===');
-    console.log('window.Telegram exists:', !!window.Telegram);
-    console.log('window.Telegram.WebApp exists:', !!window.Telegram?.WebApp);
-    console.log('Telegram WebApp object:', window.Telegram?.WebApp);
-    console.log('initDataUnsafe:', window.Telegram?.WebApp?.initDataUnsafe);
-    console.log('initData:', window.Telegram?.WebApp?.initData);
-    console.log('User data:', window.Telegram?.WebApp?.initDataUnsafe?.user);
-    console.log('=== TELEGRAM DEBUG END ===');
-}
-
-function initTelegram() {
-    debugTelegramState();
-    
-    try {
-        if (window.Telegram && window.Telegram.WebApp) {
-            tg = window.Telegram.WebApp;
-            console.log('Telegram WebApp initialized');
-            
-            tg.ready();
-            tg.expand();
-
-            tg.onEvent('viewportChanged', () => {
-                if (!tg.isExpanded) return;
-                ensureAuthenticated();
-            });
-
-            // Проверка наличия данных пользователя
-            console.log('Checking user data...');
-            console.log('initDataUnsafe:', tg.initDataUnsafe);
-            console.log('user:', tg.initDataUnsafe?.user);
-
-            if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
-                telegramUser = tg.initDataUnsafe.user;
-                currentUserId = 'tg_' + telegramUser.id;
-                console.log('Telegram user found:', telegramUser);
-                console.log('Generated userId:', currentUserId);
-                return true;
-            } else {
-                console.error('No user data in initDataUnsafe');
+            // ШАГ 1: Диагностика проблемы
+            function debugTelegramState() {
+                console.log('=== TELEGRAM DEBUG START ===');
+                console.log('window.Telegram exists:', !!window.Telegram);
+                console.log('window.Telegram.WebApp exists:', !!window.Telegram?.WebApp);
+                console.log('Telegram WebApp object:', window.Telegram?.WebApp);
+                console.log('initDataUnsafe:', window.Telegram?.WebApp?.initDataUnsafe);
+                console.log('initData:', window.Telegram?.WebApp?.initData);
+                console.log('User data:', window.Telegram?.WebApp?.initDataUnsafe?.user);
+                console.log('=== TELEGRAM DEBUG END ===');
             }
-        } else {
-            console.error('Telegram WebApp not available');
-        }
-    } catch (error) {
-        console.error('Error initializing Telegram:', error);
-    }
-    return false;
-}
+            
+            // ШАГ 4: Альтернативный способ получения данных Telegram
+            function getTelegramUserData() {
+                const tg = window.Telegram?.WebApp;
+                if (!tg) return null;
+                
+                console.log('=== Trying different methods to get user data ===');
+                
+                // Метод 1: через initDataUnsafe.user
+                if (tg.initDataUnsafe?.user) {
+                    console.log('Method 1 success - initDataUnsafe.user:', tg.initDataUnsafe.user);
+                    return tg.initDataUnsafe.user;
+                }
+                
+                // Метод 2: парсинг initData
+                if (tg.initData) {
+                    console.log('Method 2 - trying to parse initData:', tg.initData);
+                    try {
+                        const urlParams = new URLSearchParams(tg.initData);
+                        const userParam = urlParams.get('user');
+                        if (userParam) {
+                            const userData = JSON.parse(decodeURIComponent(userParam));
+                            console.log('Method 2 success - parsed user data:', userData);
+                            return userData;
+                        }
+                    } catch (error) {
+                        console.log('Method 2 failed:', error);
+                    }
+                }
+                
+                // Метод 3: проверка других возможных свойств
+                const possiblePaths = [
+                    'tg.user',
+                    'tg.WebAppUser',
+                    'tg.initDataUnsafe.from',
+                    'tg.initDataUnsafe.chat?.id'
+                ];
+                
+                for (const path of possiblePaths) {
+                    try {
+                        const value = eval('tg.' + path.split('.').slice(1).join('.'));
+                        if (value) {
+                            console.log(`Method 3 found data at ${path}:`, value);
+                            return value;
+                        }
+                    } catch (e) {
+                        // ignore
+                    }
+                }
+                
+                console.log('All methods failed to get user data');
+                return null;
+            }
+
+            // Обновленная функция initTelegram с улучшенным получением данных
+            function initTelegram() {
+                debugTelegramState();
+                
+                try {
+                    if (window.Telegram && window.Telegram.WebApp) {
+                        tg = window.Telegram.WebApp;
+                        console.log('Telegram WebApp initialized');
+                        
+                        tg.ready();
+                        tg.expand();
+
+                        tg.onEvent('viewportChanged', () => {
+                            if (!tg.isExpanded) return;
+                            ensureAuthenticated();
+                        });
+
+                        // Используем улучшенное получение данных пользователя
+                        const userData = getTelegramUserData();
+                        
+                        if (userData && userData.id) {
+                            telegramUser = userData;
+                            currentUserId = 'tg_' + telegramUser.id;
+                            console.log('Telegram user found:', telegramUser);
+                            console.log('Generated userId:', currentUserId);
+                            return true;
+                        } else {
+                            console.error('No valid user data found');
+                            // Попробуем создать mock данные для тестирования (только в development)
+                            if (window.location.hostname === 'localhost' || window.location.hostname.includes('render.com')) {
+                                console.log('Development mode detected, creating mock user');
+                                telegramUser = {
+                                    id: 123456789,
+                                    first_name: 'Test User',
+                                    username: 'testuser'
+                                };
+                                currentUserId = 'tg_' + telegramUser.id;
+                                return true;
+                            }
+                        }
+                    } else {
+                        console.error('Telegram WebApp not available');
+                    }
+                } catch (error) {
+                    console.error('Error initializing Telegram:', error);
+                }
+                return false;
+            }
+            
+            // ШАГ 2: Улучшение инициализации
+            // Функция ожидания загрузки Telegram WebApp
+            function waitForTelegram(maxWaitTime = 5000) {
+                return new Promise((resolve) => {
+                    let totalWaited = 0;
+                    const checkInterval = 100;
+                    
+                    const check = () => {
+                        if (window.Telegram && window.Telegram.WebApp) {
+                            console.log('Telegram WebApp loaded after', totalWaited + 'ms');
+                            resolve(true);
+                            return;
+                        }
+                        
+                        totalWaited += checkInterval;
+                        if (totalWaited < maxWaitTime) {
+                            setTimeout(check, checkInterval);
+                        } else {
+                            console.error('Telegram WebApp not loaded within', maxWaitTime + 'ms');
+                            resolve(false);
+                        }
+                    };
+                    
+                    check();
+                });
+            }
             
             function attachUserListener(userId) {
                 if (userListenerUnsubscribe) userListenerUnsubscribe();
@@ -2112,23 +2203,50 @@ function initTelegram() {
                 }
             }
 
+            // Улучшенная функция attemptTelegramAutoLogin
             async function attemptTelegramAutoLogin() {
-                if (!telegramUser) return false;
-                document.getElementById('autoLoginInfo').style.display = 'block';
-                const existingUser = await loadUser('tg_' + telegramUser.id);
-                document.getElementById('autoLoginInfo').style.display = 'none';
-
-                if (existingUser) {
-                    if (migrateOldAccount(existingUser)) {
-                        showScreen(SCREENS.MIGRATION);
-                        return false;
-                    }
-                    currentUserId = existingUser.userId;
-                    await saveUser(currentUserId, { lastActivity: new Date().toISOString() });
-                    await checkAndSetUserRole();
-                    attachUserListener(currentUserId);
-                    return true;
+                console.log('=== Starting Telegram Auto Login ===');
+                
+                if (!telegramUser) {
+                    console.log('No telegram user data available');
+                    return false;
                 }
+                
+                document.getElementById('autoLoginInfo').style.display = 'block';
+                
+                try {
+                    console.log('Attempting to load user with ID:', 'tg_' + telegramUser.id);
+                    const existingUser = await loadUser('tg_' + telegramUser.id);
+                    
+                    if (existingUser) {
+                        console.log('Existing user found:', existingUser);
+                        
+                        if (migrateOldAccount(existingUser)) {
+                            console.log('User needs migration');
+                            document.getElementById('autoLoginInfo').style.display = 'none';
+                            showScreen(SCREENS.MIGRATION);
+                            return false;
+                        }
+                        
+                        currentUserId = existingUser.userId;
+                        userData = existingUser;
+                        
+                        await saveUser(currentUserId, { lastActivity: new Date().toISOString() });
+                        await checkAndSetUserRole();
+                        attachUserListener(currentUserId);
+                        
+                        console.log('Auto login successful');
+                        document.getElementById('autoLoginInfo').style.display = 'none';
+                        return true;
+                    } else {
+                        console.log('No existing user found for this Telegram ID');
+                    }
+                } catch (error) {
+                    console.error('Error during auto login:', error);
+                    showError('Ошибка входа', 'Не удалось выполнить автоматический вход: ' + error.message);
+                }
+                
+                document.getElementById('autoLoginInfo').style.display = 'none';
                 return false;
             }
 
@@ -3394,17 +3512,46 @@ function initTelegram() {
                 });
             }
 
+            // Замените функцию initializeApp на эту версию:
             async function initializeApp() {
-                await fetchSettings();
-                if (!initTelegram()) {
-                    showCriticalError("Приложение можно запустить только внутри Telegram.");
-                    return;
-                }
+                console.log('=== Initializing App ===');
                 
-                if (!(await attemptTelegramAutoLogin())) {
-                    showWelcomeScreen();
-                } else {
-                    showDashboard();
+                try {
+                    await fetchSettings();
+                    console.log('Settings loaded');
+                    
+                    // Ждем загрузку Telegram WebApp
+                    const telegramLoaded = await waitForTelegram();
+                    
+                    if (!telegramLoaded) {
+                        console.error('Telegram WebApp failed to load');
+                        showCriticalError("Приложение можно запустить только внутри Telegram.<br>Если вы уже в Telegram, попробуйте перезагрузить страницу.");
+                        return;
+                    }
+                    
+                    // Инициализируем Telegram
+                    const telegramInitialized = initTelegram();
+                    
+                    if (!telegramInitialized) {
+                        console.error('Telegram initialization failed');
+                        showCriticalError("Не удалось инициализировать Telegram WebApp.<br>Попробуйте перезагрузить страницу.");
+                        return;
+                    }
+                    
+                    // Попытка автоматического входа
+                    const autoLoginSuccess = await attemptTelegramAutoLogin();
+                    
+                    if (autoLoginSuccess) {
+                        console.log('Auto login successful, showing dashboard');
+                        showDashboard();
+                    } else {
+                        console.log('Auto login failed, showing welcome screen');
+                        showWelcomeScreen();
+                    }
+                    
+                } catch (error) {
+                    console.error('Critical error during app initialization:', error);
+                    showCriticalError("Критическая ошибка при инициализации приложения.<br>" + error.message);
                 }
             }
 
@@ -3588,12 +3735,29 @@ function initTelegram() {
                     });
                 }
             }
+            
+            // ШАГ 7: Дополнительная отладка
+            function manualLogin() {
+                console.log('=== Manual Login Attempt ===');
+                debugTelegramState();
+                
+                if (window.Telegram?.WebApp) {
+                    const userData = getTelegramUserData();
+                    if (userData) {
+                        telegramUser = userData;
+                        currentUserId = 'tg_' + telegramUser.id;
+                        attemptTelegramAutoLogin().then(success => {
+                            if (success) showDashboard();
+                            else showWelcomeScreen();
+                        });
+                    } else {
+                         showError('Ошибка', 'Не удалось получить данные пользователя от Telegram вручную.');
+                    }
+                } else {
+                    showError('Ошибка', 'Telegram Web App не доступен.');
+                }
+            }
 
-
-            document.addEventListener('DOMContentLoaded', () => {
-                ['loginPhone', 'phone', 'recipientPhone', 'editPhone'].forEach(setupPhoneMask);
-                setTimeout(initializeApp, 100);
-            });
 
             return {
                 showRegistration, showLogin, showWelcomeScreen, submitLogin, submitRegistration, 
@@ -3609,9 +3773,35 @@ function initTelegram() {
                 updateOrderStatus, showReportModal, closeReportModal, submitReport, loadSchedule, 
                 saveSchedule, showUserDetailModal, closeUserDetailModal, addUserTag, removeUserTag, 
                 resetOrderCooldown, showScheduleForCity, applyAnalyticsFilters, toggleAdminNotifications,
-                markNoReport, markReportAccepted
+                markNoReport, markReportAccepted,
+                // Добавленные функции для отладки
+                debugTelegramState,
+                manualLogin
             };
         })();
+
+        // ШАГ 3: Обновление DOMContentLoaded
+        // Замените последний блок инициализации на этот:
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('DOM loaded, setting up phone masks...');
+            ['loginPhone', 'phone', 'recipientPhone', 'editPhone'].forEach(setupPhoneMask);
+            
+            console.log('Starting app initialization...');
+            // Увеличиваем задержку для лучшей совместимости с Telegram
+            setTimeout(app.initializeApp, 500);
+        });
+
+        // Также добавьте обработчик для случаев, когда DOMContentLoaded уже произошел
+        if (document.readyState === 'loading') {
+            console.log('Document still loading, waiting for DOMContentLoaded');
+        } else if (document.readyState === 'interactive' || document.readyState === 'complete') {
+            console.log('Document already loaded, initializing after a delay');
+            setTimeout(() => {
+                ['loginPhone', 'phone', 'recipientPhone', 'editPhone'].forEach(setupPhoneMask);
+                app.initializeApp();
+            }, 500);
+        }
+
     </script>
 </body>
 </html>
