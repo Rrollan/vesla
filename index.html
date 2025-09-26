@@ -3650,21 +3650,27 @@ function sanitizeCSVValue(value) {
                 }
             }
 
-            async function exportOrdersToCSV(button) {
+           async function exportOrdersToCSV(button) {
+                let formattedData;
                 await withLoading(button, async () => {
                     const searchQuery = document.getElementById('orderSearch').value.toLowerCase();
                     const snapshot = await db.collection(COLLECTIONS.ORDERS).orderBy('createdAt', 'desc').get();
+                    
                     if (snapshot.empty) {
                         showError("Нет заказов", "В базе данных нет ни одного заказа для экспорта.");
+                        formattedData = []; // Устанавливаем пустой массив, чтобы скачивание не сработало
                         return;
                     }
+                    
                     let allOrders = [];
                     snapshot.forEach(doc => allOrders.push({ id: doc.id, ...doc.data() }));
+
                     const filteredOrders = allOrders.filter(order => {
                         const searchString = `${order.userName} ${order.phone} ${order.instagram} ${order.orderNumber}`.toLowerCase();
                         return searchString.includes(searchQuery);
                     });
-                    const formattedData = filteredOrders.map(order => ({
+
+                    formattedData = filteredOrders.map(order => ({
                         'Номер заказа': order.orderNumber,
                         'Статус': getStatusInfo(order.status).text,
                         'Имя блогера': order.userName,
@@ -3679,28 +3685,38 @@ function sanitizeCSVValue(value) {
                         'Ссылка на отчет': order.reportLink,
                         'Дата создания': new Date(order.createdAt).toLocaleString('ru-RU')
                     }));
+                });
+
+                // Вызываем скачивание ПОСЛЕ того, как withLoading завершился
+                if (formattedData && formattedData.length > 0) {
                     const date = new Date().toISOString().split('T')[0];
                     downloadCSV(formattedData, `orders_export_${date}.csv`);
-                });
+                }
             }
 
-            async function exportUsersToCSV(button) {
+                       async function exportUsersToCSV(button) {
+                let formattedData;
                  await withLoading(button, async () => {
                     const searchQuery = document.getElementById('userSearch').value.toLowerCase();
                     const snapshot = await db.collection(COLLECTIONS.USERS).orderBy('registrationDate', 'desc').get();
+
                     if (snapshot.empty) {
                         showError("Нет пользователей", "В базе данных нет ни одного пользователя для экспорта.");
+                        formattedData = []; // Устанавливаем пустой массив
                         return;
                     }
+
                     let allUsers = [];
                     snapshot.forEach(doc => allUsers.push({ userId: doc.id, ...doc.data() }));
+
                     const filteredUsers = allUsers.filter(user => {
                         const reg = user.registration || user;
                          if (!reg.firstName) return false;
                         const searchString = `${reg.firstName} ${reg.phone} ${reg.instagramLogin}`.toLowerCase();
                         return searchString.includes(searchQuery);
                     });
-                    const formattedData = filteredUsers.map(user => {
+                     
+                    formattedData = filteredUsers.map(user => {
                         const reg = user.registration || user;
                         return {
                             'Имя': reg.firstName,
@@ -3718,9 +3734,13 @@ function sanitizeCSVValue(value) {
                             'Дата регистрации': new Date(user.registrationDate).toLocaleDateString('ru-RU'),
                         };
                     });
+                 });
+
+                // Вызываем скачивание ПОСЛЕ того, как withLoading завершился
+                if (formattedData && formattedData.length > 0) {
                     const date = new Date().toISOString().split('T')[0];
                     downloadCSV(formattedData, `users_export_${date}.csv`);
-                 });
+                }
             }
 
             document.addEventListener('DOMContentLoaded', () => {
