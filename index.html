@@ -1966,79 +1966,53 @@
                 }
             }
 
-            // Добавьте эту функцию для диагностики
-function debugTelegramState() {
-    console.log('=== TELEGRAM DEBUG START ===');
-    console.log('window.Telegram exists:', !!window.Telegram);
-    console.log('window.Telegram.WebApp exists:', !!window.Telegram?.WebApp);
-    console.log('Telegram WebApp object:', window.Telegram?.WebApp);
-    console.log('initDataUnsafe:', window.Telegram?.WebApp?.initDataUnsafe);
-    console.log('initData:', window.Telegram?.WebApp?.initData);
-    console.log('User data:', window.Telegram?.WebApp?.initDataUnsafe?.user);
-    console.log('=== TELEGRAM DEBUG END ===');
-}
-
-function initTelegram() {
-    debugTelegramState();
-    
-    try {
-        if (window.Telegram && window.Telegram.WebApp) {
-            tg = window.Telegram.WebApp;
-            console.log('Telegram WebApp initialized');
-            
-            tg.ready();
-            tg.expand();
-
-            tg.onEvent('viewportChanged', () => {
-                if (!tg.isExpanded) return;
-                ensureAuthenticated();
-            });
-
-            // Проверка наличия данных пользователя
-            console.log('Checking user data...');
-            console.log('initDataUnsafe:', tg.initDataUnsafe);
-            console.log('user:', tg.initDataUnsafe?.user);
-
-            if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
-                telegramUser = tg.initDataUnsafe.user;
-                currentUserId = 'tg_' + telegramUser.id;
-                console.log('Telegram user found:', telegramUser);
-                console.log('Generated userId:', currentUserId);
-                return true;
-            } else {
-                console.error('No user data in initDataUnsafe');
+            function debugTelegramState() {
+                console.log('=== TELEGRAM DEBUG START ===');
+                console.log('window.Telegram exists:', !!window.Telegram);
+                console.log('window.Telegram.WebApp exists:', !!window.Telegram?.WebApp);
+                console.log('Telegram WebApp object:', window.Telegram?.WebApp);
+                console.log('initDataUnsafe:', window.Telegram?.WebApp?.initDataUnsafe);
+                console.log('initData:', window.Telegram?.WebApp?.initData);
+                console.log('User data:', window.Telegram?.WebApp?.initDataUnsafe?.user);
+                console.log('=== TELEGRAM DEBUG END ===');
             }
-        } else {
-            console.error('Telegram WebApp not available');
-        }
-    } catch (error) {
-        console.error('Error initializing Telegram:', error);
-    }
-    return false;
-}
+
+            function initTelegram() {
+                debugTelegramState();
+                try {
+                    if (window.Telegram && window.Telegram.WebApp) {
+                        tg = window.Telegram.WebApp;
+                        console.log('Telegram WebApp initialized');
+                        tg.ready();
+                        tg.expand();
+                        tg.onEvent('viewportChanged', () => { if (!tg.isExpanded) return; ensureAuthenticated(); });
+                        console.log('Checking user data...');
+                        console.log('initDataUnsafe:', tg.initDataUnsafe);
+                        console.log('user:', tg.initDataUnsafe?.user);
+                        if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
+                            telegramUser = tg.initDataUnsafe.user;
+                            currentUserId = 'tg_' + telegramUser.id;
+                            console.log('Telegram user found:', telegramUser);
+                            console.log('Generated userId:', currentUserId);
+                            return true;
+                        } else { console.error('No user data in initDataUnsafe'); }
+                    } else { console.error('Telegram WebApp not available'); }
+                } catch (error) { console.error('Error initializing Telegram:', error); }
+                return false;
+            }
             
             function attachUserListener(userId) {
                 if (userListenerUnsubscribe) userListenerUnsubscribe();
                 userListenerUnsubscribe = db.collection(COLLECTIONS.USERS).doc(userId)
                     .onSnapshot((doc) => {
-                        if (doc.exists) {
-                            userData = { userId: doc.id, ...doc.data() };
-                            updateDashboard();
-                        } else {
-                            logout();
-                        }
-                    }, (error) => {
-                        console.error("Error with real-time listener: ", error);
-                    });
+                        if (doc.exists) { userData = { userId: doc.id, ...doc.data() }; updateDashboard(); } 
+                        else { logout(); }
+                    }, (error) => { console.error("Error with real-time listener: ", error); });
             }
 
             function hashPassword(password) {
                 let hash = 0;
-                for (let i = 0; i < password.length; i++) {
-                    const char = password.charCodeAt(i);
-                    hash = ((hash << 5) - hash) + char;
-                    hash &= hash;
-                }
+                for (let i = 0; i < password.length; i++) { const char = password.charCodeAt(i); hash = ((hash << 5) - hash) + char; hash &= hash; }
                 return hash.toString();
             }
             
@@ -2050,10 +2024,7 @@ function initTelegram() {
                 try {
                     const adminDoc = await db.collection(COLLECTIONS.ADMINS).doc(checkId).get();
                     return adminDoc.exists ? adminDoc.data().role : null;
-                } catch (error) {
-                    console.error("Error checking admin status:", error);
-                    return null;
-                }
+                } catch (error) { console.error("Error checking admin status:", error); return null; }
             }
             
             async function checkAndSetUserRole() {
@@ -2062,66 +2033,38 @@ function initTelegram() {
             }
 
             function migrateOldAccount(userInfo) {
-                if (userInfo && userInfo.registration && !userInfo.registration.password) {
-                    migrationUser = userInfo;
-                    return true; 
-                }
+                if (userInfo && userInfo.registration && !userInfo.registration.password) { migrationUser = userInfo; return true; }
                 return false;
             }
 
            async function saveUser(userId, data) {
                 if (!userId) throw new Error("User ID is missing");
-                try {
-                    await db.collection(COLLECTIONS.USERS).doc(userId).set(data, { merge: true });
-                } catch (error) {
-                    console.error("Error saving data to Firestore: ", error);
-                    showError("Ошибка сохранения", "Не удалось сохранить ваши данные. Проверьте интернет-соединение.");
-                    throw error;
-                }
+                try { await db.collection(COLLECTIONS.USERS).doc(userId).set(data, { merge: true }); } 
+                catch (error) { console.error("Error saving data to Firestore: ", error); showError("Ошибка сохранения", "Не удалось сохранить ваши данные. Проверьте интернет-соединение."); throw error; }
             }
 
             async function loadUser(userId) {
-                try {
-                    const doc = await db.collection(COLLECTIONS.USERS).doc(userId).get();
-                    return doc.exists ? { userId: doc.id, ...doc.data() } : null;
-                } catch (error) {
-                    console.error("Error loading user from Firestore:", error);
-                    return null;
-                }
+                try { const doc = await db.collection(COLLECTIONS.USERS).doc(userId).get(); return doc.exists ? { userId: doc.id, ...doc.data() } : null; } 
+                catch (error) { console.error("Error loading user from Firestore:", error); return null; }
             }
             
             async function findUserByCredentials(phone, instagram, password) {
                 try {
-                    const snapshot = await db.collection(COLLECTIONS.USERS)
-                        .where('registration.phone', '==', phone)
-                        .where('registration.instagramLogin', '==', instagram.toLowerCase())
-                        .get();
+                    const snapshot = await db.collection(COLLECTIONS.USERS).where('registration.phone', '==', phone).where('registration.instagramLogin', '==', instagram.toLowerCase()).get();
                     if (snapshot.empty) return null;
-                    for (const doc of snapshot.docs) {
-                        const foundUser = { userId: doc.id, ...doc.data() };
-                        if (foundUser.registration.password === hashPassword(password)) return foundUser;
-                    }
+                    for (const doc of snapshot.docs) { const foundUser = { userId: doc.id, ...doc.data() }; if (foundUser.registration.password === hashPassword(password)) return foundUser; }
                     return null;
-                } catch (error) {
-                    console.error("Error finding user by credentials:", error);
-                    return null;
-                }
+                } catch (error) { console.error("Error finding user by credentials:", error); return null; }
             }
             
             async function findUserByPhoneAndInstagram(phone, instagram) {
                 try {
-                    const snapshot = await db.collection(COLLECTIONS.USERS)
-                        .where('registration.phone', '==', phone)
-                        .where('registration.instagramLogin', '==', instagram.toLowerCase())
-                        .get();
+                    const snapshot = await db.collection(COLLECTIONS.USERS).where('registration.phone', '==', phone).where('registration.instagramLogin', '==', instagram.toLowerCase()).get();
                     if (snapshot.empty) return null;
                     const userDoc = snapshot.docs[0];
                     const foundUser = { userId: userDoc.id, ...userDoc.data() };
                     return !foundUser.registration.password ? foundUser : null;
-                } catch (error) {
-                    console.error("Error finding user for migration:", error);
-                    return null;
-                }
+                } catch (error) { console.error("Error finding user for migration:", error); return null; }
             }
             
             async function checkForDuplicateRegistration(phone, instagram, excludeUserId = null) {
@@ -2132,10 +2075,7 @@ function initTelegram() {
                     const phoneExists = !phoneSnapshot.empty && phoneSnapshot.docs[0].id !== excludeUserId;
                     const instagramExists = !instagramSnapshot.empty && instagramSnapshot.docs[0].id !== excludeUserId;
                     return { phoneExists, instagramExists, canRegister: !phoneExists && !instagramExists };
-                } catch (error) {
-                    console.error("Error checking for duplicates:", error);
-                    return { phoneExists: true, instagramExists: true, canRegister: false };
-                }
+                } catch (error) { console.error("Error checking for duplicates:", error); return { phoneExists: true, instagramExists: true, canRegister: false }; }
             }
 
             async function attemptTelegramAutoLogin() {
@@ -2143,12 +2083,8 @@ function initTelegram() {
                 document.getElementById('autoLoginInfo').style.display = 'block';
                 const existingUser = await loadUser('tg_' + telegramUser.id);
                 document.getElementById('autoLoginInfo').style.display = 'none';
-
                 if (existingUser) {
-                    if (migrateOldAccount(existingUser)) {
-                        showScreen(SCREENS.MIGRATION);
-                        return false;
-                    }
+                    if (migrateOldAccount(existingUser)) { showScreen(SCREENS.MIGRATION); return false; }
                     currentUserId = existingUser.userId;
                     await saveUser(currentUserId, { lastActivity: new Date().toISOString() });
                     await checkAndSetUserRole();
@@ -2159,9 +2095,7 @@ function initTelegram() {
             }
 
             function fillTelegramData() {
-                if (telegramUser && telegramUser.first_name) {
-                    document.getElementById('firstName').value = telegramUser.first_name;
-                }
+                if (telegramUser && telegramUser.first_name) { document.getElementById('firstName').value = telegramUser.first_name; }
             }
 
             function determineBloggerLevel(followersCount) {
@@ -2177,10 +2111,7 @@ function initTelegram() {
                     const dayBlockDoc = db.collection(COLLECTIONS.BLOCKED_SLOTS).doc(`${city}_${date}_fullday`).get();
                     const [timeBlock, dayBlock] = await Promise.all([timeBlockDoc, dayBlockDoc]);
                     return timeBlock.exists || dayBlock.exists;
-                } catch (error) {
-                    console.error("Error checking blocked slot:", error);
-                    return true;
-                }
+                } catch (error) { console.error("Error checking blocked slot:", error); return true; }
             }
 
             function showScreen(screenId) {
@@ -2188,65 +2119,34 @@ function initTelegram() {
                 document.getElementById(screenId).style.display = (screenId === SCREENS.WELCOME || screenId === SCREENS.CRITICAL_ERROR) ? 'flex' : 'block';
             }
 
-            function showDashboard() {
-                if (!ensureAuthenticated()) return;
-                showScreen(SCREENS.DASHBOARD);
-                document.getElementById('adminPanel').style.display = currentUserRole ? 'block' : 'none';
-            }
-
+            function showDashboard() { if (!ensureAuthenticated()) return; showScreen(SCREENS.DASHBOARD); document.getElementById('adminPanel').style.display = currentUserRole ? 'block' : 'none'; }
             function showWelcomeScreen() { showScreen(SCREENS.WELCOME); }
-            function showRegistration() {
-                if (!telegramUser) {
-                    return showCriticalError("Не удалось получить данные Telegram для регистрации. Пожалуйста, перезапустите приложение.");
-                }
-                showScreen(SCREENS.REGISTRATION); 
-                fillTelegramData();
-            }
+            function showRegistration() { if (!telegramUser) { return showCriticalError("Не удалось получить данные Telegram."); } showScreen(SCREENS.REGISTRATION); fillTelegramData(); }
             function showLogin() { showScreen(SCREENS.LOGIN); }
             function showSetSelection() { showScreen(SCREENS.SET_SELECTION); }
             function showAddressForm() { showScreen(SCREENS.ADDRESS); }
             function showDateTimeSelection() { showScreen(SCREENS.DATE_TIME); }
             function showInstructions() { showScreen(SCREENS.INSTRUCTIONS); }
-
+            
             async function showCRM() {
-                if (!ensureAuthenticated()) return;
-                if (!currentUserRole) {
-                    showError('Доступ запрещен', 'У вас нет прав для доступа к CRM.');
-                    return;
-                }
+                if (!ensureAuthenticated() || !currentUserRole) { return showError('Доступ запрещен', 'У вас нет прав для доступа к CRM.'); }
                 showScreen(SCREENS.CRM);
-                
                 document.querySelectorAll('.crm-tab').forEach(tab => {
                     const tabName = tab.dataset.tab;
-                    let isVisible = false;
-                    if (currentUserRole === 'admin') {
-                        isVisible = true;
-                    } else if (currentUserRole === 'operator') {
-                        const operatorTabs = ['overview', 'orders', 'users', 'schedule', 'blocks'];
-                        isVisible = operatorTabs.includes(tabName);
-                    }
+                    let isVisible = (currentUserRole === 'admin') || (currentUserRole === 'operator' && ['overview', 'orders', 'users', 'schedule', 'blocks'].includes(tabName));
                     tab.style.display = isVisible ? 'flex' : 'none';
                 });
-
                 const firstVisibleTab = document.querySelector('.crm-tab[style*="display: flex"]');
-                if (firstVisibleTab) {
-                    showCrmTab(firstVisibleTab.dataset.tab, firstVisibleTab);
-                }
-                updateCRMData();
+                if (firstVisibleTab) { showCrmTab(firstVisibleTab.dataset.tab, firstVisibleTab); }
             }
 
             function showCrmTab(tabName, element) {
                 if (!ensureAuthenticated()) return;
-                document.querySelectorAll('.crm-content').forEach(c => c.classList.remove('active'));
-                document.querySelectorAll('.crm-tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.crm-content, .crm-tab').forEach(el => el.classList.remove('active'));
                 document.getElementById('crm' + tabName.charAt(0).toUpperCase() + tabName.slice(1)).classList.add('active');
                 element.classList.add('active');
-                
                 switch(tabName) {
-                    case 'overview': 
-                        updateCRMStats(); 
-                        document.getElementById('cooldownSetting').value = appSettings.orderCooldownDays;
-                        break;
+                    case 'overview': updateCRMStats(); document.getElementById('cooldownSetting').value = appSettings.orderCooldownDays; break;
                     case 'analytics': applyAnalyticsFilters(); break;
                     case 'orders': updateOrdersList(); break;
                     case 'users': updateUsersList(); break;
@@ -2260,17 +2160,10 @@ function initTelegram() {
             async function withLoading(button, asyncFunction) {
                 if (button.disabled) return;
                 const originalText = button.innerHTML;
-                button.disabled = true;
-                button.innerHTML = 'Загрузка...';
-                try {
-                    await asyncFunction();
-                } catch (error) {
-                    console.error("Operation failed:", error);
-                    showError("Произошла ошибка", error.message);
-                } finally {
-                    button.disabled = false;
-                    button.innerHTML = originalText;
-                }
+                button.disabled = true; button.innerHTML = 'Загрузка...';
+                try { await asyncFunction(); } 
+                catch (error) { console.error("Operation failed:", error); showError("Произошла ошибка", error.message); } 
+                finally { button.disabled = false; button.innerHTML = originalText; }
             }
             
             async function submitLogin(button) {
@@ -3614,98 +3507,82 @@ function initTelegram() {
                     });
                 }
             }
+            
+            // ======================================================================
+            // === ИЗМЕНЕННЫЙ БЛОК: ЭКСПОРТ В CSV ===
+            // ======================================================================
 
-function sanitizeCSVValue(value) {
-                const strValue = String(value === null || value === undefined ? '' : value);
-                if (/[",\n]/.test(strValue)) {
-                    return `"${strValue.replace(/"/g, '""')}"`;
-                }
-                return strValue;
-            }
+            async function exportOrdersToCSV(button) {
+                if (button.disabled) return;
+                const originalText = button.innerHTML;
+                button.disabled = true;
+                button.innerHTML = 'Отправка...';
 
-            function downloadCSV(data, filename) {
-                if (!data || data.length === 0) {
-                    showError("Нет данных", "Нет данных для экспорта. Попробуйте сбросить фильтр.");
-                    return;
-                }
-                const headers = Object.keys(data[0]);
-                const csvRows = [headers.join(',')];
-                for (const row of data) {
-                    const values = headers.map(header => sanitizeCSVValue(row[header]));
-                    csvRows.push(values.join(','));
-                }
-                const csvString = csvRows.join('\n');
-                const bom = '\uFEFF';
-                const blob = new Blob([bom + csvString], { type: 'text/csv;charset=utf-8;' });
-                const link = document.createElement('a');
-                if (link.download !== undefined) {
-                    const url = URL.createObjectURL(blob);
-                    link.setAttribute('href', url);
-                    link.setAttribute('download', filename);
-                    link.style.visibility = 'hidden';
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
-                    URL.revokeObjectURL(url);
-                }
-            }
-
-           async function exportOrdersToCSV(button) {
-                let formattedData;
-                await withLoading(button, async () => {
-                    const searchQuery = document.getElementById('orderSearch').value.toLowerCase();
+                try {
+                    // 1. Получаем все заказы из Firestore
                     const snapshot = await db.collection(COLLECTIONS.ORDERS).orderBy('createdAt', 'desc').get();
-                    
                     if (snapshot.empty) {
                         showError("Нет заказов", "В базе данных нет ни одного заказа для экспорта.");
-                        formattedData = []; // Устанавливаем пустой массив, чтобы скачивание не сработало
                         return;
                     }
-                    
+            
+                    // 2. Применяем фильтр поиска на клиенте
+                    const searchQuery = document.getElementById('orderSearch').value.toLowerCase();
                     let allOrders = [];
                     snapshot.forEach(doc => allOrders.push({ id: doc.id, ...doc.data() }));
-
+            
                     const filteredOrders = allOrders.filter(order => {
                         const searchString = `${order.userName} ${order.phone} ${order.instagram} ${order.orderNumber}`.toLowerCase();
                         return searchString.includes(searchQuery);
                     });
-
-                    formattedData = filteredOrders.map(order => ({
-                        'Номер заказа': order.orderNumber,
-                        'Статус': getStatusInfo(order.status).text,
-                        'Имя блогера': order.userName,
-                        'Телефон блогера': order.phone,
-                        'Instagram': order.instagram,
-                        'Город': order.city,
-                        'Адрес': `${order.street}, п. ${order.entrance || '-'}, эт. ${order.floor || '-'}`,
-                        'Дата доставки': order.date,
-                        'Время доставки': order.time,
-                        'Выбранный набор': order.setName || 'Свой заказ',
-                        'Комментарий': order.comment,
-                        'Ссылка на отчет': order.reportLink,
-                        'Дата создания': new Date(order.createdAt).toLocaleString('ru-RU')
-                    }));
-                });
-
-                // Вызываем скачивание ПОСЛЕ того, как withLoading завершился
-                if (formattedData && formattedData.length > 0) {
-                    const date = new Date().toISOString().split('T')[0];
-                    downloadCSV(formattedData, `orders_export_${date}.csv`);
-                }
-            }
-
-                       async function exportUsersToCSV(button) {
-                let formattedData;
-                 await withLoading(button, async () => {
-                    const searchQuery = document.getElementById('userSearch').value.toLowerCase();
-                    const snapshot = await db.collection(COLLECTIONS.USERS).orderBy('registrationDate', 'desc').get();
-
-                    if (snapshot.empty) {
-                        showError("Нет пользователей", "В базе данных нет ни одного пользователя для экспорта.");
-                        formattedData = []; // Устанавливаем пустой массив
+            
+                    if (filteredOrders.length === 0) {
+                        showError("Нет данных", "По вашему поисковому запросу ничего не найдено для экспорта.");
                         return;
                     }
 
+                    // 3. Отправляем отфильтрованные данные на бэкенд
+                    const response = await fetch(`${BACKEND_URL}/api/export-orders`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            orders: filteredOrders,
+                            chatId: telegramUser.id 
+                        })
+                    });
+
+                    if (!response.ok) {
+                        const errorResult = await response.json();
+                        throw new Error(errorResult.error || `Сервер вернул ошибку ${response.status}`);
+                    }
+            
+                    showCrmSuccess("Файл отправлен!", "Проверьте личные сообщения с ботом. Файл с экспортом уже должен быть там.");
+            
+                } catch (error) {
+                    console.error("Export failed:", error);
+                    showError("Ошибка экспорта", "Не удалось отправить файл. " + error.message);
+                } finally {
+                    button.disabled = false;
+                    button.innerHTML = originalText;
+                }
+            }
+
+            async function exportUsersToCSV(button) {
+                if (button.disabled) return;
+                const originalText = button.innerHTML;
+                button.disabled = true;
+                button.innerHTML = 'Отправка...';
+                
+                try {
+                    // 1. Получаем всех пользователей из Firestore
+                    const snapshot = await db.collection(COLLECTIONS.USERS).orderBy('registrationDate', 'desc').get();
+                    if (snapshot.empty) {
+                        showError("Нет пользователей", "В базе данных нет ни одного пользователя для экспорта.");
+                        return;
+                    }
+
+                    // 2. Применяем фильтр поиска на клиенте
+                    const searchQuery = document.getElementById('userSearch').value.toLowerCase();
                     let allUsers = [];
                     snapshot.forEach(doc => allUsers.push({ userId: doc.id, ...doc.data() }));
 
@@ -3716,30 +3593,34 @@ function sanitizeCSVValue(value) {
                         return searchString.includes(searchQuery);
                     });
                      
-                    formattedData = filteredUsers.map(user => {
-                        const reg = user.registration || user;
-                        return {
-                            'Имя': reg.firstName,
-                            'Телефон': reg.phone,
-                            'Instagram': reg.instagramLogin,
-                            'Подписчики': reg.followersCount,
-                            'Просмотры': reg.avgViews,
-                            'Рейтинг': calculateBloggerRating(user),
-                            'Уровень': determineBloggerLevel(reg.followersCount).text,
-                            'Статус лояльности': user.loyaltyStatus || 'standard',
-                            'Заблокирован': user.isBlocked ? 'Да' : 'Нет',
-                            'Причина блокировки': user.blockReason,
-                            'Штрафы': user.strikes || 0,
-                            'Теги': (user.tags || []).join('; '),
-                            'Дата регистрации': new Date(user.registrationDate).toLocaleDateString('ru-RU'),
-                        };
-                    });
-                 });
+                    if (filteredUsers.length === 0) {
+                        showError("Нет данных", "По вашему поисковому запросу ничего не найдено для экспорта.");
+                        return;
+                    }
 
-                // Вызываем скачивание ПОСЛЕ того, как withLoading завершился
-                if (formattedData && formattedData.length > 0) {
-                    const date = new Date().toISOString().split('T')[0];
-                    downloadCSV(formattedData, `users_export_${date}.csv`);
+                    // 3. Отправляем отфильтрованные данные на бэкенд
+                    const response = await fetch(`${BACKEND_URL}/api/export-users`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            users: filteredUsers,
+                            chatId: telegramUser.id
+                        })
+                    });
+
+                    if (!response.ok) {
+                        const errorResult = await response.json();
+                        throw new Error(errorResult.error || `Сервер вернул ошибку ${response.status}`);
+                    }
+
+                    showCrmSuccess("Файл отправлен!", "Проверьте личные сообщения с ботом. Файл с экспортом уже должен быть там.");
+
+                } catch (error) {
+                    console.error("Export failed:", error);
+                    showError("Ошибка экспорта", "Не удалось отправить файл. " + error.message);
+                } finally {
+                    button.disabled = false;
+                    button.innerHTML = originalText;
                 }
             }
 
