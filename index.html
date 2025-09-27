@@ -22,15 +22,24 @@
             overflow-x: hidden;
         }
 
-        /* Стиль для корректного копирования текста */
-        body, p, span, div, h1, h2, h3, h4, label, li, a {
+        /* ИСПРАВЛЕНО: Стили для корректного выделения и копирования текста */
+        body {
+           user-select: none; /* Запрещаем выделение для всего body по умолчанию */
+           -webkit-user-select: none;
+           -moz-user-select: none;
+           -ms-user-select: none;
+        }
+
+        /* Разрешаем выделение для конкретных элементов, где это нужно */
+        .modal-body, .order-info, .user-details, .blocked-slot-info, .report-link, .user-name-phone, .order-id, .subtitle, p, h1, h2, h3, h4, label, li, a, span {
             user-select: text;
             -webkit-user-select: text;
             -moz-user-select: text;
             -ms-user-select: text;
         }
         
-        input, textarea, select, button {
+        /* Гарантируем стандартное поведение для полей ввода */
+        input, textarea, select {
             user-select: auto;
             -webkit-user-select: auto;
             -moz-user-select: auto;
@@ -1452,7 +1461,7 @@
                         </select>
                     </div>
                     <button class="btn-primary" onclick="app.applyAnalyticsFilters()">Применить</button>
-                    <button id="exportAnalyticsBtn" class="btn-secondary" onclick="app.exportAnalyticsToExcel(this)" style="margin-top: 0;">Экспорт в Excel</button>
+                    <!-- УДАЛЕНО: Кнопка экспорта аналитики -->
                 </div>
                 <div class="analytics-grid">
                     <div class="chart-container">
@@ -1518,7 +1527,6 @@
                     <label for="broadcastMessage">Текст сообщения</label>
                     <textarea id="broadcastMessage" rows="6" placeholder="Введите ваше сообщение здесь..."></textarea>
                 </div>
-                <!-- START: Блок с информацией о плейсхолдерах -->
                 <div class="telegram-info" style="margin-top: -10px; margin-bottom: 20px; font-size: 13px; padding: 15px; border-left-color: #ffc107;">
                     <h4 style="color: #00b4d8; margin-bottom: 10px;">✨ Персонализация (нажмите, чтобы скопировать)</h4>
                     <p style="color: #ccc; line-height: 1.8;">
@@ -1531,7 +1539,6 @@
                         <code class="placeholder-tag" onclick="app.copyPlaceholder(this)">{rating}</code>
                     </p>
                 </div>
-                <!-- END: Блок с информацией о плейсхолдерах -->
                 <button class="btn-primary" onclick="app.sendBroadcast(this)">Отправить рассылку</button>
                 <div class="telegram-info" style="margin-top: 20px;">
                      <h4 style="color: #ffc107; margin-bottom: 10px;">⚠️ Внимание!</h4>
@@ -1965,50 +1972,6 @@
             }
         }
         
-        async function sendAdminNotification(orderData, screenshotFile) {
-            const adminSnapshot = await db.collection(COLLECTIONS.ADMINS).get();
-
-            if (adminSnapshot.empty) {
-                console.log("В базе данных нет администраторов.");
-                return;
-            }
-            
-            const adminDocs = adminSnapshot.docs.filter(doc => doc.data().receivesNotifications !== false);
-            
-            if (adminDocs.length === 0) {
-                console.log("Нет администраторов, подписанных на уведомления.");
-                return;
-            }
-
-            const adminChatIds = adminDocs.map(doc => doc.id);
-
-            let message = `*Новая заявка на бартер*\n\n📝 *Заказ:* \`${orderData.orderNumber}\`\n👤 *Блогер:*\nИмя: ${orderData.userName}\nТелефон: \`${orderData.phone}\`\nInstagram: @${orderData.instagram}\nУровень: ${determineBloggerLevel(orderData.followersCount).text}`;
-            
-            if (orderData.setName) {
-                message += `\n🍱 *Выбранный набор:* ${orderData.setName}`;
-            }
-
-            message += `\n\n🗓 *Доставка:*\nДата: ${orderData.date} в ${orderData.time}\nГород: ${orderData.city}\nАдрес: ${orderData.street}, п. ${orderData.entrance}, эт. ${orderData.floor}\nКомментарий: ${orderData.comment || '-'}`;
-            
-            for (const chatId of adminChatIds) {
-                try {
-                    if (screenshotFile) {
-                        const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto`;
-                        const formData = new FormData();
-                        formData.append('chat_id', chatId);
-                        formData.append('photo', screenshotFile);
-                        formData.append('caption', message);
-                        formData.append('parse_mode', 'Markdown');
-                        await fetch(url, { method: 'POST', body: formData });
-                    } else {
-                        await sendTelegramNotification(chatId, message);
-                    }
-                } catch (error) {
-                    console.error('Ошибка отправки уведомления администратору:', error);
-                }
-            }
-        }
-
     function debugTelegramState() {
         console.log('=== TELEGRAM DEBUG START ===');
         console.log('window.Telegram exists:', !!window.Telegram);
@@ -3240,25 +3203,24 @@
                     reportMissed: false
                 };
                 
-                const userOrders = userData.orders || [];
-                userOrders.push({ id: orderId, orderNumber: newOrder.orderNumber, status: 'new', createdAt: newOrder.createdAt });
-                
-                const cityTag = newOrder.city.toLowerCase().replace(/\s/g, '-');
-                const userTags = userData.tags || [];
-                if (!userTags.includes(cityTag)) userTags.push(cityTag);
-
-                const batch = db.batch();
-                batch.set(db.collection(COLLECTIONS.ORDERS).doc(orderId), newOrder);
-                batch.update(db.collection(COLLECTIONS.USERS).doc(currentUserId), { 
-                    orders: userOrders, 
-                    tags: userTags,
-                    lastOrderTimestamp: newOrder.createdAt,
-                    cooldownNotified: false
-                });
-                await batch.commit();
-
                 const screenshotFile = document.getElementById('orderScreenshot').files[0] || null;
-                await sendAdminNotification(newOrder, screenshotFile);
+
+                const formData = new FormData();
+                formData.append('order', JSON.stringify(newOrder));
+                if (screenshotFile) {
+                    formData.append('screenshot', screenshotFile);
+                }
+
+                const response = await fetch(`${BACKEND_URL}/api/create-order`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    const errorResult = await response.json();
+                    throw new Error(errorResult.error || 'Ошибка на сервере при создании заказа');
+                }
+                
                 showSuccessMessage("Ваш заказ успешно оформлен!");
             });
         }
@@ -3676,177 +3638,106 @@
             navigator.clipboard.writeText(textToCopy).then(() => {
                 const originalText = element.textContent;
                 element.textContent = 'Скопировано!';
+                element.style.background = '#28a745';
                 setTimeout(() => {
                     element.textContent = originalText;
+                    element.style.background = '#4a4a4a';
                 }, 1500);
             }).catch(err => {
                 console.error('Failed to copy text: ', err);
             });
         }
-
-        async function exportOrdersToExcel(button) {
-            await withLoading(button, async () => {
-                if (!telegramUser?.id) {
-                    return showError("Ошибка", "Не удалось определить ваш ID для отправки файла. Перезагрузите приложение.");
-                }
-                
-                const searchQuery = document.getElementById('orderSearch').value.toLowerCase();
-                const snapshot = await db.collection(COLLECTIONS.ORDERS).orderBy('createdAt', 'desc').get();
-                if (snapshot.empty) {
-                    return showError("Нет данных", "Нет заказов для экспорта.");
-                }
-
-                const allOrders = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                const filteredOrders = allOrders.filter(order => {
-                    const searchString = `${order.userName} ${order.phone} ${order.instagram} ${order.orderNumber}`.toLowerCase();
-                    return searchString.includes(searchQuery);
-                });
-
-                 if (filteredOrders.length === 0) {
-                    return showError("Нет данных", "По текущему фильтру нет заказов для экспорта.");
-                }
-
-                const formattedData = filteredOrders.map(order => ({
-                    'Номер заказа': order.orderNumber,
-                    'Статус': getStatusInfo(order.status).text,
-                    'Имя блогера': order.userName,
-                    'Телефон блогера': order.phone,
-                    'Instagram': {
-                        text: order.instagram,
-                        hyperlink: `https://www.instagram.com/${order.instagram.replace('@', '')}`
-                    },
-                    'Город': order.city,
-                    'Адрес': `${order.street}, п. ${order.entrance || '-'}, эт. ${order.floor || '-'}`,
-                    'Дата доставки': order.date,
-                    'Время доставки': order.time,
-                    'Выбранный набор': order.setName || 'Свой заказ',
-                    'Комментарий': order.comment,
-                    'Ссылка на отчет': order.reportLink,
-                    'Дата создания': new Date(order.createdAt).toLocaleString('ru-RU')
-                }));
-
-                const response = await fetch(`${BACKEND_URL}/api/export-orders`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ orders: formattedData, chatId: telegramUser.id })
-                });
-
-                if (!response.ok) {
-                    const errorResult = await response.json();
-                    throw new Error(errorResult.error || `Сервер вернул ошибку ${response.status}`);
-                }
-                showCrmSuccess("Запрос отправлен!", "Excel-файл с заказами будет отправлен вам в личные сообщения.");
-            });
-        }
-
-        async function exportUsersToExcel(button) {
+        
+        // ИСПРАВЛЕНО: Функции экспорта
+        async function exportToExcel(button, dataType) {
             await withLoading(button, async () => {
                 if (!telegramUser?.id) {
                     return showError("Ошибка", "Не удалось определить ваш ID для отправки файла. Перезагрузите приложение.");
                 }
 
-                const searchQuery = document.getElementById('userSearch').value.toLowerCase();
-                const snapshot = await db.collection(COLLECTIONS.USERS).orderBy('registrationDate', 'desc').get();
+                let collectionRef, searchInputId, listSelector, itemSelector, orderByField;
+                if (dataType === 'orders') {
+                    collectionRef = db.collection(COLLECTIONS.ORDERS);
+                    searchInputId = 'orderSearch';
+                    orderByField = 'createdAt';
+                } else {
+                    collectionRef = db.collection(COLLECTIONS.USERS);
+                    searchInputId = 'userSearch';
+                    orderByField = 'registrationDate';
+                }
+
+                const searchQuery = document.getElementById(searchInputId).value.toLowerCase();
+                const snapshot = await collectionRef.orderBy(orderByField, 'desc').get();
 
                 if (snapshot.empty) {
-                    return showError("Нет пользователей", "В базе данных нет ни одного пользователя для экспорта.");
+                    return showError("Нет данных", "Нет данных для экспорта.");
                 }
+                
+                const allItems = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-                const allUsers = snapshot.docs.map(doc => ({ userId: doc.id, ...doc.data() }));
-
-                const filteredUsers = allUsers.filter(user => {
-                    const reg = user.registration || user;
-                     if (!reg.firstName) return false;
-                    const searchString = `${reg.firstName} ${reg.phone} ${reg.instagramLogin}`.toLowerCase();
+                const filteredItems = allItems.filter(item => {
+                    let searchString = '';
+                    if (dataType === 'orders') {
+                        searchString = `${item.userName} ${item.phone} ${item.instagram} ${item.orderNumber}`.toLowerCase();
+                    } else {
+                        const reg = item.registration || item;
+                        if (!reg.firstName) return false;
+                        searchString = `${reg.firstName} ${reg.phone} ${reg.instagramLogin}`.toLowerCase();
+                    }
                     return searchString.includes(searchQuery);
                 });
-                 
-                 if (filteredUsers.length === 0) {
-                    return showError("Нет данных", "По текущему фильтру нет пользователей для экспорта.");
+
+                if (filteredItems.length === 0) {
+                    return showError("Нет данных", "По текущему фильтру нет данных для экспорта.");
                 }
 
-                const formattedData = filteredUsers.map(user => {
-                    const reg = user.registration || user;
-                    return {
-                        'Имя': reg.firstName,
-                        'Телефон': reg.phone,
-                        'Instagram': {
-                           text: reg.instagramLogin,
-                           hyperlink: `https://www.instagram.com/${reg.instagramLogin.replace('@', '')}`
-                        },
-                        'Подписчики': reg.followersCount,
-                        'Просмотры': reg.avgViews,
-                        'Рейтинг': calculateBloggerRating(user),
-                        'Уровень': determineBloggerLevel(reg.followersCount).text,
-                        'Статус лояльности': user.loyaltyStatus || 'standard',
-                        'Заблокирован': user.isBlocked ? 'Да' : 'Нет',
-                        'Причина блокировки': user.blockReason,
-                        'Штрафы': user.strikes || 0,
-                        'Теги': (user.tags || []).join('; '),
-                        'Дата регистрации': new Date(user.registrationDate).toLocaleDateString('ru-RU'),
-                    };
-                });
-
-                const response = await fetch(`${BACKEND_URL}/api/export-users`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ users: formattedData, chatId: telegramUser.id })
-                });
+                let formattedData;
+                if (dataType === 'orders') {
+                    formattedData = filteredItems.map(order => {
+                        const instagramLogin = (order.instagram || '').replace('@', '');
+                        const url = `https://www.instagram.com/${instagramLogin}`;
+                        return {
+                            'Номер заказа': order.orderNumber, 'Статус': getStatusInfo(order.status).text, 'Имя блогера': order.userName,
+                            'Телефон блогера': order.phone,
+                            'Instagram': `=HYPERLINK("${url}", "@${instagramLogin}")`,
+                            'Город': order.city, 'Адрес': `${order.street}, п. ${order.entrance || '-'}, эт. ${order.floor || '-'}`,
+                            'Дата доставки': order.date, 'Время доставки': order.time, 'Выбранный набор': order.setName || 'Свой заказ',
+                            'Комментарий': order.comment, 'Ссылка на отчет': order.reportLink,
+                            'Дата создания': new Date(order.createdAt).toLocaleString('ru-RU')
+                        };
+                    });
+                } else { // users
+                    formattedData = filteredItems.map(user => {
+                        const reg = user.registration || user;
+                        const instagramLogin = (reg.instagramLogin || '').replace('@', '');
+                        const url = `https://www.instagram.com/${instagramLogin}`;
+                        return {
+                            'Имя': reg.firstName, 'Телефон': reg.phone,
+                            'Instagram': `=HYPERLINK("${url}", "@${instagramLogin}")`,
+                            'Подписчики': reg.followersCount, 'Просмотры': reg.avgViews, 'Рейтинг': calculateBloggerRating(user),
+                            'Уровень': determineBloggerLevel(reg.followersCount).text, 'Статус лояльности': user.loyaltyStatus || 'standard',
+                            'Заблокирован': user.isBlocked ? 'Да' : 'Нет', 'Причина блокировки': user.blockReason, 'Штрафы': user.strikes || 0,
+                            'Теги': (user.tags || []).join('; '), 'Дата регистрации': new Date(user.registrationDate).toLocaleDateString('ru-RU'),
+                        };
+                    });
+                }
                 
-                if (!response.ok) {
-                    const errorResult = await response.json();
-                    throw new Error(errorResult.error || `Сервер вернул ошибку ${response.status}`);
-                }
-                showCrmSuccess("Запрос отправлен!", "Excel-файл с пользователями будет отправлен вам в личные сообщения.");
-            });
-        }
-
-        async function exportAnalyticsToExcel(button) {
-            await withLoading(button, async () => {
-                 if (!telegramUser?.id) {
-                    return showError("Ошибка", "Не удалось определить ваш ID для отправки файла. Перезагрузите приложение.");
-                }
-                const filters = {
-                    startDate: document.getElementById('analyticsStartDate').value,
-                    endDate: document.getElementById('analyticsEndDate').value,
-                    city: document.getElementById('analyticsCity').value
-                };
-
-                const analyticsData = {
-                    filters: filters,
-                    ordersTrend: {
-                        labels: ordersTrendChart.data.labels,
-                        data: ordersTrendChart.data.datasets[0].data
-                    },
-                    cityDistribution: {
-                        labels: cityChart.data.labels,
-                        data: cityChart.data.datasets[0].data
-                    },
-                    bloggerLevels: {
-                        labels: bloggerLevelChart.data.labels,
-                        data: bloggerLevelChart.data.datasets[0].data
-                    },
-                    followersDistribution: {
-                        labels: followersDistributionChart.data.labels,
-                        data: followersDistributionChart.data.datasets[0].data
-                    },
-                    chatId: telegramUser.id
-                };
-
-                const response = await fetch(`${BACKEND_URL}/api/export-analytics`, {
+                const response = await fetch(`${BACKEND_URL}/api/export-${dataType}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(analyticsData)
+                    body: JSON.stringify({ data: formattedData, chatId: telegramUser.id })
                 });
 
                 if (!response.ok) {
                     const errorResult = await response.json();
                     throw new Error(errorResult.error || `Сервер вернул ошибку ${response.status}`);
                 }
-
-                showCrmSuccess("Запрос отправлен!", "Excel-файл с аналитикой будет отправлен вам в личные сообщения.");
+                showCrmSuccess("Запрос отправлен!", `Excel-файл с ${dataType === 'orders' ? 'заказами' : 'пользователями'} будет отправлен вам в личные сообщения.`);
             });
         }
+        
+        const exportOrdersToExcel = (btn) => exportToExcel(btn, 'orders');
+        const exportUsersToExcel = (btn) => exportToExcel(btn, 'users');
 
 
         document.addEventListener('DOMContentLoaded', () => {
@@ -3869,7 +3760,7 @@
             saveSchedule, showUserDetailModal, closeUserDetailModal, addUserTag, removeUserTag, 
             resetOrderCooldown, showScheduleForCity, applyAnalyticsFilters, toggleAdminNotifications,
             markNoReport, markReportAccepted, copyPlaceholder,
-            exportOrdersToExcel, exportUsersToExcel, exportAnalyticsToExcel
+            exportOrdersToExcel, exportUsersToExcel
         };
     })();
 </script>
