@@ -128,17 +128,45 @@ async function sendAdminNotification(orderData, screenshotFileBuffer) {
   }
 }
 
-// УНИФИЦИРОВАННАЯ ФУНКЦИЯ ДЛЯ ОТПРАВКИ EXCEL
+// ИСПРАВЛЕНО: Улучшенная функция для создания и отправки Excel
 async function sendExcelFile(chatId, data, fileNamePrefix, sheetName) {
-    if (!data || !Array.isArray(data)) {
-        throw new Error('Данные для экспорта отсутствуют или имеют неверный формат.');
+    if (!data || !Array.isArray(data) || !chatId) {
+        throw new Error('Неверные данные для экспорта.');
     }
+    
     if (data.length === 0) {
         await bot.sendMessage(chatId, `⚠️ Не удалось создать экспорт: список (${fileNamePrefix}) пуст.`);
         return;
     }
 
-    const worksheet = xlsx.utils.json_to_sheet(data);
+    // Преобразуем данные, чтобы Excel распознал формулы для гиперссылок
+    const processedData = data.map(row => {
+        const newRow = {};
+        for (const key in row) {
+            const value = row[key];
+            if (typeof value === 'string' && value.startsWith('=HYPERLINK')) {
+                // Для ячеек с гиперссылками создаем объект с типом 'f' (formula)
+                const match = value.match(/=HYPERLINK\("([^"]+)", "([^"]+)"\)/);
+                if (match) {
+                    newRow[key] = { t: 's', v: match[2], l: { Target: match[1], Tooltip: 'Перейти по ссылке' } };
+                } else {
+                    newRow[key] = value;
+                }
+            } else {
+                newRow[key] = value;
+            }
+        }
+        return newRow;
+    });
+
+    const worksheet = xlsx.utils.json_to_sheet(processedData);
+    
+    // Автоматически настраиваем ширину колонок
+    const columnWidths = Object.keys(processedData[0]).map(key => ({
+        wch: processedData.reduce((w, r) => Math.max(w, r[key] ? r[key].toString().length : 10), 10)
+    }));
+    worksheet['!cols'] = columnWidths;
+
     const workbook = xlsx.utils.book_new();
     xlsx.utils.book_append_sheet(workbook, worksheet, sheetName);
     
@@ -148,7 +176,7 @@ async function sendExcelFile(chatId, data, fileNamePrefix, sheetName) {
 
     await bot.sendDocument(chatId, fileBuffer, {}, { 
         filename: fileName, 
-        contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetsheet.sheet' 
+        contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
     });
 }
 
@@ -189,76 +217,23 @@ app.post('/api/create-order', upload.single('screenshot'), async (req, res) => {
 
 app.post('/api/export-users', async (req, res) => {
     try {
-        const { users, chatId } = req.body;
-        if (!users || !chatId) {
-            return res.status(400).json({ error: 'Отсутствуют данные (users) или ID чата (chatId).' });
-        }
-        await sendExcelFile(chatId, users, 'users', 'Пользователи');
+        const { data, chatId } = req.body;
+        await sendExcelFile(chatId, data, 'users', 'Пользователи');
         res.status(200).json({ message: 'Файл успешно отправлен.' });
     } catch (error) {
         console.error('Ошибка при экспорте пользователей:', error);
-        res.status(500).json({ error: 'Внутренняя ошибка сервера при создании файла.' });
+        res.status(500).json({ error: 'Внутренняя ошибка сервера.' });
     }
 });
 
 app.post('/api/export-orders', async (req, res) => {
     try {
-        const { orders, chatId } = req.body;
-        if (!orders || !chatId) {
-            return res.status(400).json({ error: 'Отсутствуют данные (orders) или ID чата (chatId).' });
-        }
-        await sendExcelFile(chatId, orders, 'orders', 'Заказы');
+        const { data, chatId } = req.body;
+        await sendExcelFile(chatId, data, 'orders', 'Заказы');
         res.status(200).json({ message: 'Файл успешно отправлен.' });
     } catch (error) {
         console.error('Ошибка при экспорте заказов:', error);
-        res.status(500).json({ error: 'Внутренняя ошибка сервера при создании файла.' });
-    }
-});
-
-// НОВЫЙ МАРШРУТ ДЛЯ ЭКСПОРТА АНАЛИТИКИ
-app.post('/api/export-analytics', async (req, res) => {
-    try {
-        const { filters, ordersTrend, cityDistribution, bloggerLevels, followersDistribution, chatId } = req.body;
-        if (!chatId) return res.status(400).json({ error: 'Отсутствует ID чата (chatId).' });
-
-        const workbook = xlsx.utils.book_new();
-
-        // Лист с фильтрами
-        const filtersData = [
-            { 'Параметр': 'Начальная дата', 'Значение': filters.startDate || 'Не указано' },
-            { 'Параметр': 'Конечная дата', 'Значение': filters.endDate || 'Не указано' },
-            { 'Параметр': 'Город', 'Значение': filters.city === 'all' ? 'Все города' : filters.city },
-        ];
-        const filtersSheet = xlsx.utils.json_to_sheet(filtersData, { skipHeader: true });
-        xlsx.utils.book_append_sheet(workbook, filtersSheet, 'Фильтры');
-
-        // Функция для создания листов с данными
-        const createSheet = (name, data) => {
-            const formatted = data.labels.map((label, index) => ({ 'Категория': label, 'Значение': data.data[index] }));
-            if (formatted.length > 0) {
-                 const sheet = xlsx.utils.json_to_sheet(formatted);
-                 xlsx.utils.book_append_sheet(workbook, sheet, name);
-            }
-        };
-
-        createSheet('Динамика Заказов', ordersTrend);
-        createSheet('Заказы по Городам', cityDistribution);
-        createSheet('Уровни Блогеров', bloggerLevels);
-        createSheet('Подписчики', followersDistribution);
-
-        const fileBuffer = xlsx.write(workbook, { bookType: 'xlsx', type: 'buffer' });
-        const date = new Date().toISOString().split('T')[0];
-        const fileName = `analytics_export_${date}.xlsx`;
-
-        await bot.sendDocument(chatId, fileBuffer, {}, { 
-            filename: fileName, 
-            contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetsheet.sheet' 
-        });
-
-        res.status(200).json({ message: 'Файл аналитики успешно отправлен.' });
-    } catch (error) {
-        console.error('Ошибка при экспорте аналитики:', error);
-        res.status(500).json({ error: 'Внутренняя ошибка сервера при экспорте аналитики.' });
+        res.status(500).json({ error: 'Внутренняя ошибка сервера.' });
     }
 });
 
@@ -313,17 +288,15 @@ app.post('/api/broadcast', async (req, res) => {
 
 
 // ======================================================================
-// === ПЛАНИРОВЩИКИ И УВЕДОМЛЕНИЯ (ВАШ ОРИГИНАЛЬНЫЙ КОД) ===
+// === ПЛАНИРОВЩИКИ И УВЕДОМЛЕНИЯ ===
 // ======================================================================
 async function sendTelegramNotification(chatId, text) {
     try {
         await bot.sendMessage(chatId, text, { parse_mode: 'Markdown' });
     } catch (error) {
         console.error(`Ошибка отправки в Telegram для ${chatId}:`, error.response ? error.response.body : error.message);
-        throw error;
     }
 }
-
 async function checkAndNotifyUsers() {
     try {
         const settingsDoc = await db.collection('settings').doc('config').get();
@@ -340,7 +313,9 @@ async function checkAndNotifyUsers() {
         for (const doc of usersSnapshot.docs) {
             const user = doc.data();
             const lastOrderDate = new Date(user.lastOrderTimestamp);
-            const nextAvailableDate = new Date(lastOrderDate.setDate(lastOrderDate.getDate() + cooldownDays));
+            // Клонируем дату, чтобы не изменять оригинал
+            const nextAvailableDate = new Date(lastOrderDate.getTime());
+            nextAvailableDate.setDate(lastOrderDate.getDate() + cooldownDays);
 
             if (now >= nextAvailableDate && user.telegramId) {
                 const message = `👋 ${user.registration.firstName}, отличные новости! Вы снова можете оформить заказ на бартер. Ждем вашу заявку!`;
@@ -351,13 +326,12 @@ async function checkAndNotifyUsers() {
         console.error("Ошибка в checkAndNotifyUsers:", error);
     }
 }
-
-
 async function checkReportReminders() {
-    try {
+     try {
         const now = new Date();
-        const oneDayAgo = new Date(now.getTime() - (24 * 60 * 60 * 1000));
-
+        // Уведомление через 24 часа
+        const reminderTime = new Date(now.getTime() - (24 * 60 * 60 * 1000));
+        
         const ordersSnapshot = await db.collection('orders')
             .where('status', '==', 'delivered')
             .where('reminderSent', '==', false)
@@ -369,12 +343,14 @@ async function checkReportReminders() {
             const order = doc.data();
             const deliveryDate = new Date(order.createdAt);
             
-            if (deliveryDate <= oneDayAgo && order.userId) {
+            if (deliveryDate <= reminderTime && order.userId) {
                 const userDoc = await db.collection('users').doc(order.userId).get();
                 if (userDoc.exists && userDoc.data().telegramId) {
-                    const user = userDoc.data();
                     const message = `🔔 Напоминание: Прошло 24 часа с момента доставки вашего заказа *${order.orderNumber}*. Пожалуйста, не забудьте сдать отчет в личном кабинете.`;
-                    await sendAndUpdate(user.telegramId, message, doc.ref, { reminderSent: true });
+                    await sendAndUpdate(userDoc.data().telegramId, message, doc.ref, { reminderSent: true });
+                } else {
+                    // Если пользователя нет, все равно помечаем, чтобы не проверять снова
+                    await doc.ref.update({ reminderSent: true });
                 }
             }
         }
@@ -382,7 +358,6 @@ async function checkReportReminders() {
         console.error("Ошибка в checkReportReminders:", error);
     }
 }
-
 async function sendAndUpdate(chatId, message, docRef, updateData) {
     try {
         await sendTelegramNotification(chatId, message);
