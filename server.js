@@ -6,14 +6,13 @@ const cron = require('node-cron');
 const fetch = require('node-fetch');
 const TelegramBot = require('node-telegram-bot-api');
 const xlsx = require('xlsx');
-const multer = require('multer'); // НОВОЕ: для обработки файлов
+const multer = require('multer');
 
 // --- ИНИЦИАЛИЗАЦИЯ ---
 const app = express();
 const PORT = process.env.PORT || 10000;
 const TELEGRAM_BOT_TOKEN = '8227812944:AAFy8ydOkUeCj3Qkjg7_Xsq6zyQpcUyMShY'; 
 
-// НОВОЕ: Настройка для приема файлов в память
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 
@@ -70,7 +69,6 @@ function calculateBloggerRating(user) {
     return Math.max(1, Math.min(10, rating)).toFixed(1);
 }
 
-// ИЗМЕНЕНО: {instagramLogin} теперь всегда будет кликабельным
 function personalizeMessage(template, user) {
     if (!user) return template;
     
@@ -83,13 +81,12 @@ function personalizeMessage(template, user) {
 
     return template
         .replace(/{firstName}/g, registrationData.firstName || '')
-        .replace(/{instagramLogin}/g, instagramLink) // Главное изменение здесь
+        .replace(/{instagramLogin}/g, instagramLink) 
         .replace(/{followersCount}/g, registrationData.followersCount || '0')
         .replace(/{level}/g, levelInfo.text || '')
         .replace(/{rating}/g, rating || '0.0');
 }
 
-// ИЗМЕНЕНО: Функция для отправки уведомлений администраторам с фото
 async function sendAdminNotification(orderData, screenshotFileBuffer) {
   const adminSnapshot = await db.collection('admins').get();
   if (adminSnapshot.empty) return;
@@ -131,11 +128,35 @@ async function sendAdminNotification(orderData, screenshotFileBuffer) {
   }
 }
 
+// УНИФИЦИРОВАННАЯ ФУНКЦИЯ ДЛЯ ОТПРАВКИ EXCEL
+async function sendExcelFile(chatId, data, fileNamePrefix, sheetName) {
+    if (!data || !Array.isArray(data)) {
+        throw new Error('Данные для экспорта отсутствуют или имеют неверный формат.');
+    }
+    if (data.length === 0) {
+        await bot.sendMessage(chatId, `⚠️ Не удалось создать экспорт: список (${fileNamePrefix}) пуст.`);
+        return;
+    }
+
+    const worksheet = xlsx.utils.json_to_sheet(data);
+    const workbook = xlsx.utils.book_new();
+    xlsx.utils.book_append_sheet(workbook, worksheet, sheetName);
+    
+    const fileBuffer = xlsx.write(workbook, { bookType: 'xlsx', type: 'buffer' });
+    const date = new Date().toISOString().split('T')[0];
+    const fileName = `${fileNamePrefix}_export_${date}.xlsx`;
+
+    await bot.sendDocument(chatId, fileBuffer, {}, { 
+        filename: fileName, 
+        contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetsheet.sheet' 
+    });
+}
+
+
 // ======================================================================
 // === API МАРШРУТЫ ===
 // ======================================================================
 
-// НОВЫЙ МАРШРУТ: Для создания заказа с файлом
 app.post('/api/create-order', upload.single('screenshot'), async (req, res) => {
     try {
         const orderData = JSON.parse(req.body.order);
@@ -166,31 +187,13 @@ app.post('/api/create-order', upload.single('screenshot'), async (req, res) => {
     }
 });
 
-function convertToExcelBuffer(data, sheetName = 'Sheet1') {
-    if (!data || data.length === 0) return null;
-    const worksheet = xlsx.utils.json_to_sheet(data);
-    const workbook = xlsx.utils.book_new();
-    xlsx.utils.book_append_sheet(workbook, worksheet, sheetName);
-    return xlsx.write(workbook, { bookType: 'xlsx', type: 'buffer' });
-}
-
 app.post('/api/export-users', async (req, res) => {
     try {
         const { users, chatId } = req.body;
-        if (!users || !Array.isArray(users) || !chatId) {
+        if (!users || !chatId) {
             return res.status(400).json({ error: 'Отсутствуют данные (users) или ID чата (chatId).' });
         }
-        if (users.length === 0) {
-            await bot.sendMessage(chatId, "⚠️ Не удалось создать экспорт: список пользователей пуст.");
-            return res.status(200).json({ message: 'Нет данных для экспорта.'});
-        }
-        const fileBuffer = convertToExcelBuffer(users, 'Пользователи');
-        if (!fileBuffer) {
-             return res.status(500).json({ error: 'Не удалось создать Excel файл.' });
-        }
-        const date = new Date().toISOString().split('T')[0];
-        const fileName = `users_export_${date}.xlsx`;
-        await bot.sendDocument(chatId, fileBuffer, {}, { filename: fileName, contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetsheet.sheet' });
+        await sendExcelFile(chatId, users, 'users', 'Пользователи');
         res.status(200).json({ message: 'Файл успешно отправлен.' });
     } catch (error) {
         console.error('Ошибка при экспорте пользователей:', error);
@@ -201,26 +204,64 @@ app.post('/api/export-users', async (req, res) => {
 app.post('/api/export-orders', async (req, res) => {
     try {
         const { orders, chatId } = req.body;
-        if (!orders || !Array.isArray(orders) || !chatId) {
+        if (!orders || !chatId) {
             return res.status(400).json({ error: 'Отсутствуют данные (orders) или ID чата (chatId).' });
         }
-        if (orders.length === 0) {
-            await bot.sendMessage(chatId, "⚠️ Не удалось создать экспорт: список заказов пуст.");
-            return res.status(200).json({ message: 'Нет данных для экспорта.'});
-        }
-        const fileBuffer = convertToExcelBuffer(orders, 'Заказы');
-        if (!fileBuffer) {
-             return res.status(500).json({ error: 'Не удалось создать Excel файл.' });
-        }
-        const date = new Date().toISOString().split('T')[0];
-        const fileName = `orders_export_${date}.xlsx`;
-        await bot.sendDocument(chatId, fileBuffer, {}, { filename: fileName, contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetsheet.sheet' });
+        await sendExcelFile(chatId, orders, 'orders', 'Заказы');
         res.status(200).json({ message: 'Файл успешно отправлен.' });
     } catch (error) {
         console.error('Ошибка при экспорте заказов:', error);
         res.status(500).json({ error: 'Внутренняя ошибка сервера при создании файла.' });
     }
 });
+
+// НОВЫЙ МАРШРУТ ДЛЯ ЭКСПОРТА АНАЛИТИКИ
+app.post('/api/export-analytics', async (req, res) => {
+    try {
+        const { filters, ordersTrend, cityDistribution, bloggerLevels, followersDistribution, chatId } = req.body;
+        if (!chatId) return res.status(400).json({ error: 'Отсутствует ID чата (chatId).' });
+
+        const workbook = xlsx.utils.book_new();
+
+        // Лист с фильтрами
+        const filtersData = [
+            { 'Параметр': 'Начальная дата', 'Значение': filters.startDate || 'Не указано' },
+            { 'Параметр': 'Конечная дата', 'Значение': filters.endDate || 'Не указано' },
+            { 'Параметр': 'Город', 'Значение': filters.city === 'all' ? 'Все города' : filters.city },
+        ];
+        const filtersSheet = xlsx.utils.json_to_sheet(filtersData, { skipHeader: true });
+        xlsx.utils.book_append_sheet(workbook, filtersSheet, 'Фильтры');
+
+        // Функция для создания листов с данными
+        const createSheet = (name, data) => {
+            const formatted = data.labels.map((label, index) => ({ 'Категория': label, 'Значение': data.data[index] }));
+            if (formatted.length > 0) {
+                 const sheet = xlsx.utils.json_to_sheet(formatted);
+                 xlsx.utils.book_append_sheet(workbook, sheet, name);
+            }
+        };
+
+        createSheet('Динамика Заказов', ordersTrend);
+        createSheet('Заказы по Городам', cityDistribution);
+        createSheet('Уровни Блогеров', bloggerLevels);
+        createSheet('Подписчики', followersDistribution);
+
+        const fileBuffer = xlsx.write(workbook, { bookType: 'xlsx', type: 'buffer' });
+        const date = new Date().toISOString().split('T')[0];
+        const fileName = `analytics_export_${date}.xlsx`;
+
+        await bot.sendDocument(chatId, fileBuffer, {}, { 
+            filename: fileName, 
+            contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetsheet.sheet' 
+        });
+
+        res.status(200).json({ message: 'Файл аналитики успешно отправлен.' });
+    } catch (error) {
+        console.error('Ошибка при экспорте аналитики:', error);
+        res.status(500).json({ error: 'Внутренняя ошибка сервера при экспорте аналитики.' });
+    }
+});
+
 
 app.post('/api/broadcast', async (req, res) => {
     const { message, tags, senderChatId } = req.body;
@@ -282,8 +323,66 @@ async function sendTelegramNotification(chatId, text) {
         throw error;
     }
 }
-async function checkAndNotifyUsers() { /* ... код без изменений ... */ }
-async function checkReportReminders() { /* ... код без изменений ... */ }
+
+async function checkAndNotifyUsers() {
+    try {
+        const settingsDoc = await db.collection('settings').doc('config').get();
+        const cooldownDays = settingsDoc.exists ? settingsDoc.data().orderCooldownDays : 7;
+        const now = new Date();
+        
+        const usersSnapshot = await db.collection('users')
+            .where('lastOrderTimestamp', '!=', null)
+            .where('cooldownNotified', '==', false)
+            .get();
+        
+        if (usersSnapshot.empty) return;
+
+        for (const doc of usersSnapshot.docs) {
+            const user = doc.data();
+            const lastOrderDate = new Date(user.lastOrderTimestamp);
+            const nextAvailableDate = new Date(lastOrderDate.setDate(lastOrderDate.getDate() + cooldownDays));
+
+            if (now >= nextAvailableDate && user.telegramId) {
+                const message = `👋 ${user.registration.firstName}, отличные новости! Вы снова можете оформить заказ на бартер. Ждем вашу заявку!`;
+                await sendAndUpdate(user.telegramId, message, doc.ref, { cooldownNotified: true });
+            }
+        }
+    } catch (error) {
+        console.error("Ошибка в checkAndNotifyUsers:", error);
+    }
+}
+
+
+async function checkReportReminders() {
+    try {
+        const now = new Date();
+        const oneDayAgo = new Date(now.getTime() - (24 * 60 * 60 * 1000));
+
+        const ordersSnapshot = await db.collection('orders')
+            .where('status', '==', 'delivered')
+            .where('reminderSent', '==', false)
+            .get();
+
+        if (ordersSnapshot.empty) return;
+
+        for (const doc of ordersSnapshot.docs) {
+            const order = doc.data();
+            const deliveryDate = new Date(order.createdAt);
+            
+            if (deliveryDate <= oneDayAgo && order.userId) {
+                const userDoc = await db.collection('users').doc(order.userId).get();
+                if (userDoc.exists && userDoc.data().telegramId) {
+                    const user = userDoc.data();
+                    const message = `🔔 Напоминание: Прошло 24 часа с момента доставки вашего заказа *${order.orderNumber}*. Пожалуйста, не забудьте сдать отчет в личном кабинете.`;
+                    await sendAndUpdate(user.telegramId, message, doc.ref, { reminderSent: true });
+                }
+            }
+        }
+    } catch (error) {
+        console.error("Ошибка в checkReportReminders:", error);
+    }
+}
+
 async function sendAndUpdate(chatId, message, docRef, updateData) {
     try {
         await sendTelegramNotification(chatId, message);
