@@ -6,11 +6,16 @@ const cron = require('node-cron');
 const fetch = require('node-fetch');
 const TelegramBot = require('node-telegram-bot-api');
 const xlsx = require('xlsx');
+const multer = require('multer'); // НОВОЕ: для обработки файлов
 
 // --- ИНИЦИАЛИЗАЦИЯ ---
 const app = express();
 const PORT = process.env.PORT || 10000;
 const TELEGRAM_BOT_TOKEN = '8227812944:AAFy8ydOkUeCj3Qkjg7_Xsq6zyQpcUyMShY'; 
+
+// НОВОЕ: Настройка для приема файлов в память
+const storage = multer.memoryStorage();
+const upload = multer({ storage: storage });
 
 // --- ИНИЦИАЛИЗАЦИЯ FIREBASE ADMIN SDK ---
 try {
@@ -46,14 +51,9 @@ app.get('/', (req, res) => {
 });
 
 // ======================================================================
-// === НОВЫЕ ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ДЛЯ ПЕРСОНАЛИЗАЦИИ ===
+// === ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ===
 // ======================================================================
 
-/**
- * Определяет уровень блогера по количеству подписчиков.
- * @param {number} followersCount - Количество подписчиков.
- * @returns {{level: string, text: string}} - Объект с уровнем и его текстовым представлением.
- */
 function determineBloggerLevel(followersCount) {
     const count = Number(followersCount) || 0;
     if (count <= 6000) return { level: 'micro', text: 'Микроблогер' };
@@ -61,11 +61,6 @@ function determineBloggerLevel(followersCount) {
     return { level: 'macro-b', text: 'Макроблогер тип B' };
 }
 
-/**
- * Рассчитывает внутренний рейтинг блогера.
- * @param {object} user - Объект пользователя из Firestore.
- * @returns {string} - Рейтинг, округленный до одного знака после запятой.
- */
 function calculateBloggerRating(user) {
     const { followersCount = 0, avgViews = 0 } = user.registration || {};
     const strikes = user.strikes || 0;
@@ -75,12 +70,7 @@ function calculateBloggerRating(user) {
     return Math.max(1, Math.min(10, rating)).toFixed(1);
 }
 
-/**
- * Заменяет плейсхолдеры в шаблоне на реальные данные пользователя.
- * @param {string} template - Шаблон сообщения с плейсхолдерами.
- * @param {object} user - Объект пользователя из Firestore.
- * @returns {string} - Персонализированное сообщение.
- */
+// ИЗМЕНЕНО: {instagramLogin} теперь всегда будет кликабельным
 function personalizeMessage(template, user) {
     if (!user) return template;
     
@@ -88,18 +78,93 @@ function personalizeMessage(template, user) {
     const levelInfo = determineBloggerLevel(registrationData.followersCount);
     const rating = calculateBloggerRating(user);
 
+    const instagramLogin = (registrationData.instagramLogin || '').replace('@', '');
+    const instagramLink = `[@${instagramLogin}](https://www.instagram.com/${instagramLogin})`;
+
     return template
         .replace(/{firstName}/g, registrationData.firstName || '')
-        .replace(/{instagramLogin}/g, registrationData.instagramLogin || '')
+        .replace(/{instagramLogin}/g, instagramLink) // Главное изменение здесь
         .replace(/{followersCount}/g, registrationData.followersCount || '0')
         .replace(/{level}/g, levelInfo.text || '')
         .replace(/{rating}/g, rating || '0.0');
 }
 
+// ИЗМЕНЕНО: Функция для отправки уведомлений администраторам с фото
+async function sendAdminNotification(orderData, screenshotFileBuffer) {
+  const adminSnapshot = await db.collection('admins').get();
+  if (adminSnapshot.empty) return;
+
+  const adminDocs = adminSnapshot.docs.filter(doc => doc.data().receivesNotifications !== false);
+  if (adminDocs.length === 0) return;
+
+  const adminChatIds = adminDocs.map(doc => doc.id);
+  
+  const instagramLogin = (orderData.instagram || '').replace('@', '');
+  const instagramLink = `[@${instagramLogin}](https://www.instagram.com/${instagramLogin})`;
+
+  let message = `*Новая заявка на бартер*\n\n` +
+                `📝 *Заказ:* \`${orderData.orderNumber}\`\n` +
+                `👤 *Блогер:*\n` +
+                `Имя: ${orderData.userName}\n` +
+                `Телефон: \`${orderData.phone}\`\n` +
+                `Instagram: ${instagramLink}\n` +
+                `Уровень: ${determineBloggerLevel(orderData.followersCount).text}`;
+
+  if (orderData.setName) message += `\n🍱 *Выбранный набор:* ${orderData.setName}`;
+
+  message += `\n\n🗓 *Доставка:*\n` +
+             `Дата: ${orderData.date} в ${orderData.time}\n` +
+             `Город: ${orderData.city}\n` +
+             `Адрес: ${orderData.street}, п. ${orderData.entrance}, эт. ${orderData.floor}\n` +
+             `Комментарий: ${orderData.comment || '-'}`;
+  
+  for (const chatId of adminChatIds) {
+    try {
+      if (screenshotFileBuffer) {
+        await bot.sendPhoto(chatId, screenshotFileBuffer, { caption: message, parse_mode: 'Markdown' });
+      } else {
+        await bot.sendMessage(chatId, message, { parse_mode: 'Markdown' });
+      }
+    } catch (error) {
+      console.error(`Ошибка отправки админу ${chatId}:`, error.response?.body?.description || error.message);
+    }
+  }
+}
 
 // ======================================================================
-// === API ДЛЯ ЭКСПОРТА В EXCEL (без изменений) ===
+// === API МАРШРУТЫ ===
 // ======================================================================
+
+// НОВЫЙ МАРШРУТ: Для создания заказа с файлом
+app.post('/api/create-order', upload.single('screenshot'), async (req, res) => {
+    try {
+        const orderData = JSON.parse(req.body.order);
+        const screenshotFile = req.file;
+
+        const batch = db.batch();
+        const orderRef = db.collection('orders').doc(orderData.id);
+        batch.set(orderRef, orderData);
+
+        const userRef = db.collection('users').doc(orderData.userId);
+        const userOrders = { id: orderData.id, orderNumber: orderData.orderNumber, status: 'new', createdAt: orderData.createdAt };
+        const cityTag = orderData.city.toLowerCase().replace(/\s/g, '-');
+        
+        batch.update(userRef, { 
+            orders: admin.firestore.FieldValue.arrayUnion(userOrders),
+            tags: admin.firestore.FieldValue.arrayUnion(cityTag),
+            lastOrderTimestamp: orderData.createdAt,
+            cooldownNotified: false
+        });
+
+        await batch.commit();
+        await sendAdminNotification(orderData, screenshotFile ? screenshotFile.buffer : null);
+
+        res.status(201).json({ message: 'Заказ успешно создан' });
+    } catch (error) {
+        console.error('Ошибка при создании заказа на сервере:', error);
+        res.status(500).json({ error: 'Внутренняя ошибка сервера при создании заказа.' });
+    }
+});
 
 function convertToExcelBuffer(data, sheetName = 'Sheet1') {
     if (!data || data.length === 0) return null;
@@ -157,17 +222,12 @@ app.post('/api/export-orders', async (req, res) => {
     }
 });
 
-
-// ======================================================================
-// === API ДЛЯ МАССОВОЙ РАССЫЛКИ (С ИЗМЕНЕНИЯМИ) ===
-// ======================================================================
 app.post('/api/broadcast', async (req, res) => {
     const { message, tags, senderChatId } = req.body;
     if (!message || !senderChatId) { return res.status(400).json({ error: 'Отсутствует текст сообщения или ID отправителя.' }); }
     
     res.status(202).json({ message: 'Рассылка запущена.' });
 
-    // Запускаем рассылку в фоновом режиме, чтобы не блокировать ответ клиенту
     (async () => {
         try {
             let usersQuery = db.collection('users');
@@ -180,10 +240,9 @@ app.post('/api/broadcast', async (req, res) => {
                 return await bot.sendMessage(senderChatId, '⚠️ Рассылка завершена. Не найдено пользователей по вашим критериям.');
             }
             
-            // ИЗМЕНЕНО: Получаем полные данные пользователей, а не только ID
             const usersToSend = usersSnapshot.docs
                 .map(doc => doc.data())
-                .filter(user => user.telegramId); // Убеждаемся, что у пользователя есть telegramId
+                .filter(user => user.telegramId); 
 
             if (usersToSend.length === 0) {
                 return await bot.sendMessage(senderChatId, '⚠️ Рассылка завершена. Пользователи найдены, но ни у кого из них нет Telegram ID.');
@@ -191,19 +250,15 @@ app.post('/api/broadcast', async (req, res) => {
 
             let successCount = 0, errorCount = 0;
             
-            // ИЗМЕНЕНО: Итерируемся по полным объектам пользователей
             for (const user of usersToSend) {
                 try {
-                    // НОВОЕ: Персонализируем сообщение для каждого пользователя
                     const personalizedText = personalizeMessage(message, user);
-                    
                     await bot.sendMessage(user.telegramId, personalizedText, { parse_mode: 'Markdown' });
                     successCount++;
                 } catch (e) {
                     console.error(`Ошибка отправки пользователю ${user.telegramId}:`, e.response?.body?.description || e.message);
                     errorCount++;
                 }
-                // Задержка для избежания лимитов Telegram API
                 await new Promise(resolve => setTimeout(resolve, 100)); 
             }
 
@@ -217,7 +272,7 @@ app.post('/api/broadcast', async (req, res) => {
 
 
 // ======================================================================
-// === ПЛАНИРОВЩИКИ И УВЕДОМЛЕНИЯ (без изменений) ===
+// === ПЛАНИРОВЩИКИ И УВЕДОМЛЕНИЯ (ВАШ ОРИГИНАЛЬНЫЙ КОД) ===
 // ======================================================================
 async function sendTelegramNotification(chatId, text) {
     try {
