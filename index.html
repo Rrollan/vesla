@@ -23,12 +23,20 @@
         }
 
         /* Стиль для корректного копирования текста */
-        .modal-body, .order-info, .user-details, .blocked-slot-info, .report-link, .user-name-phone, .order-id, .subtitle {
+        body, p, span, div, h1, h2, h3, h4, label, li, a {
             user-select: text;
             -webkit-user-select: text;
             -moz-user-select: text;
             -ms-user-select: text;
         }
+        
+        input, textarea, select, button {
+            user-select: auto;
+            -webkit-user-select: auto;
+            -moz-user-select: auto;
+            -ms-user-select: auto;
+        }
+
 
         .container {
             max-width: 420px;
@@ -1187,6 +1195,18 @@
             border-radius: 10px;
         }
 
+        /* Стили для кликабельных плейсхолдеров */
+        .placeholder-tag {
+            cursor: pointer;
+            background: #4a4a4a;
+            padding: 2px 6px;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+        .placeholder-tag:hover {
+            background: #5a5a5a;
+        }
+
     </style>
 </head>
 <body>
@@ -1278,6 +1298,14 @@
                 <div class="form-group">
                     <label for="avgViews">Среднее количество просмотров сторис *</label>
                     <input type="number" id="avgViews" required placeholder="Например: 500" min="1" max="10000000">
+                </div>
+                 <div class="form-group">
+                    <label for="regPassword">Пароль *</label>
+                    <input type="password" id="regPassword" required placeholder="Придумайте пароль (минимум 6 символов)">
+                </div>
+                <div class="form-group">
+                    <label for="regPasswordConfirm">Повторите пароль *</label>
+                    <input type="password" id="regPasswordConfirm" required placeholder="Повторите пароль">
                 </div>
                 <button type="button" class="btn-primary" onclick="app.submitRegistration(this)">Зарегистрироваться</button>
                 <button type="button" class="btn-secondary" onclick="app.showWelcomeScreen()">← Назад</button>
@@ -1424,6 +1452,7 @@
                         </select>
                     </div>
                     <button class="btn-primary" onclick="app.applyAnalyticsFilters()">Применить</button>
+                    <button id="exportAnalyticsBtn" class="btn-secondary" onclick="app.exportAnalyticsToExcel(this)" style="margin-top: 0;">Экспорт в Excel</button>
                 </div>
                 <div class="analytics-grid">
                     <div class="chart-container">
@@ -1491,11 +1520,15 @@
                 </div>
                 <!-- START: Блок с информацией о плейсхолдерах -->
                 <div class="telegram-info" style="margin-top: -10px; margin-bottom: 20px; font-size: 13px; padding: 15px; border-left-color: #ffc107;">
-                    <h4 style="color: #00b4d8; margin-bottom: 10px;">✨ Персонализация</h4>
-                    <p style="color: #ccc; line-height: 1.6;">
+                    <h4 style="color: #00b4d8; margin-bottom: 10px;">✨ Персонализация (нажмите, чтобы скопировать)</h4>
+                    <p style="color: #ccc; line-height: 1.8;">
                         Используйте плейсхолдеры, и система автоматически подставит данные пользователя.
                         <br><strong>Доступные плейсхолдеры:</strong><br>
-                        <code>{firstName}</code>, <code>{instagramLogin}</code>, <code>{followersCount}</code>, <code>{level}</code>, <code>{rating}</code>
+                        <code class="placeholder-tag" onclick="app.copyPlaceholder(this)">{firstName}</code>, 
+                        <code class="placeholder-tag" onclick="app.copyPlaceholder(this)">{instagramLogin}</code>, 
+                        <code class="placeholder-tag" onclick="app.copyPlaceholder(this)">{followersCount}</code>, 
+                        <code class="placeholder-tag" onclick="app.copyPlaceholder(this)">{level}</code>, 
+                        <code class="placeholder-tag" onclick="app.copyPlaceholder(this)">{rating}</code>
                     </p>
                 </div>
                 <!-- END: Блок с информацией о плейсхолдерах -->
@@ -2341,11 +2374,18 @@
                 const instagramLogin = document.getElementById('instagramLogin').value.trim().toLowerCase();
                 const followersCount = parseInt(document.getElementById('followersCount').value);
                 const avgViews = parseInt(document.getElementById('avgViews').value);
+                const password = document.getElementById('regPassword').value.trim();
+                const passwordConfirm = document.getElementById('regPasswordConfirm').value.trim();
+
 
                 if (!firstName || !phone || !instagramLogin || isNaN(followersCount) || isNaN(avgViews)) {
                     return showError('Ошибка', 'Пожалуйста, заполните все обязательные поля');
                 }
                 if (avgViews < 300) return showRejectionModal();
+
+                if (!validatePassword(password) || password !== passwordConfirm) {
+                   return showError('Ошибка пароля', 'Пароли не совпадают или короче 6 символов.');
+                }
                 
                 const duplicateCheck = await checkForDuplicateRegistration(phone, instagramLogin);
                 if (!duplicateCheck.canRegister) {
@@ -2356,7 +2396,10 @@
                 const newUserId = 'tg_' + telegramUser.id;
                 
                 const newUser = {
-                    registration: { firstName, phone, instagramLogin, followersCount, avgViews, password: null },
+                    registration: { 
+                        firstName, phone, instagramLogin, followersCount, avgViews, 
+                        password: hashPassword(password) 
+                    },
                     level: bloggerData.level,
                     orders: [],
                     telegramId: telegramUser.id,
@@ -3627,7 +3670,20 @@
             }
         }
 
-        // --- НОВЫЕ ФУНКЦИИ ДЛЯ ЭКСПОРТА В EXCEL (ВМЕСТО СТАРЫХ CSV) ---
+        // --- НОВЫЕ ФУНКЦИИ ---
+        function copyPlaceholder(element) {
+            const textToCopy = element.textContent;
+            navigator.clipboard.writeText(textToCopy).then(() => {
+                const originalText = element.textContent;
+                element.textContent = 'Скопировано!';
+                setTimeout(() => {
+                    element.textContent = originalText;
+                }, 1500);
+            }).catch(err => {
+                console.error('Failed to copy text: ', err);
+            });
+        }
+
         async function exportOrdersToExcel(button) {
             await withLoading(button, async () => {
                 if (!telegramUser?.id) {
@@ -3655,7 +3711,10 @@
                     'Статус': getStatusInfo(order.status).text,
                     'Имя блогера': order.userName,
                     'Телефон блогера': order.phone,
-                    'Instagram': order.instagram,
+                    'Instagram': {
+                        text: order.instagram,
+                        hyperlink: `https://www.instagram.com/${order.instagram.replace('@', '')}`
+                    },
                     'Город': order.city,
                     'Адрес': `${order.street}, п. ${order.entrance || '-'}, эт. ${order.floor || '-'}`,
                     'Дата доставки': order.date,
@@ -3711,7 +3770,10 @@
                     return {
                         'Имя': reg.firstName,
                         'Телефон': reg.phone,
-                        'Instagram': reg.instagramLogin,
+                        'Instagram': {
+                           text: reg.instagramLogin,
+                           hyperlink: `https://www.instagram.com/${reg.instagramLogin.replace('@', '')}`
+                        },
                         'Подписчики': reg.followersCount,
                         'Просмотры': reg.avgViews,
                         'Рейтинг': calculateBloggerRating(user),
@@ -3739,6 +3801,54 @@
             });
         }
 
+        async function exportAnalyticsToExcel(button) {
+            await withLoading(button, async () => {
+                 if (!telegramUser?.id) {
+                    return showError("Ошибка", "Не удалось определить ваш ID для отправки файла. Перезагрузите приложение.");
+                }
+                const filters = {
+                    startDate: document.getElementById('analyticsStartDate').value,
+                    endDate: document.getElementById('analyticsEndDate').value,
+                    city: document.getElementById('analyticsCity').value
+                };
+
+                const analyticsData = {
+                    filters: filters,
+                    ordersTrend: {
+                        labels: ordersTrendChart.data.labels,
+                        data: ordersTrendChart.data.datasets[0].data
+                    },
+                    cityDistribution: {
+                        labels: cityChart.data.labels,
+                        data: cityChart.data.datasets[0].data
+                    },
+                    bloggerLevels: {
+                        labels: bloggerLevelChart.data.labels,
+                        data: bloggerLevelChart.data.datasets[0].data
+                    },
+                    followersDistribution: {
+                        labels: followersDistributionChart.data.labels,
+                        data: followersDistributionChart.data.datasets[0].data
+                    },
+                    chatId: telegramUser.id
+                };
+
+                const response = await fetch(`${BACKEND_URL}/api/export-analytics`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(analyticsData)
+                });
+
+                if (!response.ok) {
+                    const errorResult = await response.json();
+                    throw new Error(errorResult.error || `Сервер вернул ошибку ${response.status}`);
+                }
+
+                showCrmSuccess("Запрос отправлен!", "Excel-файл с аналитикой будет отправлен вам в личные сообщения.");
+            });
+        }
+
+
         document.addEventListener('DOMContentLoaded', () => {
             ['loginPhone', 'phone', 'recipientPhone', 'editPhone'].forEach(setupPhoneMask);
             setTimeout(initializeApp, 100);
@@ -3758,10 +3868,8 @@
             updateOrderStatus, showReportModal, closeReportModal, submitReport, loadSchedule, 
             saveSchedule, showUserDetailModal, closeUserDetailModal, addUserTag, removeUserTag, 
             resetOrderCooldown, showScheduleForCity, applyAnalyticsFilters, toggleAdminNotifications,
-            markNoReport, markReportAccepted, 
-            // ЗАМЕНЕНЫ СТАРЫЕ ФУНКЦИИ НА НОВЫЕ
-            exportOrdersToExcel, 
-            exportUsersToExcel
+            markNoReport, markReportAccepted, copyPlaceholder,
+            exportOrdersToExcel, exportUsersToExcel, exportAnalyticsToExcel
         };
     })();
 </script>
