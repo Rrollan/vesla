@@ -1869,12 +1869,12 @@
             </div>
         </div>
 
-        <!-- НОВОЕ: Модальное окно для управления меню -->
         <div id="menuItemModal" class="modal">
             <div class="modal-content" style="max-width: 400px;">
                 <h2 id="menuItemModalTitle">Добавить блюдо</h2>
                 <form id="menuItemForm" style="margin: 20px 0; text-align: left;">
                     <input type="hidden" id="menuItemEditId">
+                    <input type="hidden" id="menuItemOldImageUrl">
                     <div class="form-group">
                         <label for="menuItemName">Название</label>
                         <input type="text" id="menuItemName" required>
@@ -1898,7 +1898,7 @@
                         </select>
                     </div>
                      <div class="form-group">
-                        <label for="menuItemImage">Изображение (в разработке)</label>
+                        <label for="menuItemImage">Изображение</label>
                         <input type="file" id="menuItemImage" accept="image/*">
                     </div>
                 </form>
@@ -1917,6 +1917,7 @@
 
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js"></script>
     
    <script>
     const app = (function() {
@@ -1929,7 +1930,7 @@
             apiKey: "AIzaSyATmIapS6SJi7KnvKrJp5sfD9VMXxKMCgA",
             authDomain: "vesla-barter.firebaseapp.com",
             projectId: "vesla-barter",
-            storageBucket: "vesla-barter.firebasestorage.app",
+            storageBucket: "vesla-barter.appspot.com",
             messagingSenderId: "730193371508",
             appId: "1:730193371508:web:a6517d156f2766ece50c21",
             measurementId: "G-1QJ9RRS1L6"
@@ -1937,6 +1938,7 @@
         
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
+        const storage = firebase.storage();
         const FieldValue = firebase.firestore.FieldValue;
 
         const COLLECTIONS = {
@@ -3695,7 +3697,6 @@
             }
         }
 
-        // --- НОВЫЕ ФУНКЦИИ ---
         function copyPlaceholder(element) {
             const textToCopy = element.textContent;
             navigator.clipboard.writeText(textToCopy).then(() => {
@@ -3724,8 +3725,13 @@
                 snapshot.forEach(doc => {
                     const item = { id: doc.id, ...doc.data() };
                     const el = document.createElement('div');
-                    el.className = 'user-item'; // Используем похожий стиль для консистентности
+                    el.className = 'user-item';
+                    const imageHtml = item.imageUrl 
+                        ? `<img src="${item.imageUrl}" alt="${item.name}" style="width: 50px; height: 50px; border-radius: 8px; object-fit: cover; margin-right: 15px;">` 
+                        : `<div style="width: 50px; height: 50px; background: #4a4a4a; border-radius: 8px; margin-right: 15px; display: flex; align-items: center; justify-content: center; font-size: 20px;">🍴</div>`;
+
                     el.innerHTML = `
+                        ${imageHtml}
                         <div class="user-details">
                             <span class="user-name-phone">${item.name}</span>
                             <div style="font-size: 14px; color: #ccc;">
@@ -3749,6 +3755,7 @@
             form.reset();
             const title = document.getElementById('menuItemModalTitle');
             const idField = document.getElementById('menuItemEditId');
+            const oldImageUrlField = document.getElementById('menuItemOldImageUrl');
 
             if (itemId) {
                 title.textContent = "Редактировать блюдо";
@@ -3757,13 +3764,15 @@
                 if (doc.exists) {
                     const data = doc.data();
                     document.getElementById('menuItemName').value = data.name;
-                    document.getElementById('menuItemDesc').value = data.description;
+                    document.getElementById('menuItemDesc').value = data.description || '';
                     document.getElementById('menuItemPrice').value = data.price;
                     document.getElementById('menuItemCategory').value = data.category;
+                    oldImageUrlField.value = data.imageUrl || '';
                 }
             } else {
                 title.textContent = "Добавить блюдо";
                 idField.value = '';
+                oldImageUrlField.value = '';
             }
             document.getElementById('menuItemModal').style.display = 'flex';
         }
@@ -3775,18 +3784,34 @@
                 const description = document.getElementById('menuItemDesc').value;
                 const price = parseFloat(document.getElementById('menuItemPrice').value);
                 const category = document.getElementById('menuItemCategory').value;
+                const imageFile = document.getElementById('menuItemImage').files[0];
+                const oldImageUrl = document.getElementById('menuItemOldImageUrl').value;
 
                 if (!name || isNaN(price)) {
-                    showError("Ошибка", "Название и цена обязательны для заполнения.");
-                    return;
+                    return showError("Ошибка", "Название и цена обязательны для заполнения.");
                 }
 
                 const menuItemData = { name, description, price, category };
                 
-                // TODO: Добавить логику загрузки изображения в Firebase Storage
+                if (imageFile) {
+                    if (editId && oldImageUrl) {
+                        try {
+                            const oldImageRef = storage.refFromURL(oldImageUrl);
+                            await oldImageRef.delete();
+                        } catch (imgError) {
+                            console.warn("Could not delete old image, it might not exist:", imgError);
+                        }
+                    }
+                    
+                    const imageRef = storage.ref(`menu_images/${new Date().getTime()}_${imageFile.name}`);
+                    const uploadTask = await imageRef.put(imageFile);
+                    menuItemData.imageUrl = await uploadTask.ref.getDownloadURL();
+                } else if (editId) {
+                    menuItemData.imageUrl = oldImageUrl;
+                }
                 
                 if (editId) {
-                    await db.collection(COLLECTIONS.MENU).doc(editId).update(menuItemData);
+                    await db.collection(COLLECTIONS.MENU).doc(editId).set(menuItemData, { merge: true });
                 } else {
                     await db.collection(COLLECTIONS.MENU).add(menuItemData);
                 }
@@ -3800,7 +3825,22 @@
         async function deleteMenuItem(itemId) {
             if (confirm('Вы уверены, что хотите удалить это блюдо?')) {
                 try {
-                    await db.collection(COLLECTIONS.MENU).doc(itemId).delete();
+                    const itemRef = db.collection(COLLECTIONS.MENU).doc(itemId);
+                    const doc = await itemRef.get();
+
+                    if (doc.exists) {
+                        const data = doc.data();
+                        if (data.imageUrl) {
+                            try {
+                                const imageRef = storage.refFromURL(data.imageUrl);
+                                await imageRef.delete();
+                            } catch (imgError) {
+                                console.warn("Could not delete image from Storage, it might not exist or URL is invalid:", imgError);
+                            }
+                        }
+                    }
+
+                    await itemRef.delete();
                     showCrmSuccess("Блюдо удалено.");
                     updateMenuItemsListCrm();
                 } catch(error) {
@@ -3810,8 +3850,6 @@
             }
         }
 
-
-        // ИСПРАВЛЕНО: Функции экспорта
         async function exportToExcel(button, dataType) {
             await withLoading(button, async () => {
                 if (!telegramUser?.id) {
@@ -3924,7 +3962,6 @@
             resetOrderCooldown, showScheduleForCity, applyAnalyticsFilters, toggleAdminNotifications,
             markNoReport, markReportAccepted, copyPlaceholder,
             exportOrdersToExcel, exportUsersToExcel,
-            // Новые функции для управления меню
             updateMenuItemsListCrm, showMenuItemModal, saveMenuItem, deleteMenuItem
         };
     })();
