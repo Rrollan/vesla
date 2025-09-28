@@ -335,36 +335,39 @@ app.post('/api/broadcast', async (req, res) => {
 });
 
 // ======================================================================
-// === НОВЫЙ МАРШРУТ ДЛЯ ИМПОРТА МЕНЮ ИЗ JSON-ФАЙЛА ===
+// === ИЗМЕНЕННЫЙ МАРШРУТ ДЛЯ ИМПОРТА МЕНЮ ИЗ JSON-ФАЙЛА ===
 // ======================================================================
 app.post('/api/import-menu-from-file', async (req, res) => {
     try {
-        // 1. Проверяем, был ли файл загружен
         if (!req.files || !req.files.menuFile) {
             return res.status(400).json({ error: 'Файл меню не был загружен.' });
         }
 
         const menuFile = req.files.menuFile;
+        
+        // --- ИЗМЕНЕНИЕ ЗДЕСЬ ---
+        // Читаем содержимое файла и сразу удаляем BOM (Byte Order Mark), если он есть
+        let fileContent = menuFile.data.toString('utf8');
+        if (fileContent.charCodeAt(0) === 0xFEFF) {
+            console.log('Обнаружен и удален BOM-символ из файла.');
+            fileContent = fileContent.slice(1);
+        }
+        // --- КОНЕЦ ИЗМЕНЕНИЯ ---
 
-        // 2. Читаем содержимое файла
-        const fileContent = menuFile.data.toString('utf8');
-
-        // 3. Пытаемся распарсить JSON. Если файл некорректный, будет ошибка
         let newMenuItems;
         try {
             newMenuItems = JSON.parse(fileContent);
         } catch (e) {
+            console.error('!!! ОШИБКА JSON.parse:', e.message);
             return res.status(400).json({ error: 'Ошибка в синтаксисе JSON-файла. Проверьте кавычки и запятые.' });
         }
         
-        // 4. Проверяем, что в файле действительно массив
         if (!Array.isArray(newMenuItems)) {
              return res.status(400).json({ error: 'Содержимое файла должно быть списком (массивом) [...] блюд.' });
         }
 
         console.log(`Получено ${newMenuItems.length} блюд из файла. Начинаю импорт в Firebase...`);
 
-        // 5. Очищаем старую коллекцию меню в Firebase
         const menuCollection = db.collection('menu');
         const oldMenuSnapshot = await menuCollection.get();
         const batchDelete = db.batch();
@@ -374,10 +377,8 @@ app.post('/api/import-menu-from-file', async (req, res) => {
         await batchDelete.commit();
         console.log('Старое меню удалено.');
 
-        // 6. Загружаем новые данные в Firebase
         const batchWrite = db.batch();
         newMenuItems.forEach(item => {
-            // Простая валидация
             if (item.name && typeof item.price === 'number') {
                 const newDocRef = menuCollection.doc();
                 batchWrite.set(newDocRef, {
@@ -385,7 +386,7 @@ app.post('/api/import-menu-from-file', async (req, res) => {
                     description: item.description || '',
                     price: item.price || 0,
                     category: item.category || 'Без категории',
-                    subcategory: item.subcategory || '', // <-- Добавлена поддержка подкатегорий
+                    subcategory: item.subcategory || '',
                     imageUrl: item.imageUrl || ''
                 });
             }
