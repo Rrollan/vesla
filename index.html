@@ -2022,6 +2022,7 @@
                 <h2 id="menuItemModalTitle">Добавить блюдо</h2>
                 <form id="menuItemForm" style="margin: 20px 0; text-align: left;">
                     <input type="hidden" id="menuItemEditId">
+                    <input type="hidden" id="menuItemOldImageUrl">
                     <div class="form-group">
                         <label for="menuItemName">Название</label>
                         <input type="text" id="menuItemName" required>
@@ -2045,8 +2046,8 @@
                         </select>
                     </div>
                      <div class="form-group">
-                        <label for="menuItemImageUrl">Ссылка на изображение</label>
-                        <input type="text" id="menuItemImageUrl" placeholder="https://i.ibb.co/.../image.jpg">
+                        <label for="menuItemImage">Изображение (будет обрезано до квадрата)</label>
+                        <input type="file" id="menuItemImage" accept="image/*">
                     </div>
                 </form>
                 <div style="display: flex; gap: 10px;">
@@ -2080,7 +2081,7 @@
    <script>
     const app = (function() {
 
-        const BACKEND_URL = 'https://vesla.onrender.com';
+        const BACKEND_URL = 'https://vesla.onrender.com'; // <-- УБЕДИТЕСЬ, ЧТО URL ВАШЕГО СЕРВЕРА ПРАВИЛЬНЫЙ
 
         const TELEGRAM_BOT_TOKEN = '8227812944:AAFy8ydOkUeCj3Qkjg7_Xsq6zyQpcUyMShY';
         
@@ -3913,6 +3914,7 @@
             form.reset();
             const title = document.getElementById('menuItemModalTitle');
             const idField = document.getElementById('menuItemEditId');
+            const oldImageUrlField = document.getElementById('menuItemOldImageUrl');
 
             if (itemId) {
                 title.textContent = "Редактировать блюдо";
@@ -3924,11 +3926,12 @@
                     document.getElementById('menuItemDesc').value = data.description || '';
                     document.getElementById('menuItemPrice').value = data.price;
                     document.getElementById('menuItemCategory').value = data.category;
-                    document.getElementById('menuItemImageUrl').value = data.imageUrl || '';
+                    oldImageUrlField.value = data.imageUrl || '';
                 }
             } else {
                 title.textContent = "Добавить блюдо";
                 idField.value = '';
+                oldImageUrlField.value = '';
             }
             document.getElementById('menuItemModal').style.display = 'flex';
         }
@@ -3940,12 +3943,36 @@
                 const description = document.getElementById('menuItemDesc').value;
                 const price = parseFloat(document.getElementById('menuItemPrice').value);
                 const category = document.getElementById('menuItemCategory').value;
-                const imageUrl = document.getElementById('menuItemImageUrl').value.trim();
+                const imageFile = document.getElementById('menuItemImage').files[0];
+                let imageUrl = document.getElementById('menuItemOldImageUrl').value; 
 
                 if (!name || isNaN(price)) {
                     return showError("Ошибка", "Название и цена обязательны для заполнения.");
                 }
 
+                if (imageFile) {
+                    const formData = new FormData();
+                    formData.append('image', imageFile);
+
+                    try {
+                        button.innerHTML = 'Обработка фото...';
+                        const response = await fetch(`${BACKEND_URL}/api/upload-menu-image`, {
+                            method: 'POST',
+                            body: formData
+                        });
+
+                        const result = await response.json();
+
+                        if (!response.ok || !result.success) {
+                            throw new Error(result.error || 'Ошибка при загрузке изображения на сервер.');
+                        }
+                        imageUrl = result.imageUrl;
+                    } catch (error) {
+                        console.error(error);
+                        return showError('Ошибка загрузки', error.message);
+                    }
+                }
+                
                 const menuItemData = { name, description, price, category, imageUrl };
                 
                 if (editId) {
@@ -3961,7 +3988,7 @@
         }
 
         async function deleteMenuItem(itemId) {
-            if (confirm('Вы уверены, что хотите удалить это блюдо?')) {
+            if (confirm('Вы уверены, что хотите удалить это блюдо? Примечание: само изображение с хостинга не удаляется.')) {
                 try {
                     await db.collection(COLLECTIONS.MENU).doc(itemId).delete();
                     showCrmSuccess("Блюдо удалено.");
