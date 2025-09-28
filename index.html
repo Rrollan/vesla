@@ -1564,7 +1564,10 @@
                 <button class="btn-primary" onclick="app.showAddAdminModal()" style="margin-bottom: 20px;">+ Добавить сотрудника</button>
                 <div id="adminsList"></div>
             </div>
-            <div id="crmMenu" class="crm-content"></div>
+            <div id="crmMenu" class="crm-content">
+                <button class="btn-primary" onclick="app.showMenuItemModal()" style="margin-bottom: 20px;">+ Добавить блюдо</button>
+                <div id="menuItemsListCrm"></div>
+            </div>
         </div>
         
         <!-- ЭКРАНЫ Процесса заказа -->
@@ -1865,6 +1868,47 @@
                 <button class="btn-secondary" onclick="app.closeContactModal()">Закрыть</button>
             </div>
         </div>
+
+        <!-- НОВОЕ: Модальное окно для управления меню -->
+        <div id="menuItemModal" class="modal">
+            <div class="modal-content" style="max-width: 400px;">
+                <h2 id="menuItemModalTitle">Добавить блюдо</h2>
+                <form id="menuItemForm" style="margin: 20px 0; text-align: left;">
+                    <input type="hidden" id="menuItemEditId">
+                    <div class="form-group">
+                        <label for="menuItemName">Название</label>
+                        <input type="text" id="menuItemName" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="menuItemDesc">Описание</label>
+                        <textarea id="menuItemDesc" rows="3"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="menuItemPrice">Цена</label>
+                        <input type="number" id="menuItemPrice" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="menuItemCategory">Категория</label>
+                        <select id="menuItemCategory" required>
+                            <option value="sets">Сеты</option>
+                            <option value="rolls">Роллы</option>
+                            <option value="sushi">Суши</option>
+                            <option value="snacks">Закуски</option>
+                            <option value="drinks">Напитки</option>
+                        </select>
+                    </div>
+                     <div class="form-group">
+                        <label for="menuItemImage">Изображение (в разработке)</label>
+                        <input type="file" id="menuItemImage" accept="image/*">
+                    </div>
+                </form>
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn-primary" onclick="app.saveMenuItem(this)" style="flex: 1;">Сохранить</button>
+                    <button class="btn-secondary" onclick="app.closeSimpleModal('menuItemModal')" style="flex: 1;">Отмена</button>
+                </div>
+            </div>
+        </div>
+
     </div>
 
     <div class="admin-panel" id="adminPanel" style="display: none;">
@@ -2273,6 +2317,7 @@
                 case 'blocks': updateBlockedSlotsList(); break;
                 case 'admins': updateAdminsList(); break;
                 case 'broadcast': setupBroadcastTagInput(); break;
+                case 'menu': updateMenuItemsListCrm(); break;
             }
         }
         
@@ -2443,11 +2488,9 @@
             const userAvatar = document.getElementById('userAvatar');
             userAvatar.innerHTML = telegramUser?.photo_url ? `<img src="${telegramUser.photo_url}" alt="${firstName}">` : (firstName ? firstName.charAt(0).toUpperCase() : '👤');
             
-            // --- ИЗМЕНЕНИЕ #4 ---
             const pleasantTitles = ['Инфлюенсер', 'Лидер мнений', 'Создатель контента', 'Трендсеттер', 'Амбассадор'];
             const randomTitle = pleasantTitles[Math.floor(Math.random() * pleasantTitles.length)];
             document.getElementById('userLevel').textContent = randomTitle;
-            // --- КОНЕЦ ИЗМЕНЕНИЯ #4 ---
 
             document.getElementById('followersDisplay').textContent = (followersCount || 0).toLocaleString('ru-RU');
             document.getElementById('viewsDisplay').textContent = (avgViews || 0).toLocaleString('ru-RU');
@@ -3668,6 +3711,106 @@
             });
         }
         
+        async function updateMenuItemsListCrm() {
+            const list = document.getElementById('menuItemsListCrm');
+            list.innerHTML = '<div class="loading-indicator">Загрузка меню...</div>';
+            try {
+                const snapshot = await db.collection(COLLECTIONS.MENU).orderBy('name').get();
+                if (snapshot.empty) {
+                    list.innerHTML = '<div class="empty-state">Блюд пока нет. Добавьте первое!</div>';
+                    return;
+                }
+                list.innerHTML = '';
+                snapshot.forEach(doc => {
+                    const item = { id: doc.id, ...doc.data() };
+                    const el = document.createElement('div');
+                    el.className = 'user-item'; // Используем похожий стиль для консистентности
+                    el.innerHTML = `
+                        <div class="user-details">
+                            <span class="user-name-phone">${item.name}</span>
+                            <div style="font-size: 14px; color: #ccc;">
+                                Категория: ${item.category} | Цена: ${item.price}
+                            </div>
+                        </div>
+                        <div class="user-controls">
+                           <button class="btn-secondary btn-small" onclick="app.showMenuItemModal('${item.id}')">Ред.</button>
+                           <button class="btn-danger-icon" title="Удалить" onclick="app.deleteMenuItem('${item.id}')">🗑️</button>
+                        </div>`;
+                    list.appendChild(el);
+                });
+            } catch (error) {
+                console.error("Error fetching menu items:", error);
+                list.innerHTML = '<div class="empty-state">Ошибка загрузки меню.</div>';
+            }
+        }
+        
+        async function showMenuItemModal(itemId = null) {
+            const form = document.getElementById('menuItemForm');
+            form.reset();
+            const title = document.getElementById('menuItemModalTitle');
+            const idField = document.getElementById('menuItemEditId');
+
+            if (itemId) {
+                title.textContent = "Редактировать блюдо";
+                idField.value = itemId;
+                const doc = await db.collection(COLLECTIONS.MENU).doc(itemId).get();
+                if (doc.exists) {
+                    const data = doc.data();
+                    document.getElementById('menuItemName').value = data.name;
+                    document.getElementById('menuItemDesc').value = data.description;
+                    document.getElementById('menuItemPrice').value = data.price;
+                    document.getElementById('menuItemCategory').value = data.category;
+                }
+            } else {
+                title.textContent = "Добавить блюдо";
+                idField.value = '';
+            }
+            document.getElementById('menuItemModal').style.display = 'flex';
+        }
+
+        async function saveMenuItem(button) {
+            await withLoading(button, async() => {
+                const editId = document.getElementById('menuItemEditId').value;
+                const name = document.getElementById('menuItemName').value;
+                const description = document.getElementById('menuItemDesc').value;
+                const price = parseFloat(document.getElementById('menuItemPrice').value);
+                const category = document.getElementById('menuItemCategory').value;
+
+                if (!name || isNaN(price)) {
+                    showError("Ошибка", "Название и цена обязательны для заполнения.");
+                    return;
+                }
+
+                const menuItemData = { name, description, price, category };
+                
+                // TODO: Добавить логику загрузки изображения в Firebase Storage
+                
+                if (editId) {
+                    await db.collection(COLLECTIONS.MENU).doc(editId).update(menuItemData);
+                } else {
+                    await db.collection(COLLECTIONS.MENU).add(menuItemData);
+                }
+
+                closeSimpleModal('menuItemModal');
+                showCrmSuccess("Блюдо сохранено!");
+                updateMenuItemsListCrm();
+            });
+        }
+
+        async function deleteMenuItem(itemId) {
+            if (confirm('Вы уверены, что хотите удалить это блюдо?')) {
+                try {
+                    await db.collection(COLLECTIONS.MENU).doc(itemId).delete();
+                    showCrmSuccess("Блюдо удалено.");
+                    updateMenuItemsListCrm();
+                } catch(error) {
+                    console.error("Error deleting menu item:", error);
+                    showError("Ошибка", "Не удалось удалить блюдо.");
+                }
+            }
+        }
+
+
         // ИСПРАВЛЕНО: Функции экспорта
         async function exportToExcel(button, dataType) {
             await withLoading(button, async () => {
@@ -3780,7 +3923,9 @@
             saveSchedule, showUserDetailModal, closeUserDetailModal, addUserTag, removeUserTag, 
             resetOrderCooldown, showScheduleForCity, applyAnalyticsFilters, toggleAdminNotifications,
             markNoReport, markReportAccepted, copyPlaceholder,
-            exportOrdersToExcel, exportUsersToExcel
+            exportOrdersToExcel, exportUsersToExcel,
+            // Новые функции для управления меню
+            updateMenuItemsListCrm, showMenuItemModal, saveMenuItem, deleteMenuItem
         };
     })();
 </script>
