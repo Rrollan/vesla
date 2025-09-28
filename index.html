@@ -2017,7 +2017,6 @@
             </div>
         </div>
 
-        <!-- ИЗМЕНЕНО: Модальное окно для управления меню -->
         <div id="menuItemModal" class="modal">
             <div class="modal-content" style="max-width: 400px;">
                 <h2 id="menuItemModalTitle">Добавить блюдо</h2>
@@ -2047,7 +2046,7 @@
                     </div>
                      <div class="form-group">
                         <label for="menuItemImageUrl">Ссылка на изображение</label>
-                        <input type="text" id="menuItemImageUrl" placeholder="https://example.com/image.png">
+                        <input type="text" id="menuItemImageUrl" placeholder="https://i.ibb.co/.../image.jpg">
                     </div>
                 </form>
                 <div style="display: flex; gap: 10px;">
@@ -2077,7 +2076,6 @@
 
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-    <!-- ИЗМЕНЕНО: SDK для Storage больше не нужен -->
     
    <script>
     const app = (function() {
@@ -2090,7 +2088,7 @@
             apiKey: "AIzaSyATmIapS6SJi7KnvKrJp5sfD9VMXxKMCgA",
             authDomain: "vesla-barter.firebaseapp.com",
             projectId: "vesla-barter",
-            storageBucket: "vesla-barter.appspot.com", // Можно оставить, не мешает
+            storageBucket: "vesla-barter.appspot.com",
             messagingSenderId: "730193371508",
             appId: "1:730193371508:web:a6517d156f2766ece50c21",
             measurementId: "G-1QJ9RRS1L6"
@@ -4078,7 +4076,14 @@
                 }
 
                 const menuData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                const categories = [...new Set(menuData.map(item => item.category))].sort();
+                const categoryOrder = ["Сеты", "Роллы", "Суши", "Закуски", "Напитки"];
+                const categories = [...new Set(menuData.map(item => item.category))].sort((a, b) => {
+                    const indexA = categoryOrder.indexOf(a);
+                    const indexB = categoryOrder.indexOf(b);
+                    if (indexA === -1) return 1;
+                    if (indexB === -1) return -1;
+                    return indexA - indexB;
+                });
                 
                 categories.forEach((cat, index) => {
                     const tab = document.createElement('button');
