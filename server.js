@@ -20,7 +20,7 @@ const app = express();
 const PORT = process.env.PORT || 10000;
 const TELEGRAM_BOT_TOKEN = '8227812944:AAFy8ydOkUeCj3Qkjg7_Xsq6zyQpcUyMShY'; 
 
-// --- ИНИЦИАЛИЗАЦИЯ FIREBASE ADMIN SDK ---
+// --- ИНИЦИАЛИЗАЦИЯ FIREBASE ADMIN SDK (ИСПРАВЛЕНО ДЛЯ RENDER) ---
 try {
   const serviceAccountPath = process.env.FIREBASE_SERVICE_ACCOUNT_KEY_PATH || './serviceAccountKey.json';
   
@@ -81,19 +81,13 @@ async function scrapeVeslaMenu() {
         console.log('Начинаю парсинг меню с vesla.kz с помощью Puppeteer (оптимизированный запуск)...');
         const url = 'https://vesla.kz/pavlodar/popular';
 
-        // ИЗМЕНЕНИЕ: Добавлены флаги для снижения потребления памяти
+        // ИЗМЕНЕНИЕ: Упрощенный запуск. Puppeteer сам найдет Chrome, установленный билдпэком.
         browser = await puppeteer.launch({
             headless: true,
-            executablePath: process.env.PUPPETEER_EXECUTABLE_PATH, // Используем путь из переменных окружения
             args: [
                 '--no-sandbox',
                 '--disable-setuid-sandbox',
-                '--disable-dev-shm-usage', // Важно для сред с ограниченными ресурсами
-                '--disable-accelerated-2d-canvas',
-                '--no-first-run',
-                '--no-zygote',
-                '--single-process', // Может помочь на слабых машинах
-                '--disable-gpu'
+                '--disable-dev-shm-usage' // Важный флаг для Render
             ],
         });
 
@@ -162,8 +156,7 @@ async function scrapeVeslaMenu() {
 
 
 async function updateMenuInFirestore() {
-    // Проверяем, есть ли вообще DB, чтобы избежать падения, если ключ не нашелся
-    if (!db.collection) {
+    if (!db || typeof db.collection !== 'function') {
         console.error('Firestore не инициализирован. Пропускаю обновление меню.');
         return;
     }
@@ -192,7 +185,8 @@ async function updateMenuInFirestore() {
     await batch.commit();
     console.log(`Меню в Firestore успешно обновлено. Добавлено ${scrapedItems.length} позиций.`);
 }
-// ... (остальные функции остаются без изменений, я их скрыл для краткости, но они должны быть в вашем файле)
+// +++ КОНЕЦ БЛОКА ПАРСИНГА +++
+
 function determineBloggerLevel(followersCount) {
     const count = Number(followersCount) || 0;
     if (count <= 6000) return { level: 'micro', text: 'Микроблогер' };
