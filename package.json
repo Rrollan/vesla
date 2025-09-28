@@ -4,7 +4,8 @@
   "description": "Vesla Mini App and Notifier",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+     "postinstall": "npx puppeteer browsers install chrome" 
   },
   "dependencies": {
     "puppeteer": "^22.0.0",
