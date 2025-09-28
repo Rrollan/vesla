@@ -11,7 +11,8 @@ const fs = require('fs');
 // НОВЫЕ ЗАВИСИМОСТИ
 const fileUpload = require('express-fileupload');
 const sharp = require('sharp');
-const axios = require('axios');
+const axios = require('axios'); // +++ ДОБАВЛЕНО для парсинга
+const cheerio = require('cheerio'); // +++ ДОБАВЛЕНО для парсинга
 const FormData = require('form-data');
 
 
@@ -48,11 +49,10 @@ app.use((req, res, next) => {
     next();
 });
 
-// ИЗМЕНЕНО: Используем express-fileupload для всех загрузок
 app.use(fileUpload({
   useTempFiles : true,
   tempFileDir : '/tmp/',
-  limits: { fileSize: 10 * 1024 * 1024 }, // Лимит 10 МБ
+  limits: { fileSize: 10 * 1024 * 1024 },
 }));
 
 // --- ГЛАВНЫЙ МАРШРУТ ---
@@ -61,8 +61,94 @@ app.get('/', (req, res) => {
 });
 
 // ======================================================================
-// === ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ (без изменений) ===
+// === ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ===
 // ======================================================================
+
+// +++ НОВЫЕ ФУНКЦИИ ДЛЯ ПАРСИНГА МЕНЮ С САЙТА VESLA.KZ +++
+
+async function scrapeVeslaMenu() {
+    try {
+        console.log('Начинаю парсинг меню с vesla.kz...');
+        // URL можно вынести в переменные окружения для гибкости
+        const url = 'https://vesla.kz/pavlodar/popular';
+        
+        // 1. Загружаем HTML-страницу с помощью axios
+        const { data } = await axios.get(url);
+        
+        // 2. Загружаем HTML в Cheerio для парсинга
+        const $ = cheerio.load(data);
+        
+        const menuItems = [];
+        
+        // 3. Находим все карточки товаров на странице по их общему селектору
+        $('.col-xl-3.col-lg-4.col-md-4.col-6').each((index, element) => {
+            const productElement = $(element);
+            
+            const name = productElement.find('a.product-title').text().trim();
+            const priceText = productElement.find('.price').text().trim();
+            // Очищаем цену от " тг." и всех пробелов, затем преобразуем в число
+            const price = parseInt(priceText.replace(/\s*тг\./, '').replace(/\s/g, ''), 10);
+            
+            // Получаем URL изображения из атрибута 'src'
+            let imageUrl = productElement.find('.product-img img').attr('src');
+            // Если ссылка относительная (не начинается с http), делаем ее абсолютной
+            if (imageUrl && !imageUrl.startsWith('http')) {
+                imageUrl = 'https://vesla.kz' + imageUrl;
+            }
+
+            // Проверяем, что получили все основные данные, прежде чем добавлять
+            if (name && !isNaN(price) && imageUrl) {
+                menuItems.push({
+                    name: name,
+                    price: price,
+                    imageUrl: imageUrl,
+                    description: '', // Описание на главной странице отсутствует, оставляем пустым
+                    // Категорию пока задаем по умолчанию. Можно усложнить логику для определения категорий.
+                    category: 'Популярное' 
+                });
+            }
+        });
+        
+        console.log(`Парсинг завершен. Найдено ${menuItems.length} блюд.`);
+        return menuItems;
+
+    } catch (error) {
+        console.error('Ошибка при парсинге меню:', error.message);
+        return []; // Возвращаем пустой массив в случае ошибки, чтобы не сломать приложение
+    }
+}
+
+async function updateMenuInFirestore() {
+    const scrapedItems = await scrapeVeslaMenu();
+    
+    if (scrapedItems.length === 0) {
+        console.log('Нет данных для обновления меню (возможно, ошибка парсинга или сайт недоступен). Пропускаю обновление.');
+        return;
+    }
+
+    const menuCollection = db.collection('menu');
+    const batch = db.batch();
+
+    // Эта стратегия "сначала удалить все, потом добавить новое" самая простая
+    // и гарантирует, что блюда, удаленные с сайта, исчезнут и из вашей базы.
+    console.log('Очищаю старое меню в Firestore...');
+    const snapshot = await menuCollection.get();
+    snapshot.docs.forEach(doc => {
+        batch.delete(doc.ref);
+    });
+
+    // Добавляем новые блюда, полученные с сайта
+    console.log('Добавляю новые блюда в Firestore...');
+    scrapedItems.forEach(item => {
+        const docRef = menuCollection.doc(); // Создаем новый документ с автоматическим ID
+        batch.set(docRef, item);
+    });
+
+    // Выполняем все операции (удаление и добавление) за один раз
+    await batch.commit();
+    console.log(`Меню в Firestore успешно обновлено. Добавлено ${scrapedItems.length} позиций.`);
+}
+// +++ КОНЕЦ НОВЫХ ФУНКЦИЙ +++
 
 function determineBloggerLevel(followersCount) {
     const count = Number(followersCount) || 0;
@@ -71,6 +157,7 @@ function determineBloggerLevel(followersCount) {
     return { level: 'macro-b', text: 'Макроблогер тип B' };
 }
 
+// ... (остальные ваши вспомогательные функции без изменений)
 function calculateBloggerRating(user) {
     const { followersCount = 0, avgViews = 0 } = user.registration || {};
     const strikes = user.strikes || 0;
@@ -190,12 +277,11 @@ async function sendExcelFile(chatId, data, fileNamePrefix, sheetName) {
         contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
     });
 }
+// ... (конец блока вспомогательных функций)
 
 // ======================================================================
-// === API МАРШРУТЫ ===
+// === API МАРШРУТЫ (без изменений) ===
 // ======================================================================
-
-// ИЗМЕНЕНО: Маршрут теперь использует express-fileupload
 app.post('/api/create-order', async (req, res) => {
     try {
         if (!req.body.order) {
@@ -203,7 +289,6 @@ app.post('/api/create-order', async (req, res) => {
         }
         const orderData = JSON.parse(req.body.order);
         
-        // express-fileupload помещает файлы в req.files
         const screenshotFile = req.files && req.files.screenshot ? req.files.screenshot : null;
 
         const batch = db.batch();
@@ -223,7 +308,6 @@ app.post('/api/create-order', async (req, res) => {
 
         await batch.commit();
         
-        // express-fileupload передает буфер файла в .data
         await sendAdminNotification(orderData, screenshotFile ? screenshotFile.data : null);
 
         res.status(201).json({ message: 'Заказ успешно создан' });
@@ -233,59 +317,44 @@ app.post('/api/create-order', async (req, res) => {
     }
 });
 
-
-// +++ НОВЫЙ МАРШРУТ ДЛЯ ЗАГРУЗКИ ИЗОБРАЖЕНИЙ МЕНЮ +++
 app.post('/api/upload-menu-image', async (req, res) => {
-    // ВАЖНО: Вставьте сюда ваш API ключ от ImgBB
     const IMGBB_API_KEY = '5148efee12c90f87021e50e0155d17a0'; 
 
     if (!IMGBB_API_KEY || IMGBB_API_KEY === 'YOUR_IMGBB_API_KEY_HERE') {
         return res.status(500).json({ error: 'API ключ для ImgBB не настроен на сервере.' });
     }
-
     if (!req.files || !req.files.image) {
         return res.status(400).json({ error: 'Файл изображения не был загружен.' });
     }
-
     const imageFile = req.files.image;
     const tempFilePath = imageFile.tempFilePath;
 
     try {
-        // 1. Обрабатываем изображение: обрезаем до квадрата 500x500 и конвертируем в webp для оптимизации
         const processedImageBuffer = await sharp(tempFilePath)
-            .resize(500, 500, {
-                fit: 'cover',
-                position: 'center'
-            })
+            .resize(500, 500, { fit: 'cover', position: 'center' })
             .webp({ quality: 80 })
             .toBuffer();
             
-        // 2. Подготавливаем данные для отправки в ImgBB
         const formData = new FormData();
         formData.append('key', IMGBB_API_KEY);
-        formData.append('image', processedImageBuffer.toString('base64')); // Отправляем как base64
+        formData.append('image', processedImageBuffer.toString('base64'));
 
-        // 3. Загружаем обработанное изображение на ImgBB
         const response = await axios.post('https://api.imgbb.com/1/upload', formData);
 
         if (response.data.success) {
-            // 4. Отправляем прямую ссылку на изображение обратно на клиент
             res.status(200).json({ success: true, imageUrl: response.data.data.url });
         } else {
             throw new Error(response.data.error?.message || 'Не удалось загрузить изображение в ImgBB');
         }
-
     } catch (error) {
         console.error('Ошибка обработки или загрузки изображения:', error.response ? error.response.data : error.message);
         res.status(500).json({ error: 'Внутренняя ошибка сервера при загрузке изображения.' });
     } finally {
-        // Безопасное удаление временного файла
         fs.unlink(tempFilePath, err => { 
             if (err) console.error("Не удалось удалить временный файл:", tempFilePath, err);
         });
     }
 });
-
 
 app.post('/api/export-users', async (req, res) => {
     try {
@@ -308,7 +377,6 @@ app.post('/api/export-orders', async (req, res) => {
         res.status(500).json({ error: 'Внутренняя ошибка сервера.' });
     }
 });
-
 
 app.post('/api/broadcast', async (req, res) => {
     const { message, tags, senderChatId } = req.body;
@@ -335,7 +403,6 @@ app.post('/api/broadcast', async (req, res) => {
             if (usersToSend.length === 0) {
                 return await bot.sendMessage(senderChatId, '⚠️ Рассылка завершена. Пользователи найдены, но ни у кого из них нет Telegram ID.');
             }
-
             let successCount = 0, errorCount = 0;
             
             for (const user of usersToSend) {
@@ -349,7 +416,6 @@ app.post('/api/broadcast', async (req, res) => {
                 }
                 await new Promise(resolve => setTimeout(resolve, 100)); 
             }
-
             await bot.sendMessage(senderChatId, `✅ Рассылка завершена!\n\nУспешно отправлено: ${successCount}\nОшибок: ${errorCount}`);
         } catch (error) {
             console.error('Критическая ошибка в процессе рассылки:', error);
@@ -360,7 +426,7 @@ app.post('/api/broadcast', async (req, res) => {
 
 
 // ======================================================================
-// === ПЛАНИРОВЩИКИ И УВЕДОМЛЕНИЯ (без изменений) ===
+// === ПЛАНИРОВЩИКИ И УВЕДОМЛЕНИЯ ===
 // ======================================================================
 async function sendTelegramNotification(chatId, text) {
     try {
@@ -385,7 +451,6 @@ async function checkAndNotifyUsers() {
         for (const doc of usersSnapshot.docs) {
             const user = doc.data();
             const lastOrderDate = new Date(user.lastOrderTimestamp);
-            // Клонируем дату, чтобы не изменять оригинал
             const nextAvailableDate = new Date(lastOrderDate.getTime());
             nextAvailableDate.setDate(lastOrderDate.getDate() + cooldownDays);
 
@@ -401,7 +466,6 @@ async function checkAndNotifyUsers() {
 async function checkReportReminders() {
      try {
         const now = new Date();
-        // Уведомление через 24 часа
         const reminderTime = new Date(now.getTime() - (24 * 60 * 60 * 1000));
         
         const ordersSnapshot = await db.collection('orders')
@@ -421,7 +485,6 @@ async function checkReportReminders() {
                     const message = `🔔 Напоминание: Прошло 24 часа с момента доставки вашего заказа *${order.orderNumber}*. Пожалуйста, не забудьте сдать отчет в личном кабинете.`;
                     await sendAndUpdate(userDoc.data().telegramId, message, doc.ref, { reminderSent: true });
                 } else {
-                    // Если пользователя нет, все равно помечаем, чтобы не проверять снова
                     await doc.ref.update({ reminderSent: true });
                 }
             }
@@ -442,8 +505,18 @@ async function sendAndUpdate(chatId, message, docRef, updateData) {
 cron.schedule('0 9 * * *', checkAndNotifyUsers, { timezone: "Asia/Almaty" });
 cron.schedule('0 * * * *', checkReportReminders, { timezone: "Asia/Almaty" }); 
 
+// +++ НОВЫЙ ПЛАНИРОВЩИК ДЛЯ ОБНОВЛЕНИЯ МЕНЮ +++
+// Запускается раз в день в 5 утра по времени Алматы.
+cron.schedule('0 5 * * *', updateMenuInFirestore, { timezone: "Asia/Almaty" });
+
+
 // --- ЗАПУСК СЕРВЕРА ---
 app.listen(PORT, () => {
     console.log(`Сервер запущен на порту ${PORT}`);
     console.log('Планировщики активны.');
+    
+    // +++ ЗАПУСК ПАРСЕРА ПРИ СТАРТЕ СЕРВЕРА +++
+    // Это полезно, чтобы меню было актуальным сразу после развертывания или перезагрузки сервера.
+    console.log('Запускаю первоначальное обновление меню при старте сервера...');
+    updateMenuInFirestore();
 });
