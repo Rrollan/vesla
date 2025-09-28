@@ -7,45 +7,30 @@ const TelegramBot = require('node-telegram-bot-api');
 const xlsx = require('xlsx');
 const fs = require('fs');
 
-// НОВЫЕ ЗАВИСИМОСТИ
+// ЗАВИСИМОСТИ ДЛЯ РУЧНОГО УПРАВЛЕНИЯ
 const fileUpload = require('express-fileupload');
 const sharp = require('sharp');
 const axios = require('axios');
-const cheerio = require('cheerio');
 const FormData = require('form-data');
-const puppeteer = require('puppeteer');
 
 // --- ИНИЦИАЛИЗАЦИЯ ---
 const app = express();
 const PORT = process.env.PORT || 10000;
 const TELEGRAM_BOT_TOKEN = '8227812944:AAFy8ydOkUeCj3Qkjg7_Xsq6zyQpcUyMShY'; 
 
-// --- ИНИЦИАЛИЗАЦИЯ FIREBASE ADMIN SDK (ИСПРАВЛЕНО) ---
+// --- ИНИЦИАЛИЗАЦИЯ FIREBASE ADMIN SDK ---
 try {
-  // Сначала проверяем, передал ли Render секретный ключ как переменную окружения
-  if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
-    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
-    if (!admin.apps.length) {
-      admin.initializeApp({
-        credential: admin.credential.cert(serviceAccount)
-      });
-    }
-  } 
-  // Если нет, пытаемся найти файл локально (для разработки)
-  else if (fs.existsSync('./serviceAccountKey.json')) {
-    const serviceAccount = require('./serviceAccountKey.json');
-    if (!admin.apps.length) {
-      admin.initializeApp({
-        credential: admin.credential.cert(serviceAccount)
-      });
-    }
-  } 
-  // Если не нашли ни там, ни там
-  else {
-    console.warn("ПРЕДУПРЕЖДЕНИЕ: Ключ сервисного аккаунта Firebase не найден. Функции Firebase могут не работать.");
+  const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT_KEY 
+    ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY)
+    : require('./serviceAccountKey.json');
+  
+  if (!admin.apps.length) {
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount)
+    });
   }
 } catch (error) {
-  console.error("КРИТИЧЕСКАЯ ОШИБКА: Ключ сервисного аккаунта Firebase не найден или не удалось его прочитать.", error);
+  console.error("КРИТИЧЕСКАЯ ОШИБКА: Ключ сервисного аккаунта Firebase не найден. Убедитесь, что файл serviceAccountKey.json существует или переменная окружения FIREBASE_SERVICE_ACCOUNT_KEY установлена.");
 }
 
 const db = admin.firestore();
@@ -77,118 +62,6 @@ app.get('/', (req, res) => {
 // === ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ===
 // ======================================================================
 
-// +++ ОБНОВЛЕННАЯ ВЕРСИЯ ПАРСЕРА С ОПТИМИЗАЦИЕЙ ДЛЯ RENDER +++
-async function scrapeVeslaMenu() {
-    let browser = null;
-    try {
-        console.log('Начинаю парсинг меню с vesla.kz с помощью Puppeteer (оптимизированный запуск)...');
-        const url = 'https://vesla.kz/pavlodar/popular';
-
-        // ИЗМЕНЕНИЕ: Упрощенный запуск. Puppeteer сам найдет Chrome, установленный билдпэком.
-        browser = await puppeteer.launch({
-            headless: true,
-            args: [
-                '--no-sandbox',
-                '--disable-setuid-sandbox',
-                '--disable-dev-shm-usage' // Важный флаг для Render
-            ],
-        });
-
-        const page = await browser.newPage();
-        await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
-
-        console.log(`Перехожу на страницу: ${url}`);
-        await page.goto(url, { waitUntil: 'networkidle2' });
-
-        const productSelector = '.product.d-flex.flex-column';
-        console.log(`Ожидаю появления селектора: "${productSelector}"...`);
-        await page.waitForSelector(productSelector, { timeout: 30000 });
-
-        console.log('Элементы найдены. Получаю HTML-контент страницы...');
-        const content = await page.content();
-        
-        const $ = cheerio.load(content);
-        const menuItems = [];
-        
-        const foundElements = $(productSelector);
-        console.log(`Найдено элементов для парсинга: ${foundElements.length}`);
-
-        if (foundElements.length === 0) {
-            console.error('КРИТИЧЕСКАЯ ОШИБКА: Puppeteer загрузил страницу, но селектор .product ничего не нашел.');
-            return [];
-        }
-        
-        foundElements.each((index, element) => {
-            const productElement = $(element);
-            const name = productElement.find('.product__title').text().trim();
-            const priceText = productElement.find('.product-cost__actual').text().trim();
-            const price = parseInt(priceText.replace(/\s*₸/, '').replace(/\s/g, ''), 10);
-            
-            const imageUrlRaw = productElement.find('.product__image').css('background-image');
-            let imageUrl = '';
-            if (imageUrlRaw) {
-                imageUrl = imageUrlRaw.replace(/url\(['"]?/, '').replace(/['"]?\)/, '');
-            }
-
-            if (name && !isNaN(price) && imageUrl) {
-                menuItems.push({
-                    name: name,
-                    price: price,
-                    imageUrl: imageUrl,
-                    description: productElement.find('.description').text().trim(),
-                    category: 'Популярное'
-                });
-            } else {
-                console.warn(`Не удалось полностью распарсить элемент #${index + 1}. Имя: "${name}", Цена: "${priceText}"`);
-            }
-        });
-        
-        console.log(`Парсинг завершен. Собрано ${menuItems.length} блюд.`);
-        return menuItems;
-
-    } catch (error) {
-        console.error('КРИТИЧЕСКАЯ ОШИБКА в scrapeVeslaMenu (Puppeteer):', error.message);
-        return [];
-    } finally {
-        if (browser) {
-            console.log('Закрываю браузер Puppeteer...');
-            await browser.close();
-        }
-    }
-}
-
-
-async function updateMenuInFirestore() {
-    if (!db || typeof db.collection !== 'function') {
-        console.error('Firestore не инициализирован. Пропускаю обновление меню.');
-        return;
-    }
-    const scrapedItems = await scrapeVeslaMenu();
-    
-    if (!scrapedItems || scrapedItems.length === 0) {
-        console.log('Парсер не нашел блюд. Обновление меню в Firestore пропущено.');
-        return;
-    }
-
-    const menuCollection = db.collection('menu');
-    const batch = db.batch();
-
-    console.log('Очищаю старое меню в Firestore...');
-    const snapshot = await menuCollection.get();
-    snapshot.docs.forEach(doc => {
-        batch.delete(doc.ref);
-    });
-
-    console.log('Добавляю новые блюда в Firestore...');
-    scrapedItems.forEach(item => {
-        const docRef = menuCollection.doc();
-        batch.set(docRef, item);
-    });
-
-    await batch.commit();
-    console.log(`Меню в Firestore успешно обновлено. Добавлено ${scrapedItems.length} позиций.`);
-}
-// ... Остальные ваши функции (determineBloggerLevel, personalizeMessage, etc.) ...
 function determineBloggerLevel(followersCount) {
     const count = Number(followersCount) || 0;
     if (count <= 6000) return { level: 'micro', text: 'Микроблогер' };
@@ -461,23 +334,7 @@ app.post('/api/broadcast', async (req, res) => {
     })();
 });
 
-app.post('/api/sync-menu', (req, res) => {
-    console.log('Получен асинхронный запрос на ручную синхронизацию меню...');
-    
-    res.status(202).json({ 
-        success: true, 
-        message: 'Запрос на синхронизацию принят. Процесс запущен в фоновом режиме.' 
-    });
-
-    (async () => {
-        try {
-            await updateMenuInFirestore();
-            console.log('Фоновая синхронизация меню успешно завершена.');
-        } catch (error) {
-            console.error('Ошибка при выполнении фоновой синхронизации меню:', error);
-        }
-    })();
-});
+// УДАЛЕН ЭНДПОИНТ /api/sync-menu, ТАК КАК ФУНКЦИЯ УДАЛЕНА
 
 // ======================================================================
 // === ПЛАНИРОВЩИКИ И УВЕДОМЛЕНИЯ ===
@@ -530,45 +387,4 @@ async function checkReportReminders() {
         if (ordersSnapshot.empty) return;
 
         for (const doc of ordersSnapshot.docs) {
-            const order = doc.data();
-            const deliveryDate = new Date(order.createdAt);
-            
-            if (deliveryDate <= reminderTime && order.userId) {
-                const userDoc = await db.collection('users').doc(order.userId).get();
-                if (userDoc.exists && userDoc.data().telegramId) {
-                    const message = `🔔 Напоминание: Прошло 24 часа с момента доставки вашего заказа *${order.orderNumber}*. Пожалуйста, не забудьте сдать отчет в личном кабинете.`;
-                    await sendAndUpdate(userDoc.data().telegramId, message, doc.ref, { reminderSent: true });
-                } else {
-                    await doc.ref.update({ reminderSent: true });
-                }
-            }
-        }
-    } catch (error) {
-        console.error("Ошибка в checkReportReminders:", error);
-    }
-}
-async function sendAndUpdate(chatId, message, docRef, updateData) {
-    try {
-        await sendTelegramNotification(chatId, message);
-        await docRef.update(updateData);
-        console.log(`Уведомление для ${chatId} отправлено, документ обновлен.`);
-    } catch (err) {
-        console.error(`Сетевая или DB ошибка для ${chatId}:`, err.message);
-    }
-}
-cron.schedule('0 9 * * *', checkAndNotifyUsers, { timezone: "Asia/Almaty" });
-cron.schedule('0 * * * *', checkReportReminders, { timezone: "Asia/Almaty" }); 
-
-// ПЛАНИРОВЩИК ДЛЯ ОБНОВЛЕНИЯ МЕНЮ
-cron.schedule('0 5 * * *', updateMenuInFirestore, { timezone: "Asia/Almaty" });
-
-
-// --- ЗАПУСК СЕРВЕРА ---
-app.listen(PORT, () => {
-    console.log(`Сервер запущен на порту ${PORT}`);
-    console.log('Планировщики активны.');
-    
-    // ИЗМЕНЕНИЕ: НЕ запускаем тяжелый парсинг при старте сервера, чтобы он не падал.
-    // console.log('Запускаю первоначальное обновление меню при старте сервера...');
-    // updateMenuInFirestore();
-});
+ 
