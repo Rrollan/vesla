@@ -6,15 +6,19 @@ const cron = require('node-cron');
 const fetch = require('node-fetch');
 const TelegramBot = require('node-telegram-bot-api');
 const xlsx = require('xlsx');
-const multer = require('multer');
+const fs = require('fs');
+
+// НОВЫЕ ЗАВИСИМОСТИ
+const fileUpload = require('express-fileupload');
+const sharp = require('sharp');
+const axios = require('axios');
+const FormData = require('form-data');
+
 
 // --- ИНИЦИАЛИЗАЦИЯ ---
 const app = express();
 const PORT = process.env.PORT || 10000;
 const TELEGRAM_BOT_TOKEN = '8227812944:AAFy8ydOkUeCj3Qkjg7_Xsq6zyQpcUyMShY'; 
-
-const storage = multer.memoryStorage();
-const upload = multer({ storage: storage });
 
 // --- ИНИЦИАЛИЗАЦИЯ FIREBASE ADMIN SDK ---
 try {
@@ -44,13 +48,20 @@ app.use((req, res, next) => {
     next();
 });
 
+// ИЗМЕНЕНО: Используем express-fileupload для всех загрузок
+app.use(fileUpload({
+  useTempFiles : true,
+  tempFileDir : '/tmp/',
+  limits: { fileSize: 10 * 1024 * 1024 }, // Лимит 10 МБ
+}));
+
 // --- ГЛАВНЫЙ МАРШРУТ ---
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 // ======================================================================
-// === ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ===
+// === ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ (без изменений) ===
 // ======================================================================
 
 function determineBloggerLevel(followersCount) {
@@ -107,7 +118,12 @@ async function sendAdminNotification(orderData, screenshotFileBuffer) {
                 `Instagram: ${instagramLink}\n` +
                 `Уровень: ${determineBloggerLevel(orderData.followersCount).text}`;
 
-  if (orderData.setName) message += `\n🍱 *Выбранный набор:* ${orderData.setName}`;
+  if (orderData.setName) {
+    message += `\n🍱 *Выбранный набор:* ${orderData.setName}`;
+  } else if (orderData.items && orderData.items.length > 0) {
+    const itemsList = orderData.items.map(item => `- ${item.name} (x${item.quantity})`).join('\n');
+    message += `\n\n🛍️ *Выбранные блюда:*\n${itemsList}\n*Итого:* ${orderData.totalPrice} ₸`;
+  }
 
   message += `\n\n🗓 *Доставка:*\n` +
              `Дата: ${orderData.date} в ${orderData.time}\n` +
@@ -128,7 +144,6 @@ async function sendAdminNotification(orderData, screenshotFileBuffer) {
   }
 }
 
-// ИСПРАВЛЕНО: Улучшенная функция для создания и отправки Excel
 async function sendExcelFile(chatId, data, fileNamePrefix, sheetName) {
     if (!data || !Array.isArray(data) || !chatId) {
         throw new Error('Неверные данные для экспорта.');
@@ -138,14 +153,11 @@ async function sendExcelFile(chatId, data, fileNamePrefix, sheetName) {
         await bot.sendMessage(chatId, `⚠️ Не удалось создать экспорт: список (${fileNamePrefix}) пуст.`);
         return;
     }
-
-    // Преобразуем данные, чтобы Excel распознал формулы для гиперссылок
     const processedData = data.map(row => {
         const newRow = {};
         for (const key in row) {
             const value = row[key];
             if (typeof value === 'string' && value.startsWith('=HYPERLINK')) {
-                // Для ячеек с гиперссылками создаем объект с типом 'f' (formula)
                 const match = value.match(/=HYPERLINK\("([^"]+)", "([^"]+)"\)/);
                 if (match) {
                     newRow[key] = { t: 's', v: match[2], l: { Target: match[1], Tooltip: 'Перейти по ссылке' } };
@@ -161,7 +173,6 @@ async function sendExcelFile(chatId, data, fileNamePrefix, sheetName) {
 
     const worksheet = xlsx.utils.json_to_sheet(processedData);
     
-    // Автоматически настраиваем ширину колонок
     const columnWidths = Object.keys(processedData[0]).map(key => ({
         wch: processedData.reduce((w, r) => Math.max(w, r[key] ? r[key].toString().length : 10), 10)
     }));
@@ -180,15 +191,20 @@ async function sendExcelFile(chatId, data, fileNamePrefix, sheetName) {
     });
 }
 
-
 // ======================================================================
 // === API МАРШРУТЫ ===
 // ======================================================================
 
-app.post('/api/create-order', upload.single('screenshot'), async (req, res) => {
+// ИЗМЕНЕНО: Маршрут теперь использует express-fileupload
+app.post('/api/create-order', async (req, res) => {
     try {
+        if (!req.body.order) {
+            return res.status(400).json({ error: 'Order data is missing.' });
+        }
         const orderData = JSON.parse(req.body.order);
-        const screenshotFile = req.file;
+        
+        // express-fileupload помещает файлы в req.files
+        const screenshotFile = req.files && req.files.screenshot ? req.files.screenshot : null;
 
         const batch = db.batch();
         const orderRef = db.collection('orders').doc(orderData.id);
@@ -206,7 +222,9 @@ app.post('/api/create-order', upload.single('screenshot'), async (req, res) => {
         });
 
         await batch.commit();
-        await sendAdminNotification(orderData, screenshotFile ? screenshotFile.buffer : null);
+        
+        // express-fileupload передает буфер файла в .data
+        await sendAdminNotification(orderData, screenshotFile ? screenshotFile.data : null);
 
         res.status(201).json({ message: 'Заказ успешно создан' });
     } catch (error) {
@@ -214,6 +232,60 @@ app.post('/api/create-order', upload.single('screenshot'), async (req, res) => {
         res.status(500).json({ error: 'Внутренняя ошибка сервера при создании заказа.' });
     }
 });
+
+
+// +++ НОВЫЙ МАРШРУТ ДЛЯ ЗАГРУЗКИ ИЗОБРАЖЕНИЙ МЕНЮ +++
+app.post('/api/upload-menu-image', async (req, res) => {
+    // ВАЖНО: Вставьте сюда ваш API ключ от ImgBB
+    const IMGBB_API_KEY = 'YOUR_IMGBB_API_KEY_HERE'; 
+
+    if (!IMGBB_API_KEY || IMGBB_API_KEY === 'YOUR_IMGBB_API_KEY_HERE') {
+        return res.status(500).json({ error: 'API ключ для ImgBB не настроен на сервере.' });
+    }
+
+    if (!req.files || !req.files.image) {
+        return res.status(400).json({ error: 'Файл изображения не был загружен.' });
+    }
+
+    const imageFile = req.files.image;
+    const tempFilePath = imageFile.tempFilePath;
+
+    try {
+        // 1. Обрабатываем изображение: обрезаем до квадрата 500x500 и конвертируем в webp для оптимизации
+        const processedImageBuffer = await sharp(tempFilePath)
+            .resize(500, 500, {
+                fit: 'cover',
+                position: 'center'
+            })
+            .webp({ quality: 80 })
+            .toBuffer();
+            
+        // 2. Подготавливаем данные для отправки в ImgBB
+        const formData = new FormData();
+        formData.append('key', IMGBB_API_KEY);
+        formData.append('image', processedImageBuffer.toString('base64')); // Отправляем как base64
+
+        // 3. Загружаем обработанное изображение на ImgBB
+        const response = await axios.post('https://api.imgbb.com/1/upload', formData);
+
+        if (response.data.success) {
+            // 4. Отправляем прямую ссылку на изображение обратно на клиент
+            res.status(200).json({ success: true, imageUrl: response.data.data.url });
+        } else {
+            throw new Error(response.data.error?.message || 'Не удалось загрузить изображение в ImgBB');
+        }
+
+    } catch (error) {
+        console.error('Ошибка обработки или загрузки изображения:', error.response ? error.response.data : error.message);
+        res.status(500).json({ error: 'Внутренняя ошибка сервера при загрузке изображения.' });
+    } finally {
+        // Безопасное удаление временного файла
+        fs.unlink(tempFilePath, err => { 
+            if (err) console.error("Не удалось удалить временный файл:", tempFilePath, err);
+        });
+    }
+});
+
 
 app.post('/api/export-users', async (req, res) => {
     try {
@@ -288,7 +360,7 @@ app.post('/api/broadcast', async (req, res) => {
 
 
 // ======================================================================
-// === ПЛАНИРОВЩИКИ И УВЕДОМЛЕНИЯ ===
+// === ПЛАНИРОВЩИКИ И УВЕДОМЛЕНИЯ (без изменений) ===
 // ======================================================================
 async function sendTelegramNotification(chatId, text) {
     try {
