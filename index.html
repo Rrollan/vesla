@@ -1727,6 +1727,10 @@
             <div id="crmMenu" class="crm-content">
                 <div style="display: flex; gap: 10px; margin-bottom: 20px;">
                     <button class="btn-primary" onclick="app.showMenuItemModal()" style="flex: 1;">+ Добавить блюдо</button>
+                    <!-- ===== НОВЫЕ ЭЛЕМЕНТЫ ДЛЯ ИМПОРТА ===== -->
+                    <button id="importMenuBtn" class="btn-secondary" onclick="app.triggerMenuImport()" style="flex: 1;">Импорт из файла</button>
+                    <input type="file" id="menuFileInput" accept=".json" style="display: none;" onchange="app.handleMenuFileSelect(event)">
+                    <!-- ======================================= -->
                 </div>
                 <div id="menuItemsListCrm"></div>
             </div>
@@ -1796,6 +1800,9 @@
                 <h2>Выберите блюда</h2>
             </div>
             <div id="menu-categories" class="menu-categories"></div>
+            <!-- ===== НОВЫЙ КОНТЕЙНЕР ДЛЯ ПОДКАТЕГОРИЙ ===== -->
+            <div id="menu-subcategories" class="menu-categories" style="margin-top: -10px; display: none;"></div>
+            <!-- ============================================ -->
             <div id="menu-items-grid" class="menu-items-grid"></div>
             <div id="cart-fab" class="cart-fab" style="display: none;">
                 <button class="btn-primary" onclick="app.showCartModal()">
@@ -2060,11 +2067,17 @@
                         <select id="menuItemCategory" required>
                             <option value="Сеты">Сеты</option>
                             <option value="Роллы">Роллы</option>
-                            <option value="Суши">Суши</option>
+                            <option value="Пицца">Пицца</option>
+                            <option value="ВОК / ТОМ-ЯМ">ВОК / ТОМ-ЯМ</option>
                             <option value="Закуски">Закуски</option>
                             <option value="Напитки">Напитки</option>
+                            <option value="Дополнительно">Дополнительно</option>
                         </select>
                     </div>
+                    <div class="form-group">
+                         <label for="menuItemSubcategory">Подкатегория (для роллов)</label>
+                         <input type="text" id="menuItemSubcategory" placeholder="Например: Филадельфия, Запечённые">
+                     </div>
                      <div class="form-group">
                         <label for="menuItemImage">Изображение (будет обрезано до квадрата)</label>
                         <input type="file" id="menuItemImage" accept="image/*">
@@ -2099,11 +2112,9 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
     
    <script>
-    // СКРИПТ ОСТАЕТСЯ БЕЗ ИЗМЕНЕНИЙ, ТАК КАК В НЕМ НЕТ ОШИБОК,
-    // СВЯЗАННЫХ С АВТОМАТИЧЕСКОЙ СИНХРОНИЗАЦИЕЙ
     const app = (function() {
 
-        const BACKEND_URL = 'https://vesla.onrender.com'; // <-- УБЕДИТЕСЬ, ЧТО URL ВАШЕГО СЕРВЕРА ПРАВИЛЬНЫЙ
+        const BACKEND_URL = 'https://vesla.onrender.com';
 
         const TELEGRAM_BOT_TOKEN = '8227812944:AAFy8ydOkUeCj3Qkjg7_Xsq6zyQpcUyMShY';
         
@@ -2508,7 +2519,7 @@
         }
         
         async function withLoading(button, asyncFunction) {
-            if (button.disabled) return;
+            if (!button || button.disabled) return;
             const originalText = button.innerHTML;
             button.disabled = true;
             button.innerHTML = 'Загрузка...';
@@ -3948,6 +3959,7 @@
                     document.getElementById('menuItemDesc').value = data.description || '';
                     document.getElementById('menuItemPrice').value = data.price;
                     document.getElementById('menuItemCategory').value = data.category;
+                    document.getElementById('menuItemSubcategory').value = data.subcategory || '';
                     oldImageUrlField.value = data.imageUrl || '';
                 }
             } else {
@@ -3965,6 +3977,7 @@
                 const description = document.getElementById('menuItemDesc').value;
                 const price = parseFloat(document.getElementById('menuItemPrice').value);
                 const category = document.getElementById('menuItemCategory').value;
+                const subcategory = document.getElementById('menuItemSubcategory').value;
                 const imageFile = document.getElementById('menuItemImage').files[0];
                 let imageUrl = document.getElementById('menuItemOldImageUrl').value; 
 
@@ -3995,7 +4008,7 @@
                     }
                 }
                 
-                const menuItemData = { name, description, price, category, imageUrl };
+                const menuItemData = { name, description, price, category, subcategory, imageUrl };
                 
                 if (editId) {
                     await db.collection(COLLECTIONS.MENU).doc(editId).set(menuItemData, { merge: true });
@@ -4028,7 +4041,7 @@
                     return showError("Ошибка", "Не удалось определить ваш ID для отправки файла. Перезагрузите приложение.");
                 }
 
-                let collectionRef, searchInputId, listSelector, itemSelector, orderByField;
+                let collectionRef, searchInputId, orderByField;
                 if (dataType === 'orders') {
                     collectionRef = db.collection(COLLECTIONS.ORDERS);
                     searchInputId = 'orderSearch';
@@ -4111,9 +4124,13 @@
 
         async function loadAndRenderMenu() {
             const grid = document.getElementById('menu-items-grid');
-            const tabsContainer = document.getElementById('menu-categories');
+            const mainTabsContainer = document.getElementById('menu-categories');
+            const subTabsContainer = document.getElementById('menu-subcategories');
+            
             grid.innerHTML = '<div class="loading-indicator">Загрузка меню...</div>';
-            tabsContainer.innerHTML = '';
+            mainTabsContainer.innerHTML = '';
+            subTabsContainer.innerHTML = '';
+            subTabsContainer.style.display = 'none';
             cart = {};
             updateCartView();
 
@@ -4125,8 +4142,8 @@
                 }
 
                 const menuData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                const categoryOrder = ["Популярное", "Сеты", "Роллы", "Суши", "Закуски", "Напитки"];
-                const categories = [...new Set(menuData.map(item => item.category))].sort((a, b) => {
+                const categoryOrder = ["Сеты", "Роллы", "Пицца", "ВОК / ТОМ-ЯМ", "Закуски", "Напитки", "Дополнительно"];
+                const mainCategories = [...new Set(menuData.map(item => item.category))].sort((a, b) => {
                     const indexA = categoryOrder.indexOf(a);
                     const indexB = categoryOrder.indexOf(b);
                     if (indexA === -1) return 1;
@@ -4134,17 +4151,41 @@
                     return indexA - indexB;
                 });
                 
-                categories.forEach((cat, index) => {
+                mainCategories.forEach((cat, index) => {
                     const tab = document.createElement('button');
                     tab.className = 'menu-category-tab';
                     tab.textContent = cat;
                     tab.onclick = () => {
-                        document.querySelectorAll('.menu-category-tab').forEach(t => t.classList.remove('active'));
+                        document.querySelectorAll('#menu-categories .menu-category-tab').forEach(t => t.classList.remove('active'));
                         tab.classList.add('active');
-                        renderMenuItems(menuData.filter(item => item.category === cat));
+                        
+                        const categoryItems = menuData.filter(item => item.category === cat);
+                        const subcategories = [...new Set(categoryItems.map(item => item.subcategory))].filter(Boolean); // filter(Boolean) удаляет пустые строки
+
+                        subTabsContainer.innerHTML = '';
+                        grid.innerHTML = '';
+
+                        if (subcategories.length > 0) {
+                            subTabsContainer.style.display = 'flex';
+                            subcategories.forEach((subcat, subIndex) => {
+                                const subTab = document.createElement('button');
+                                subTab.className = 'menu-category-tab';
+                                subTab.textContent = subcat;
+                                subTab.onclick = () => {
+                                    document.querySelectorAll('#menu-subcategories .menu-category-tab').forEach(t => t.classList.remove('active'));
+                                    subTab.classList.add('active');
+                                    renderMenuItems(categoryItems.filter(item => item.subcategory === subcat));
+                                };
+                                subTabsContainer.appendChild(subTab);
+                                if (subIndex === 0) subTab.click(); // Автоматически выбираем первую подкатегорию
+                            });
+                        } else {
+                            subTabsContainer.style.display = 'none';
+                            renderMenuItems(categoryItems);
+                        }
                     };
-                    tabsContainer.appendChild(tab);
-                    if (index === 0) tab.click();
+                    mainTabsContainer.appendChild(tab);
+                    if (index === 0) tab.click(); // Автоматически выбираем первую категорию
                 });
 
             } catch (error) {
@@ -4161,7 +4202,7 @@
                 card.className = 'menu-item-card';
                 card.dataset.id = item.id;
                 card.innerHTML = `
-                    <img src="${item.imageUrl || 'https://via.placeholder.com/100'}" class="menu-item-image" alt="${item.name}">
+                    <img src="${item.imageUrl || 'https://via.placeholder.com/150'}" class="menu-item-image" alt="${item.name}">
                     <div class="menu-item-info">
                         <div class="menu-item-name">${item.name}</div>
                         <div class="menu-item-desc">${item.description || ''}</div>
@@ -4267,7 +4308,43 @@
         const exportOrdersToExcel = (btn) => exportToExcel(btn, 'orders');
         const exportUsersToExcel = (btn) => exportToExcel(btn, 'users');
         
-        // УДАЛЕНА ФУНКЦИЯ syncMenu
+        // ===== НОВЫЕ ФУНКЦИИ ДЛЯ ИМПОРТА =====
+        function triggerMenuImport() {
+            document.getElementById('menuFileInput').click();
+        }
+
+        async function handleMenuFileSelect(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const importButton = document.getElementById('importMenuBtn');
+            
+            await withLoading(importButton, async () => {
+                const formData = new FormData();
+                formData.append('menuFile', file);
+
+                try {
+                    const response = await fetch(`${BACKEND_URL}/api/import-menu-from-file`, {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (!response.ok) {
+                        throw new Error(result.error || `Сервер вернул ошибку ${response.status}`);
+                    }
+                    
+                    showCrmSuccess("Импорт завершен!", result.message);
+                    updateMenuItemsListCrm();
+
+                } catch (error) {
+                     console.error("Ошибка импорта меню:", error);
+                     showError("Ошибка импорта", error.message);
+                }
+            });
+            event.target.value = '';
+        }
         
         document.addEventListener('DOMContentLoaded', () => {
             ['loginPhone', 'phone', 'recipientPhone', 'editPhone'].forEach(setupPhoneMask);
@@ -4291,7 +4368,9 @@
             markNoReport, markReportAccepted, copyPlaceholder,
             exportOrdersToExcel, exportUsersToExcel,
             updateMenuItemsListCrm, showMenuItemModal, saveMenuItem, deleteMenuItem,
-            showMenuScreen, addToCart, removeFromCart, showCartModal, confirmOrderFromMenu
+            showMenuScreen, addToCart, removeFromCart, showCartModal, confirmOrderFromMenu,
+            // --- Добавляем новые функции в return ---
+            triggerMenuImport, handleMenuFileSelect
         };
     })();
 </script>
