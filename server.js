@@ -20,31 +20,29 @@ const app = express();
 const PORT = process.env.PORT || 10000;
 const TELEGRAM_BOT_TOKEN = '8227812944:AAFy8ydOkUeCj3Qkjg7_Xsq6zyQpcUyMShY'; 
 
-// --- ИНИЦИАЛИЗАЦИЯ FIREBASE ADMIN SDK (ИСПРАВЛЕНО ДЛЯ RENDER) ---
-// ПРАВИЛЬНЫЙ БЛОК
-// --- ИНИЦИАЛИЗАЦИЯ FIREBASE ADMIN SDK ---
+// --- ИНИЦИАЛИЗАЦИЯ FIREBASE ADMIN SDK (ИСПРАВЛЕНО) ---
 try {
-  const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT_KEY 
-    ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY)
-    : require('./serviceAccountKey.json'); // <-- ищем ключ в корне проекта
-  
-  if (!admin.apps.length) {
-    admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount)
-    });
-  }
-} catch (error) {
-  console.error("КРИТИЧЕСКАЯ ОШИБКА: Ключ сервисного аккаунта Firebase не найден.");
-}
-  } else if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
-      const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
-       if (!admin.apps.length) {
-        admin.initializeApp({
-          credential: admin.credential.cert(serviceAccount)
-        });
-      }
-  } else {
-      console.warn("ПРЕДУПРЕЖДЕНИЕ: Файл serviceAccountKey.json не найден. Функции Firebase могут не работать.");
+  // Сначала проверяем, передал ли Render секретный ключ как переменную окружения
+  if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
+    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
+    if (!admin.apps.length) {
+      admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount)
+      });
+    }
+  } 
+  // Если нет, пытаемся найти файл локально (для разработки)
+  else if (fs.existsSync('./serviceAccountKey.json')) {
+    const serviceAccount = require('./serviceAccountKey.json');
+    if (!admin.apps.length) {
+      admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount)
+      });
+    }
+  } 
+  // Если не нашли ни там, ни там
+  else {
+    console.warn("ПРЕДУПРЕЖДЕНИЕ: Ключ сервисного аккаунта Firebase не найден. Функции Firebase могут не работать.");
   }
 } catch (error) {
   console.error("КРИТИЧЕСКАЯ ОШИБКА: Ключ сервисного аккаунта Firebase не найден или не удалось его прочитать.", error);
@@ -190,8 +188,7 @@ async function updateMenuInFirestore() {
     await batch.commit();
     console.log(`Меню в Firestore успешно обновлено. Добавлено ${scrapedItems.length} позиций.`);
 }
-// +++ КОНЕЦ БЛОКА ПАРСИНГА +++
-
+// ... Остальные ваши функции (determineBloggerLevel, personalizeMessage, etc.) ...
 function determineBloggerLevel(followersCount) {
     const count = Number(followersCount) || 0;
     if (count <= 6000) return { level: 'micro', text: 'Микроблогер' };
