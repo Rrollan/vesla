@@ -451,6 +451,10 @@
         .action-icon {
             font-size: 24px;
             margin-bottom: 10px;
+            height: 28px; /* Для выравнивания высоты */
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
         }
 
         .action-title {
@@ -1369,22 +1373,30 @@
              <div id="reportActionsPanel" class="dashboard-actions" style="margin-top: 20px;"></div>
             <div class="dashboard-actions">
                 <div id="newCollaborationBtn" class="action-card" onclick="app.startCollaboration()">
-                    <div class="action-icon">🎯</div>
+                    <div class="action-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>
+                    </div>
                     <div class="action-title">Новое сотрудничество</div>
                     <div class="action-desc">Оформить заказ на бартер</div>
                 </div>
                 <div class="action-card" onclick="app.showOrderHistory()">
-                    <div class="action-icon">📋</div>
+                    <div class="action-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path><polyline points="13 2 13 9 20 9"></polyline></svg>
+                    </div>
                     <div class="action-title">История заказов</div>
                     <div class="action-desc">Просмотреть предыдущие заказы</div>
                 </div>
                 <div class="action-card" onclick="app.editProfile()">
-                    <div class="action-icon">⚙️</div>
+                    <div class="action-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                    </div>
                     <div class="action-title">Редактировать профиль</div>
                     <div class="action-desc">Изменить данные аккаунта</div>
                 </div>
                 <div class="action-card" onclick="app.contactAdmin()">
-                    <div class="action-icon">📞</div>
+                    <div class="action-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+                    </div>
                     <div class="action-title">Связаться с администратором</div>
                     <div class="action-desc">Задать вопрос или получить помощь</div>
                 </div>
@@ -1406,6 +1418,7 @@
                 <button class="crm-tab" data-tab="schedule" onclick="app.showCrmTab('schedule', this)">Расписание</button>
                 <button class="crm-tab" data-tab="blocks" onclick="app.showCrmTab('blocks', this)">Блокировки</button>
                 <button class="crm-tab" data-tab="broadcast" onclick="app.showCrmTab('broadcast', this)">Рассылка</button>
+                <button class="crm-tab" data-tab="menu" onclick="app.showCrmTab('menu', this)">Меню</button>
                 <button class="crm-tab" data-tab="admins" onclick="app.showCrmTab('admins', this)">Админы</button>
             </div>
             <div id="crmOverview" class="crm-content active">
@@ -1551,6 +1564,7 @@
                 <button class="btn-primary" onclick="app.showAddAdminModal()" style="margin-bottom: 20px;">+ Добавить сотрудника</button>
                 <div id="adminsList"></div>
             </div>
+            <div id="crmMenu" class="crm-content"></div>
         </div>
         
         <!-- ЭКРАНЫ Процесса заказа -->
@@ -1887,7 +1901,8 @@
             ADMINS: 'admins',
             BLOCKED_SLOTS: 'blockedSlots',
             SCHEDULES: 'schedules',
-            SETTINGS: 'settings'
+            SETTINGS: 'settings',
+            MENU: 'menu'
         };
         const SCREENS = {
             WELCOME: 'welcomeScreen',
@@ -2410,7 +2425,6 @@
             if (!dataSource || !dataSource.firstName) return;
 
             const { firstName, followersCount, avgViews } = dataSource;
-            const levelInfo = determineBloggerLevel(followersCount);
             
             document.getElementById('blockedPanel').style.display = userData.isBlocked ? 'block' : 'none';
             if (userData.isBlocked) {
@@ -2428,7 +2442,13 @@
             document.getElementById('userName').textContent = firstName;
             const userAvatar = document.getElementById('userAvatar');
             userAvatar.innerHTML = telegramUser?.photo_url ? `<img src="${telegramUser.photo_url}" alt="${firstName}">` : (firstName ? firstName.charAt(0).toUpperCase() : '👤');
-            document.getElementById('userLevel').textContent = levelInfo.text;
+            
+            // --- ИЗМЕНЕНИЕ #4 ---
+            const pleasantTitles = ['Инфлюенсер', 'Лидер мнений', 'Создатель контента', 'Трендсеттер', 'Амбассадор'];
+            const randomTitle = pleasantTitles[Math.floor(Math.random() * pleasantTitles.length)];
+            document.getElementById('userLevel').textContent = randomTitle;
+            // --- КОНЕЦ ИЗМЕНЕНИЯ #4 ---
+
             document.getElementById('followersDisplay').textContent = (followersCount || 0).toLocaleString('ru-RU');
             document.getElementById('viewsDisplay').textContent = (avgViews || 0).toLocaleString('ru-RU');
 
