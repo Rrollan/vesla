@@ -3,7 +3,6 @@ const express = require('express');
 const path = require('path');
 const admin = require('firebase-admin');
 const cron = require('node-cron');
-const fetch = require('node-fetch');
 const TelegramBot = require('node-telegram-bot-api');
 const xlsx = require('xlsx');
 const fs = require('fs');
