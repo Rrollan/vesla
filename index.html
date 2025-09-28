@@ -2017,12 +2017,12 @@
             </div>
         </div>
 
+        <!-- ИЗМЕНЕНО: Модальное окно для управления меню -->
         <div id="menuItemModal" class="modal">
             <div class="modal-content" style="max-width: 400px;">
                 <h2 id="menuItemModalTitle">Добавить блюдо</h2>
                 <form id="menuItemForm" style="margin: 20px 0; text-align: left;">
                     <input type="hidden" id="menuItemEditId">
-                    <input type="hidden" id="menuItemOldImageUrl">
                     <div class="form-group">
                         <label for="menuItemName">Название</label>
                         <input type="text" id="menuItemName" required>
@@ -2038,16 +2038,16 @@
                     <div class="form-group">
                         <label for="menuItemCategory">Категория</label>
                         <select id="menuItemCategory" required>
-                            <option value="sets">Сеты</option>
-                            <option value="rolls">Роллы</option>
-                            <option value="sushi">Суши</option>
-                            <option value="snacks">Закуски</option>
-                            <option value="drinks">Напитки</option>
+                            <option value="Сеты">Сеты</option>
+                            <option value="Роллы">Роллы</option>
+                            <option value="Суши">Суши</option>
+                            <option value="Закуски">Закуски</option>
+                            <option value="Напитки">Напитки</option>
                         </select>
                     </div>
                      <div class="form-group">
-                        <label for="menuItemImage">Изображение</label>
-                        <input type="file" id="menuItemImage" accept="image/*">
+                        <label for="menuItemImageUrl">Ссылка на изображение</label>
+                        <input type="text" id="menuItemImageUrl" placeholder="https://example.com/image.png">
                     </div>
                 </form>
                 <div style="display: flex; gap: 10px;">
@@ -2077,7 +2077,7 @@
 
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js"></script>
+    <!-- ИЗМЕНЕНО: SDK для Storage больше не нужен -->
     
    <script>
     const app = (function() {
@@ -2090,7 +2090,7 @@
             apiKey: "AIzaSyATmIapS6SJi7KnvKrJp5sfD9VMXxKMCgA",
             authDomain: "vesla-barter.firebaseapp.com",
             projectId: "vesla-barter",
-            storageBucket: "vesla-barter.appspot.com",
+            storageBucket: "vesla-barter.appspot.com", // Можно оставить, не мешает
             messagingSenderId: "730193371508",
             appId: "1:730193371508:web:a6517d156f2766ece50c21",
             measurementId: "G-1QJ9RRS1L6"
@@ -2098,7 +2098,6 @@
         
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
-        const storage = firebase.storage();
         const FieldValue = firebase.firestore.FieldValue;
 
         const COLLECTIONS = {
@@ -3916,7 +3915,6 @@
             form.reset();
             const title = document.getElementById('menuItemModalTitle');
             const idField = document.getElementById('menuItemEditId');
-            const oldImageUrlField = document.getElementById('menuItemOldImageUrl');
 
             if (itemId) {
                 title.textContent = "Редактировать блюдо";
@@ -3928,48 +3926,29 @@
                     document.getElementById('menuItemDesc').value = data.description || '';
                     document.getElementById('menuItemPrice').value = data.price;
                     document.getElementById('menuItemCategory').value = data.category;
-                    oldImageUrlField.value = data.imageUrl || '';
+                    document.getElementById('menuItemImageUrl').value = data.imageUrl || '';
                 }
             } else {
                 title.textContent = "Добавить блюдо";
                 idField.value = '';
-                oldImageUrlField.value = '';
             }
             document.getElementById('menuItemModal').style.display = 'flex';
         }
 
         async function saveMenuItem(button) {
-            await withLoading(button, async() => {
+             await withLoading(button, async() => {
                 const editId = document.getElementById('menuItemEditId').value;
                 const name = document.getElementById('menuItemName').value;
                 const description = document.getElementById('menuItemDesc').value;
                 const price = parseFloat(document.getElementById('menuItemPrice').value);
                 const category = document.getElementById('menuItemCategory').value;
-                const imageFile = document.getElementById('menuItemImage').files[0];
-                const oldImageUrl = document.getElementById('menuItemOldImageUrl').value;
+                const imageUrl = document.getElementById('menuItemImageUrl').value.trim();
 
                 if (!name || isNaN(price)) {
                     return showError("Ошибка", "Название и цена обязательны для заполнения.");
                 }
 
-                const menuItemData = { name, description, price, category };
-                
-                if (imageFile) {
-                    if (editId && oldImageUrl) {
-                        try {
-                            const oldImageRef = storage.refFromURL(oldImageUrl);
-                            await oldImageRef.delete();
-                        } catch (imgError) {
-                            console.warn("Could not delete old image, it might not exist:", imgError);
-                        }
-                    }
-                    
-                    const imageRef = storage.ref(`menu_images/${new Date().getTime()}_${imageFile.name}`);
-                    const uploadTask = await imageRef.put(imageFile);
-                    menuItemData.imageUrl = await uploadTask.ref.getDownloadURL();
-                } else if (editId) {
-                    menuItemData.imageUrl = oldImageUrl;
-                }
+                const menuItemData = { name, description, price, category, imageUrl };
                 
                 if (editId) {
                     await db.collection(COLLECTIONS.MENU).doc(editId).set(menuItemData, { merge: true });
@@ -3986,22 +3965,7 @@
         async function deleteMenuItem(itemId) {
             if (confirm('Вы уверены, что хотите удалить это блюдо?')) {
                 try {
-                    const itemRef = db.collection(COLLECTIONS.MENU).doc(itemId);
-                    const doc = await itemRef.get();
-
-                    if (doc.exists) {
-                        const data = doc.data();
-                        if (data.imageUrl) {
-                            try {
-                                const imageRef = storage.refFromURL(data.imageUrl);
-                                await imageRef.delete();
-                            } catch (imgError) {
-                                console.warn("Could not delete image from Storage, it might not exist or URL is invalid:", imgError);
-                            }
-                        }
-                    }
-
-                    await itemRef.delete();
+                    await db.collection(COLLECTIONS.MENU).doc(itemId).delete();
                     showCrmSuccess("Блюдо удалено.");
                     updateMenuItemsListCrm();
                 } catch(error) {
@@ -4098,8 +4062,6 @@
             });
         }
 
-        // --- Логика нового меню и корзины ---
-
         async function loadAndRenderMenu() {
             const grid = document.getElementById('menu-items-grid');
             const tabsContainer = document.getElementById('menu-categories');
@@ -4116,7 +4078,7 @@
                 }
 
                 const menuData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                const categories = [...new Set(menuData.map(item => item.category))];
+                const categories = [...new Set(menuData.map(item => item.category))].sort();
                 
                 categories.forEach((cat, index) => {
                     const tab = document.createElement('button');
@@ -4274,7 +4236,6 @@
             markNoReport, markReportAccepted, copyPlaceholder,
             exportOrdersToExcel, exportUsersToExcel,
             updateMenuItemsListCrm, showMenuItemModal, saveMenuItem, deleteMenuItem,
-            // Новые функции для меню и корзины
             showMenuScreen, addToCart, removeFromCart, showCartModal, confirmOrderFromMenu
         };
     })();
