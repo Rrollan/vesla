@@ -10,8 +10,8 @@ const fs = require('fs');
 // НОВЫЕ ЗАВИСИМОСТИ
 const fileUpload = require('express-fileupload');
 const sharp = require('sharp');
-const axios = require('axios'); // +++ ДОБАВЛЕНО для парсинга
-const cheerio = require('cheerio'); // +++ ДОБАВЛЕНО для парсинга
+const axios = require('axios');
+const cheerio = require('cheerio');
 const FormData = require('form-data');
 
 
@@ -63,36 +63,47 @@ app.get('/', (req, res) => {
 // === ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ===
 // ======================================================================
 
-// +++ НОВЫЕ ФУНКЦИИ ДЛЯ ПАРСИНГА МЕНЮ С САЙТА VESLA.KZ +++
-
+// +++ ОБНОВЛЕННАЯ ФУНКЦИЯ ПАРСИНГА МЕНЮ +++
 async function scrapeVeslaMenu() {
     try {
-        console.log('Начинаю парсинг меню с vesla.kz...');
-        // URL можно вынести в переменные окружения для гибкости
+        console.log('Начинаю парсинг меню с vesla.kz по НОВЫМ селекторам...');
         const url = 'https://vesla.kz/pavlodar/popular';
         
-        // 1. Загружаем HTML-страницу с помощью axios
-        const { data } = await axios.get(url);
+        const { data } = await axios.get(url, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            }
+        });
         
-        // 2. Загружаем HTML в Cheerio для парсинга
         const $ = cheerio.load(data);
-        
         const menuItems = [];
+
+        // ИЗМЕНЕНИЕ: Новый, более простой селектор для карточки товара
+        // Теперь ищем все элементы с классом .product
+        const foundElements = $('.product.d-flex.flex-column');
+        console.log(`Найдено элементов для парсинга: ${foundElements.length}`);
+
+        if (foundElements.length === 0) {
+            console.error('КРИТИЧЕСКАЯ ОШИБКА ПАРСЕРА: Селектор .product не нашел ни одного элемента. Верстка сайта снова изменилась.');
+            return [];
+        }
         
-        // 3. Находим все карточки товаров на странице по их общему селектору
-        $('.col-xl-3.col-lg-4.col-md-4.col-6').each((index, element) => {
+        foundElements.each((index, element) => {
             const productElement = $(element);
             
-            const name = productElement.find('a.product-title').text().trim();
-            const priceText = productElement.find('.price').text().trim();
-            // Очищаем цену от " тг." и всех пробелов, затем преобразуем в число
-            const price = parseInt(priceText.replace(/\s*тг\./, '').replace(/\s/g, ''), 10);
+            // ИЗМЕНЕНИЕ: Новый селектор для названия
+            const name = productElement.find('.product__title').text().trim();
             
-            // Получаем URL изображения из атрибута 'src'
-            let imageUrl = productElement.find('.product-img img').attr('src');
-            // Если ссылка относительная (не начинается с http), делаем ее абсолютной
-            if (imageUrl && !imageUrl.startsWith('http')) {
-                imageUrl = 'https://vesla.kz' + imageUrl;
+            // ИЗМЕНЕНИЕ: Новый селектор для цены
+            const priceText = productElement.find('.product-cost__actual').text().trim();
+            const price = parseInt(priceText.replace(/\s*₸/, '').replace(/\s/g, ''), 10);
+            
+            // ИЗМЕНЕНИЕ: Новый способ получения картинки из style
+            const imageUrlRaw = productElement.find('.product__image').css('background-image');
+            let imageUrl = '';
+            if (imageUrlRaw) {
+                // Извлекаем чистый URL из строки 'url("...")'
+                imageUrl = imageUrlRaw.replace(/url\(['"]?/, '').replace(/['"]?\)/, '');
             }
 
             // Проверяем, что получили все основные данные, прежде чем добавлять
@@ -101,53 +112,54 @@ async function scrapeVeslaMenu() {
                     name: name,
                     price: price,
                     imageUrl: imageUrl,
-                    description: '', // Описание на главной странице отсутствует, оставляем пустым
-                    // Категорию пока задаем по умолчанию. Можно усложнить логику для определения категорий.
-                    category: 'Популярное' 
+                    description: productElement.find('.description').text().trim(),
+                    category: 'Популярное' // Мы парсим только одну страницу, поэтому категория одна
                 });
+            } else {
+                console.warn(`Не удалось полностью распарсить элемент #${index + 1}. Имя: "${name}", Цена: "${priceText}", Картинка: "${imageUrlRaw}"`);
             }
         });
         
-        console.log(`Парсинг завершен. Найдено ${menuItems.length} блюд.`);
+        console.log(`Парсинг завершен. Собрано ${menuItems.length} блюд.`);
         return menuItems;
 
     } catch (error) {
-        console.error('Ошибка при парсинге меню:', error.message);
-        return []; // Возвращаем пустой массив в случае ошибки, чтобы не сломать приложение
+        console.error('КРИТИЧЕСКАЯ ОШИБКА в scrapeVeslaMenu:', error.message);
+        if (error.response) {
+            console.error('Статус ответа от vesla.kz:', error.response.status);
+        }
+        return []; 
     }
 }
 
 async function updateMenuInFirestore() {
     const scrapedItems = await scrapeVeslaMenu();
     
-    if (scrapedItems.length === 0) {
-        console.log('Нет данных для обновления меню (возможно, ошибка парсинга или сайт недоступен). Пропускаю обновление.');
+    // ВАЖНАЯ ПРОВЕРКА: Если парсер ничего не нашел, не удаляем старое меню
+    if (!scrapedItems || scrapedItems.length === 0) {
+        console.log('Парсер не нашел блюд. Обновление меню в Firestore пропущено, чтобы не удалить существующие данные.');
         return;
     }
 
     const menuCollection = db.collection('menu');
     const batch = db.batch();
 
-    // Эта стратегия "сначала удалить все, потом добавить новое" самая простая
-    // и гарантирует, что блюда, удаленные с сайта, исчезнут и из вашей базы.
     console.log('Очищаю старое меню в Firestore...');
     const snapshot = await menuCollection.get();
     snapshot.docs.forEach(doc => {
         batch.delete(doc.ref);
     });
 
-    // Добавляем новые блюда, полученные с сайта
     console.log('Добавляю новые блюда в Firestore...');
     scrapedItems.forEach(item => {
-        const docRef = menuCollection.doc(); // Создаем новый документ с автоматическим ID
+        const docRef = menuCollection.doc();
         batch.set(docRef, item);
     });
 
-    // Выполняем все операции (удаление и добавление) за один раз
     await batch.commit();
     console.log(`Меню в Firestore успешно обновлено. Добавлено ${scrapedItems.length} позиций.`);
 }
-// +++ КОНЕЦ НОВЫХ ФУНКЦИЙ +++
+// +++ КОНЕЦ БЛОКА ПАРСИНГА +++
 
 function determineBloggerLevel(followersCount) {
     const count = Number(followersCount) || 0;
@@ -156,7 +168,6 @@ function determineBloggerLevel(followersCount) {
     return { level: 'macro-b', text: 'Макроблогер тип B' };
 }
 
-// ... (остальные ваши вспомогательные функции без изменений)
 function calculateBloggerRating(user) {
     const { followersCount = 0, avgViews = 0 } = user.registration || {};
     const strikes = user.strikes || 0;
@@ -276,7 +287,6 @@ async function sendExcelFile(chatId, data, fileNamePrefix, sheetName) {
         contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
     });
 }
-// ... (конец блока вспомогательных функций)
 
 // ======================================================================
 // === API МАРШРУТЫ ===
@@ -423,22 +433,27 @@ app.post('/api/broadcast', async (req, res) => {
     })();
 });
 
-// +++ ДОБАВЛЕННЫЙ МАРШРУТ ДЛЯ РУЧНОЙ СИНХРОНИЗАЦИИ МЕНЮ +++
-app.post('/api/sync-menu', async (req, res) => {
-    console.log('Получен запрос на ручную синхронизацию меню...');
+// +++ ОБНОВЛЕННЫЙ МАРШРУТ ДЛЯ РУЧНОЙ СИНХРОНИЗАЦИИ МЕНЮ (АСИНХРОННЫЙ) +++
+app.post('/api/sync-menu', (req, res) => {
+    console.log('Получен асинхронный запрос на ручную синхронизацию меню...');
     
-    try {
-        // Вызываем существующую функцию для обновления меню
-        await updateMenuInFirestore();
-        
-        // Отправляем успешный ответ клиенту
-        res.status(200).json({ success: true, message: 'Синхронизация меню успешно завершена.' });
+    // Немедленно отправляем ответ клиенту, чтобы избежать тайм-аута
+    res.status(202).json({ 
+        success: true, 
+        message: 'Запрос на синхронизацию принят. Процесс запущен в фоновом режиме.' 
+    });
 
-    } catch (error) {
-        // В случае ошибки, логируем ее и отправляем ошибку клиенту
-        console.error('Ошибка при ручной синхронизации меню:', error);
-        res.status(500).json({ success: false, error: 'Внутренняя ошибка сервера при синхронизации.' });
-    }
+    // Запускаем долгую задачу в фоновом режиме
+    (async () => {
+        try {
+            await updateMenuInFirestore();
+            console.log('Фоновая синхронизация меню успешно завершена.');
+            // Можно отправить уведомление админу в Telegram о завершении
+        } catch (error) {
+            console.error('Ошибка при выполнении фоновой синхронизации меню:', error);
+            // Можно отправить уведомление админу об ошибке
+        }
+    })();
 });
 
 
@@ -522,7 +537,7 @@ async function sendAndUpdate(chatId, message, docRef, updateData) {
 cron.schedule('0 9 * * *', checkAndNotifyUsers, { timezone: "Asia/Almaty" });
 cron.schedule('0 * * * *', checkReportReminders, { timezone: "Asia/Almaty" }); 
 
-// +++ НОВЫЙ ПЛАНИРОВЩИК ДЛЯ ОБНОВЛЕНИЯ МЕНЮ +++
+// +++ ПЛАНИРОВЩИК ДЛЯ ОБНОВЛЕНИЯ МЕНЮ +++
 // Запускается раз в день в 5 утра по времени Алматы.
 cron.schedule('0 5 * * *', updateMenuInFirestore, { timezone: "Asia/Almaty" });
 
@@ -533,7 +548,6 @@ app.listen(PORT, () => {
     console.log('Планировщики активны.');
     
     // +++ ЗАПУСК ПАРСЕРА ПРИ СТАРТЕ СЕРВЕРА +++
-    // Это полезно, чтобы меню было актуальным сразу после развертывания или перезагрузки сервера.
     console.log('Запускаю первоначальное обновление меню при старте сервера...');
     updateMenuInFirestore();
 });
