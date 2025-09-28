@@ -1063,6 +1063,148 @@
             margin: 20px 0;
             text-align: center;
         }
+        
+        /* Стили для экрана меню и корзины */
+        .menu-screen {
+            padding-bottom: 80px; /* Оставить место для кнопки корзины */
+        }
+
+        .menu-categories {
+            display: flex;
+            overflow-x: auto;
+            margin-bottom: 20px;
+            background: #3a3a3a;
+            border-radius: 15px;
+        }
+
+        .menu-category-tab {
+            padding: 15px 20px;
+            cursor: pointer;
+            white-space: nowrap;
+            color: #999;
+            transition: all 0.3s ease;
+            border: none;
+            background: transparent;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .menu-category-tab.active {
+            color: white;
+            background: #00b4d8;
+        }
+
+        .menu-items-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 15px;
+        }
+
+        .menu-item-card {
+            background: #3a3a3a;
+            border-radius: 15px;
+            overflow: hidden;
+            display: flex;
+            border: 2px solid #4a4a4a;
+        }
+
+        .menu-item-image {
+            width: 100px;
+            height: 100px;
+            object-fit: cover;
+            flex-shrink: 0;
+        }
+
+        .menu-item-info {
+            padding: 15px;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .menu-item-name {
+            font-weight: 600;
+            font-size: 16px;
+        }
+        
+        .menu-item-desc {
+            font-size: 12px;
+            color: #999;
+            flex-grow: 1;
+            margin: 5px 0;
+        }
+
+        .menu-item-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 10px;
+        }
+
+        .menu-item-price {
+            font-weight: bold;
+            font-size: 16px;
+        }
+
+        .menu-item-controls {
+            display: flex;
+            align-items: center;
+            background: #4a4a4a;
+            border-radius: 20px;
+        }
+
+        .quantity-btn {
+            background: transparent;
+            border: none;
+            color: white;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            padding: 5px 12px;
+        }
+
+        .item-quantity {
+            padding: 0 5px;
+            font-size: 16px;
+        }
+
+        .cart-fab {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 90%;
+            max-width: 380px;
+            z-index: 998;
+        }
+
+        .cart-fab button {
+            width: 100%;
+            padding: 18px;
+            font-size: 18px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .cart-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #4a4a4a;
+        }
+        #cartItemsList .cart-item:last-child {
+            border-bottom: none;
+        }
+        .cart-item-name {
+            font-weight: 500;
+        }
+        .cart-item-details {
+            font-size: 12px;
+            color: #999;
+        }
+
 
         /* Адаптивность */
         @media (max-width: 380px) {
@@ -1620,15 +1762,6 @@
                     <label for="recipientPhone">Телефон получателя *</label>
                     <input type="tel" id="recipientPhone" required placeholder="+7 (___) ___-__-__">
                 </div>
-                <div id="orderScreenshotGroup" class="form-group" style="display: none;">
-                    <label>Скриншот заказа на сумму бартера *</label>
-                    <div class="file-upload">
-                        <input type="file" id="orderScreenshot" accept="image/*">
-                        <label for="orderScreenshot" class="file-upload-label">
-                            📷 Загрузить скриншот заказа
-                        </label>
-                    </div>
-                </div>
                 <div class="form-group">
                     <label for="comment">Дополнительный комментарий</label>
                     <textarea id="comment" rows="3" placeholder="Особые пожелания или комментарии"></textarea>
@@ -1637,8 +1770,23 @@
             </form>
         </div>
 
+        <div id="menuSelectionScreen" class="form-screen menu-screen" style="display: none;">
+            <button class="btn-back" onclick="app.showAddressForm()">← Назад к адресу</button>
+            <div class="form-header">
+                <h2>Выберите блюда</h2>
+            </div>
+            <div id="menu-categories" class="menu-categories"></div>
+            <div id="menu-items-grid" class="menu-items-grid"></div>
+            <div id="cart-fab" class="cart-fab" style="display: none;">
+                <button class="btn-primary" onclick="app.showCartModal()">
+                    <span>🛒 Корзина</span>
+                    <span id="cart-total">0 ₸</span>
+                </button>
+            </div>
+        </div>
+
         <div id="dateTimeScreen" class="form-screen datetime-selection" style="display: none;">
-            <button class="btn-back" id="backFromDateTime" onclick="app.showAddressForm()">← Назад</button>
+            <button class="btn-back" id="backFromDateTime" onclick="app.showMenuScreen()">← Назад к меню</button>
             <div class="form-header">
                 <h2>Дата и время доставки</h2>
             </div>
@@ -1908,6 +2056,18 @@
                 </div>
             </div>
         </div>
+        
+        <div id="orderConfirmationModal" class="modal">
+            <div class="modal-content" style="max-width: 400px;">
+                <h2>Ваш заказ</h2>
+                <div id="cartItemsList" class="modal-body" style="margin: 20px 0; max-height: 40vh; overflow-y: auto;"></div>
+                <h3 style="margin: 10px 0;">Итого: <span id="cartTotal">0</span> ₸</h3>
+                <div style="display: flex; gap: 10px; margin-top: 20px;">
+                    <button class="btn-primary" onclick="app.confirmOrderFromMenu()" style="flex: 1;">Подтвердить</button>
+                    <button class="btn-secondary" onclick="app.closeSimpleModal('orderConfirmationModal')" style="flex: 1;">Назад</button>
+                </div>
+            </div>
+        </div>
 
     </div>
 
@@ -1959,6 +2119,7 @@
             CRM: 'crmScreen',
             SET_SELECTION: 'setSelectionScreen',
             ADDRESS: 'addressScreen',
+            MENU_SELECTION: 'menuSelectionScreen',
             DATE_TIME: 'dateTimeScreen',
             INSTRUCTIONS: 'instructionsScreen',
             CRITICAL_ERROR: 'criticalErrorScreen'
@@ -1977,6 +2138,7 @@
         let currentUserDetailId = null;
         let userListenerUnsubscribe = null;
         let appSettings = { orderCooldownDays: 7 };
+        let cart = {};
         const LOYALTY_THRESHOLD = 5;
         
         const CITIES = ["Павлодар", "Петропавловск", "Кокшетау", "Костанай", "Усть-Каменогорск"];
@@ -2272,6 +2434,8 @@
         function showAddressForm() { showScreen(SCREENS.ADDRESS); }
         function showDateTimeSelection() { showScreen(SCREENS.DATE_TIME); }
         function showInstructions() { showScreen(SCREENS.INSTRUCTIONS); }
+        function showMenuScreen() { showScreen(SCREENS.MENU_SELECTION); loadAndRenderMenu(); }
+
 
         async function showCRM() {
             if (!ensureAuthenticated()) return;
@@ -3133,27 +3297,23 @@
         function startCollaboration() {
             if(userData.isBlocked) return;
             currentOrderData = {};
+            cart = {};
             
-            const bloggerLevel = userData.level;
-            
-            if (bloggerLevel === 'micro') {
+            if (userData.level === 'micro') {
                 showSetSelection();
             } else {
                 document.getElementById('backFromAddress').onclick = () => app.showDashboard();
                 showAddressForm();
-                handleCityChange(); 
             }
         }
         
         function proceedToAddressFromSet() {
             document.getElementById('backFromAddress').onclick = () => app.showSetSelection();
             showAddressForm();
-            handleCityChange();
         }
 
         function handleCityChange() {
-            const isMacro = userData.level !== 'micro';
-            document.getElementById('orderScreenshotGroup').style.display = isMacro ? 'block' : 'none';
+            // Логика со скриншотом удалена
         }
 
         function selectSet(element, setId) {
@@ -3173,8 +3333,12 @@
             currentOrderData.recipientPhone = document.getElementById('recipientPhone').value;
             currentOrderData.comment = document.getElementById('comment').value;
 
-            showDateTimeSelection();
-            setupDateInput();
+            if (userData.level !== 'micro') {
+                showMenuScreen();
+            } else {
+                showDateTimeSelection();
+                setupDateInput();
+            }
         }
 
         function setupDateInput() {
@@ -3195,7 +3359,7 @@
             if (!dateValue) { timeSlotsContainer.innerHTML = ''; return; }
             currentOrderData.date = dateValue;
             
-            const city = document.getElementById('city').value;
+            const city = currentOrderData.city;
             const scheduleDoc = await db.collection(COLLECTIONS.SCHEDULES).doc(city).get();
             const scheduleData = scheduleDoc.exists ? scheduleDoc.data() : {};
             const dayKey = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][new Date(dateValue).getDay()];
@@ -3239,12 +3403,6 @@
                 showError('Ошибка', 'Заполните: город, улица, телефон.');
                 return false;
             }
-            const isMacro = userData.level !== 'micro';
-            const screenshotInput = document.getElementById('orderScreenshot');
-            if (isMacro && (!screenshotInput.files || screenshotInput.files.length === 0)) {
-                showError('Ошибка', 'Для макроблогеров нужен скриншот заказа.');
-                return false;
-            }
             return true;
         }
 
@@ -3268,13 +3426,8 @@
                     reportMissed: false
                 };
                 
-                const screenshotFile = document.getElementById('orderScreenshot').files[0] || null;
-
                 const formData = new FormData();
                 formData.append('order', JSON.stringify(newOrder));
-                if (screenshotFile) {
-                    formData.append('screenshot', screenshotFile);
-                }
 
                 const response = await fetch(`${BACKEND_URL}/api/create-order`, {
                     method: 'POST',
@@ -3384,8 +3537,16 @@
             const orderDoc = await db.collection(COLLECTIONS.ORDERS).doc(orderId).get();
             if(!orderDoc.exists) return;
             const order = orderDoc.data();
+            
+            let itemsHtml = '';
+            if (order.items && order.items.length > 0) {
+                itemsHtml = '<strong>Заказ:</strong><ul>' + order.items.map(item => `<li>${item.name} (x${item.quantity}) - ${item.price * item.quantity} ₸</li>`).join('') + '</ul><strong>Итого:</strong> ' + order.totalPrice + ' ₸<br>';
+            } else if (order.setName) {
+                itemsHtml = `<strong>Выбранный набор:</strong> ${order.setName}<br>`;
+            }
+
             document.getElementById('orderDetailTitle').textContent = `Заказ ${order.orderNumber}`;
-            document.getElementById('orderDetailBody').innerHTML = `<strong>Блогер:</strong> ${order.userName}<br><strong>Instagram:</strong> <a href="https://www.instagram.com/${order.instagram.replace('@','')}" target="_blank" style="color: #00b4d8; text-decoration: none;">@${order.instagram}</a><br><strong>Телефон:</strong> ${order.phone}<br><strong>Город:</strong> ${order.city}<br><strong>Адрес:</strong> ${order.street}<br><strong>Комментарий:</strong> ${order.comment || '-'}<br><strong>Ссылка на отчет:</strong> ${order.reportLink ? `<a href="${order.reportLink}" target="_blank" class="report-link">${order.reportLink}</a>` : '-'}`;
+            document.getElementById('orderDetailBody').innerHTML = `<strong>Блогер:</strong> ${order.userName}<br><strong>Instagram:</strong> <a href="https://www.instagram.com/${order.instagram.replace('@','')}" target="_blank" style="color: #00b4d8; text-decoration: none;">@${order.instagram}</a><br><strong>Телефон:</strong> ${order.phone}<br><strong>Город:</strong> ${order.city}<br><strong>Адрес:</strong> ${order.street}<br>${itemsHtml}<strong>Комментарий:</strong> ${order.comment || '-'}<br><strong>Ссылка на отчет:</strong> ${order.reportLink ? `<a href="${order.reportLink}" target="_blank" class="report-link">${order.reportLink}</a>` : '-'}`;
             document.getElementById('orderStatusSelect').value = order.status;
             
             const markNoReportBtn = document.getElementById('markNoReportBtn');
@@ -3936,6 +4097,156 @@
                 showCrmSuccess("Запрос отправлен!", `Excel-файл с ${dataType === 'orders' ? 'заказами' : 'пользователями'} будет отправлен вам в личные сообщения.`);
             });
         }
+
+        // --- Логика нового меню и корзины ---
+
+        async function loadAndRenderMenu() {
+            const grid = document.getElementById('menu-items-grid');
+            const tabsContainer = document.getElementById('menu-categories');
+            grid.innerHTML = '<div class="loading-indicator">Загрузка меню...</div>';
+            tabsContainer.innerHTML = '';
+            cart = {};
+            updateCartView();
+
+            try {
+                const snapshot = await db.collection(COLLECTIONS.MENU).get();
+                if (snapshot.empty) {
+                    grid.innerHTML = '<div class="empty-state">Меню пока пустое.</div>';
+                    return;
+                }
+
+                const menuData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                const categories = [...new Set(menuData.map(item => item.category))];
+                
+                categories.forEach((cat, index) => {
+                    const tab = document.createElement('button');
+                    tab.className = 'menu-category-tab';
+                    tab.textContent = cat;
+                    tab.onclick = () => {
+                        document.querySelectorAll('.menu-category-tab').forEach(t => t.classList.remove('active'));
+                        tab.classList.add('active');
+                        renderMenuItems(menuData.filter(item => item.category === cat));
+                    };
+                    tabsContainer.appendChild(tab);
+                    if (index === 0) tab.click();
+                });
+
+            } catch (error) {
+                console.error("Error loading menu:", error);
+                grid.innerHTML = '<div class="empty-state">Не удалось загрузить меню.</div>';
+            }
+        }
+
+        function renderMenuItems(items) {
+            const grid = document.getElementById('menu-items-grid');
+            grid.innerHTML = '';
+            items.forEach(item => {
+                const card = document.createElement('div');
+                card.className = 'menu-item-card';
+                card.dataset.id = item.id;
+                card.innerHTML = `
+                    <img src="${item.imageUrl || 'https://via.placeholder.com/100'}" class="menu-item-image" alt="${item.name}">
+                    <div class="menu-item-info">
+                        <div class="menu-item-name">${item.name}</div>
+                        <div class="menu-item-desc">${item.description || ''}</div>
+                        <div class="menu-item-footer">
+                            <div class="menu-item-price">${item.price} ₸</div>
+                            <div class="menu-item-controls">
+                                <button class="quantity-btn" onclick="app.removeFromCart('${item.id}')">-</button>
+                                <span class="item-quantity">0</span>
+                                <button class="quantity-btn" onclick="app.addToCart({id: '${item.id}', name: '${item.name}', price: ${item.price}})">+</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+            updateCartView();
+        }
+
+        function addToCart(item) {
+            if (!cart[item.id]) {
+                cart[item.id] = { ...item, quantity: 0 };
+            }
+            cart[item.id].quantity++;
+            updateCartView();
+        }
+
+        function removeFromCart(itemId) {
+            if (cart[itemId]) {
+                cart[itemId].quantity--;
+                if (cart[itemId].quantity <= 0) {
+                    delete cart[itemId];
+                }
+                updateCartView();
+            }
+        }
+
+        function updateCartView() {
+            let total = 0;
+            let count = 0;
+
+            document.querySelectorAll('.menu-item-card').forEach(card => {
+                const itemId = card.dataset.id;
+                const quantityEl = card.querySelector('.item-quantity');
+                if (cart[itemId]) {
+                    quantityEl.textContent = cart[itemId].quantity;
+                } else {
+                    quantityEl.textContent = 0;
+                }
+            });
+
+            for (const itemId in cart) {
+                total += cart[itemId].price * cart[itemId].quantity;
+                count += cart[itemId].quantity;
+            }
+
+            const cartFab = document.getElementById('cart-fab');
+            if (count > 0) {
+                document.getElementById('cart-total').textContent = `${total} ₸`;
+                cartFab.style.display = 'block';
+            } else {
+                cartFab.style.display = 'none';
+            }
+        }
+
+        function showCartModal() {
+            const list = document.getElementById('cartItemsList');
+            const totalEl = document.getElementById('cartTotal');
+            list.innerHTML = '';
+            let total = 0;
+
+            for (const itemId in cart) {
+                const item = cart[itemId];
+                const itemEl = document.createElement('div');
+                itemEl.className = 'cart-item';
+                itemEl.innerHTML = `
+                    <div>
+                        <div class="cart-item-name">${item.name}</div>
+                        <div class="cart-item-details">${item.quantity} x ${item.price} ₸</div>
+                    </div>
+                    <span>${item.quantity * item.price} ₸</span>
+                `;
+                list.appendChild(itemEl);
+                total += item.quantity * item.price;
+            }
+            totalEl.textContent = total;
+            document.getElementById('orderConfirmationModal').style.display = 'flex';
+        }
+
+        function confirmOrderFromMenu() {
+            currentOrderData.items = Object.values(cart).map(item => ({
+                id: item.id,
+                name: item.name,
+                price: item.price,
+                quantity: item.quantity
+            }));
+            currentOrderData.totalPrice = Object.values(cart).reduce((sum, item) => sum + item.price * item.quantity, 0);
+
+            closeSimpleModal('orderConfirmationModal');
+            showDateTimeSelection();
+            setupDateInput();
+        }
         
         const exportOrdersToExcel = (btn) => exportToExcel(btn, 'orders');
         const exportUsersToExcel = (btn) => exportToExcel(btn, 'users');
@@ -3962,7 +4273,9 @@
             resetOrderCooldown, showScheduleForCity, applyAnalyticsFilters, toggleAdminNotifications,
             markNoReport, markReportAccepted, copyPlaceholder,
             exportOrdersToExcel, exportUsersToExcel,
-            updateMenuItemsListCrm, showMenuItemModal, saveMenuItem, deleteMenuItem
+            updateMenuItemsListCrm, showMenuItemModal, saveMenuItem, deleteMenuItem,
+            // Новые функции для меню и корзины
+            showMenuScreen, addToCart, removeFromCart, showCartModal, confirmOrderFromMenu
         };
     })();
 </script>
