@@ -334,7 +334,6 @@ app.post('/api/broadcast', async (req, res) => {
     })();
 });
 
-// УДАЛЕН ЭНДПОИНТ /api/sync-menu, ТАК КАК ФУНКЦИЯ УДАЛЕНА
 
 // ======================================================================
 // === ПЛАНИРОВЩИКИ И УВЕДОМЛЕНИЯ ===
@@ -387,4 +386,38 @@ async function checkReportReminders() {
         if (ordersSnapshot.empty) return;
 
         for (const doc of ordersSnapshot.docs) {
- 
+            const order = doc.data();
+            const deliveryDate = new Date(order.createdAt);
+            
+            if (deliveryDate <= reminderTime && order.userId) {
+                const userDoc = await db.collection('users').doc(order.userId).get();
+                if (userDoc.exists && userDoc.data().telegramId) {
+                    const message = `🔔 Напоминание: Прошло 24 часа с момента доставки вашего заказа *${order.orderNumber}*. Пожалуйста, не забудьте сдать отчет в личном кабинете.`;
+                    await sendAndUpdate(userDoc.data().telegramId, message, doc.ref, { reminderSent: true });
+                } else {
+                    await doc.ref.update({ reminderSent: true });
+                }
+            }
+        }
+    } catch (error) {
+        console.error("Ошибка в checkReportReminders:", error);
+    }
+}
+async function sendAndUpdate(chatId, message, docRef, updateData) {
+    try {
+        await sendTelegramNotification(chatId, message);
+        await docRef.update(updateData);
+        console.log(`Уведомление для ${chatId} отправлено, документ обновлен.`);
+    } catch (err) {
+        console.error(`Сетевая или DB ошибка для ${chatId}:`, err.message);
+    }
+}
+cron.schedule('0 9 * * *', checkAndNotifyUsers, { timezone: "Asia/Almaty" });
+cron.schedule('0 * * * *', checkReportReminders, { timezone: "Asia/Almaty" }); 
+
+
+// --- ЗАПУСК СЕРВЕРА ---
+app.listen(PORT, () => {
+    console.log(`Сервер запущен на порту ${PORT}`);
+    console.log('Планировщики активны.');
+});
