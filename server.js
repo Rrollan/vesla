@@ -487,4 +487,4 @@ cron.schedule('0 * * * *', checkReportReminders, { timezone: "Asia/Almaty" });
 app.listen(PORT, () => {
     console.log(`Сервер запущен на порту ${PORT}`);
     console.log('Планировщики активны.');
-});```
+});
