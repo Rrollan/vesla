@@ -13,27 +13,42 @@ const sharp = require('sharp');
 const axios = require('axios');
 const cheerio = require('cheerio');
 const FormData = require('form-data');
-const puppeteer = require('puppeteer'); // <-- ДОБАВЛЕНА ЗАВИСИМОСТЬ
+const puppeteer = require('puppeteer');
 
 // --- ИНИЦИАЛИЗАЦИЯ ---
 const app = express();
 const PORT = process.env.PORT || 10000;
 const TELEGRAM_BOT_TOKEN = '8227812944:AAFy8ydOkUeCj3Qkjg7_Xsq6zyQpcUyMShY'; 
 
-// --- ИНИЦИАЛИЗАЦИЯ FIREBASE ADMIN SDK ---
+// --- ИНИЦИАЛИЗАЦИЯ FIREBASE ADMIN SDK (ИСПРАВЛЕНО ДЛЯ RENDER) ---
 try {
-  const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT_KEY 
-    ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY)
-    : require('/etc/secrets/serviceAccountKey.json'); 
+  // Этот путь будет работать и локально (если serviceAccountKey.json лежит рядом)
+  // и на Render (где Render создаст файл по этому пути)
+  const serviceAccountPath = process.env.FIREBASE_SERVICE_ACCOUNT_KEY_PATH || './serviceAccountKey.json';
   
-  if (!admin.apps.length) {
-    admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount)
-    });
+  // Проверяем, существует ли файл, чтобы избежать падения на локальной машине без ключа
+  if (fs.existsSync(serviceAccountPath)) {
+    const serviceAccount = require(serviceAccountPath); 
+    if (!admin.apps.length) {
+      admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount)
+      });
+    }
+  } else if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
+      // Резервный вариант, если ключ передается как переменная окружения
+      const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
+       if (!admin.apps.length) {
+        admin.initializeApp({
+          credential: admin.credential.cert(serviceAccount)
+        });
+      }
+  } else {
+      console.warn("ПРЕДУПРЕЖДЕНИЕ: Файл serviceAccountKey.json не найден. Функции Firebase могут не работать.");
   }
 } catch (error) {
-  console.error("КРИТИЧЕСКАЯ ОШИБКА: Ключ сервисного аккаунта Firebase не найден.");
+  console.error("КРИТИЧЕСКАЯ ОШИБКА: Ключ сервисного аккаунта Firebase не найден или не удалось его прочитать.", error);
 }
+
 const db = admin.firestore();
 const bot = new TelegramBot(TELEGRAM_BOT_TOKEN);
 
