@@ -13,7 +13,7 @@ const sharp = require('sharp');
 const axios = require('axios');
 const cheerio = require('cheerio');
 const FormData = require('form-data');
-
+const puppeteer = require('puppeteer'); // <-- ДОБАВЛЕНА ЗАВИСИМОСТЬ
 
 // --- ИНИЦИАЛИЗАЦИЯ ---
 const app = express();
@@ -63,60 +63,69 @@ app.get('/', (req, res) => {
 // === ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ===
 // ======================================================================
 
-// +++ ОБНОВЛЕННАЯ ФУНКЦИЯ ПАРСИНГА МЕНЮ +++
+// +++ НОВАЯ ВЕРСИЯ ПАРСЕРА С ИСПОЛЬЗОВАНИЕМ PUPPETEER +++
 async function scrapeVeslaMenu() {
+    let browser = null;
     try {
-        console.log('Начинаю парсинг меню с vesla.kz по НОВЫМ селекторам...');
+        console.log('Начинаю парсинг меню с vesla.kz с помощью Puppeteer...');
         const url = 'https://vesla.kz/pavlodar/popular';
-        
-        const { data } = await axios.get(url, {
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-            }
-        });
-        
-        const $ = cheerio.load(data);
-        const menuItems = [];
 
-        // ИЗМЕНЕНИЕ: Новый, более простой селектор для карточки товара
-        // Теперь ищем все элементы с классом .product
-        const foundElements = $('.product.d-flex.flex-column');
+        // Запускаем браузер. Важные опции для Render/Heroku: '--no-sandbox' и '--disable-setuid-sandbox'
+        browser = await puppeteer.launch({
+            headless: true,
+            args: ['--no-sandbox', '--disable-setuid-sandbox'],
+        });
+
+        const page = await browser.newPage();
+        
+        // Устанавливаем User-Agent, чтобы выглядеть как обычный браузер
+        await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
+
+        console.log(`Перехожу на страницу: ${url}`);
+        await page.goto(url, { waitUntil: 'networkidle2' });
+
+        const productSelector = '.product.d-flex.flex-column';
+        console.log(`Ожидаю появления селектора: "${productSelector}"...`);
+        
+        // Ждем, пока на странице появится хотя бы одна карточка товара (максимум 30 секунд)
+        await page.waitForSelector(productSelector, { timeout: 30000 });
+
+        console.log('Элементы найдены. Получаю HTML-контент страницы...');
+        const content = await page.content();
+        
+        const $ = cheerio.load(content);
+        const menuItems = [];
+        
+        const foundElements = $(productSelector);
         console.log(`Найдено элементов для парсинга: ${foundElements.length}`);
 
         if (foundElements.length === 0) {
-            console.error('КРИТИЧЕСКАЯ ОШИБКА ПАРСЕРА: Селектор .product не нашел ни одного элемента. Верстка сайта снова изменилась.');
+            console.error('КРИТИЧЕСКАЯ ОШИБКА: Puppeteer загрузил страницу, но селектор .product ничего не нашел.');
             return [];
         }
         
         foundElements.each((index, element) => {
             const productElement = $(element);
-            
-            // ИЗМЕНЕНИЕ: Новый селектор для названия
             const name = productElement.find('.product__title').text().trim();
-            
-            // ИЗМЕНЕНИЕ: Новый селектор для цены
             const priceText = productElement.find('.product-cost__actual').text().trim();
             const price = parseInt(priceText.replace(/\s*₸/, '').replace(/\s/g, ''), 10);
             
-            // ИЗМЕНЕНИЕ: Новый способ получения картинки из style
             const imageUrlRaw = productElement.find('.product__image').css('background-image');
             let imageUrl = '';
             if (imageUrlRaw) {
-                // Извлекаем чистый URL из строки 'url("...")'
                 imageUrl = imageUrlRaw.replace(/url\(['"]?/, '').replace(/['"]?\)/, '');
             }
 
-            // Проверяем, что получили все основные данные, прежде чем добавлять
             if (name && !isNaN(price) && imageUrl) {
                 menuItems.push({
                     name: name,
                     price: price,
                     imageUrl: imageUrl,
                     description: productElement.find('.description').text().trim(),
-                    category: 'Популярное' // Мы парсим только одну страницу, поэтому категория одна
+                    category: 'Популярное'
                 });
             } else {
-                console.warn(`Не удалось полностью распарсить элемент #${index + 1}. Имя: "${name}", Цена: "${priceText}", Картинка: "${imageUrlRaw}"`);
+                console.warn(`Не удалось полностью распарсить элемент #${index + 1}. Имя: "${name}", Цена: "${priceText}"`);
             }
         });
         
@@ -124,18 +133,20 @@ async function scrapeVeslaMenu() {
         return menuItems;
 
     } catch (error) {
-        console.error('КРИТИЧЕСКАЯ ОШИБКА в scrapeVeslaMenu:', error.message);
-        if (error.response) {
-            console.error('Статус ответа от vesla.kz:', error.response.status);
+        console.error('КРИТИЧЕСКАЯ ОШИБКА в scrapeVeslaMenu (Puppeteer):', error.message);
+        return [];
+    } finally {
+        if (browser) {
+            console.log('Закрываю браузер Puppeteer...');
+            await browser.close();
         }
-        return []; 
     }
 }
+
 
 async function updateMenuInFirestore() {
     const scrapedItems = await scrapeVeslaMenu();
     
-    // ВАЖНАЯ ПРОВЕРКА: Если парсер ничего не нашел, не удаляем старое меню
     if (!scrapedItems || scrapedItems.length === 0) {
         console.log('Парсер не нашел блюд. Обновление меню в Firestore пропущено, чтобы не удалить существующие данные.');
         return;
@@ -433,25 +444,21 @@ app.post('/api/broadcast', async (req, res) => {
     })();
 });
 
-// +++ ОБНОВЛЕННЫЙ МАРШРУТ ДЛЯ РУЧНОЙ СИНХРОНИЗАЦИИ МЕНЮ (АСИНХРОННЫЙ) +++
+// ОБНОВЛЕННЫЙ МАРШРУТ ДЛЯ СИНХРОНИЗАЦИИ МЕНЮ (АСИНХРОННЫЙ)
 app.post('/api/sync-menu', (req, res) => {
     console.log('Получен асинхронный запрос на ручную синхронизацию меню...');
     
-    // Немедленно отправляем ответ клиенту, чтобы избежать тайм-аута
     res.status(202).json({ 
         success: true, 
         message: 'Запрос на синхронизацию принят. Процесс запущен в фоновом режиме.' 
     });
 
-    // Запускаем долгую задачу в фоновом режиме
     (async () => {
         try {
             await updateMenuInFirestore();
             console.log('Фоновая синхронизация меню успешно завершена.');
-            // Можно отправить уведомление админу в Telegram о завершении
         } catch (error) {
             console.error('Ошибка при выполнении фоновой синхронизации меню:', error);
-            // Можно отправить уведомление админу об ошибке
         }
     })();
 });
@@ -537,8 +544,7 @@ async function sendAndUpdate(chatId, message, docRef, updateData) {
 cron.schedule('0 9 * * *', checkAndNotifyUsers, { timezone: "Asia/Almaty" });
 cron.schedule('0 * * * *', checkReportReminders, { timezone: "Asia/Almaty" }); 
 
-// +++ ПЛАНИРОВЩИК ДЛЯ ОБНОВЛЕНИЯ МЕНЮ +++
-// Запускается раз в день в 5 утра по времени Алматы.
+// ПЛАНИРОВЩИК ДЛЯ ОБНОВЛЕНИЯ МЕНЮ
 cron.schedule('0 5 * * *', updateMenuInFirestore, { timezone: "Asia/Almaty" });
 
 
@@ -547,7 +553,6 @@ app.listen(PORT, () => {
     console.log(`Сервер запущен на порту ${PORT}`);
     console.log('Планировщики активны.');
     
-    // +++ ЗАПУСК ПАРСЕРА ПРИ СТАРТЕ СЕРВЕРА +++
     console.log('Запускаю первоначальное обновление меню при старте сервера...');
     updateMenuInFirestore();
 });
