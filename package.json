@@ -4,13 +4,9 @@
   "description": "Vesla Mini App and Notifier",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
-     "postinstall": "npx puppeteer browsers install chrome" 
+    "start": "node server.js"
   },
   "dependencies": {
-    "puppeteer": "^22.0.0",
-    "axios": "^1.7.2",
-    "cheerio": "^1.0.0-rc.12",
     "express": "^4.18.2",
     "express-fileupload": "^1.5.0",
     "firebase-admin": "^12.1.1",
