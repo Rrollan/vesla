@@ -334,6 +334,73 @@ app.post('/api/broadcast', async (req, res) => {
     })();
 });
 
+// ======================================================================
+// === НОВЫЙ МАРШРУТ ДЛЯ ИМПОРТА МЕНЮ ИЗ JSON-ФАЙЛА ===
+// ======================================================================
+app.post('/api/import-menu-from-file', async (req, res) => {
+    try {
+        // 1. Проверяем, был ли файл загружен
+        if (!req.files || !req.files.menuFile) {
+            return res.status(400).json({ error: 'Файл меню не был загружен.' });
+        }
+
+        const menuFile = req.files.menuFile;
+
+        // 2. Читаем содержимое файла
+        const fileContent = menuFile.data.toString('utf8');
+
+        // 3. Пытаемся распарсить JSON. Если файл некорректный, будет ошибка
+        let newMenuItems;
+        try {
+            newMenuItems = JSON.parse(fileContent);
+        } catch (e) {
+            return res.status(400).json({ error: 'Ошибка в синтаксисе JSON-файла. Проверьте кавычки и запятые.' });
+        }
+        
+        // 4. Проверяем, что в файле действительно массив
+        if (!Array.isArray(newMenuItems)) {
+             return res.status(400).json({ error: 'Содержимое файла должно быть списком (массивом) [...] блюд.' });
+        }
+
+        console.log(`Получено ${newMenuItems.length} блюд из файла. Начинаю импорт в Firebase...`);
+
+        // 5. Очищаем старую коллекцию меню в Firebase
+        const menuCollection = db.collection('menu');
+        const oldMenuSnapshot = await menuCollection.get();
+        const batchDelete = db.batch();
+        oldMenuSnapshot.docs.forEach(doc => {
+            batchDelete.delete(doc.ref);
+        });
+        await batchDelete.commit();
+        console.log('Старое меню удалено.');
+
+        // 6. Загружаем новые данные в Firebase
+        const batchWrite = db.batch();
+        newMenuItems.forEach(item => {
+            // Простая валидация
+            if (item.name && typeof item.price === 'number') {
+                const newDocRef = menuCollection.doc();
+                batchWrite.set(newDocRef, {
+                    name: item.name || 'Без названия',
+                    description: item.description || '',
+                    price: item.price || 0,
+                    category: item.category || 'Без категории',
+                    subcategory: item.subcategory || '', // <-- Добавлена поддержка подкатегорий
+                    imageUrl: item.imageUrl || ''
+                });
+            }
+        });
+        await batchWrite.commit();
+
+        console.log('Новое меню успешно импортировано в Firebase!');
+        res.status(200).json({ success: true, message: `Успешно импортировано ${newMenuItems.length} блюд.` });
+
+    } catch (error) {
+        console.error('Ошибка во время импорта меню из файла:', error);
+        res.status(500).json({ error: 'Произошла ошибка на сервере во время импорта.' });
+    }
+});
+
 
 // ======================================================================
 // === ПЛАНИРОВЩИКИ И УВЕДОМЛЕНИЯ ===
@@ -420,4 +487,4 @@ cron.schedule('0 * * * *', checkReportReminders, { timezone: "Asia/Almaty" });
 app.listen(PORT, () => {
     console.log(`Сервер запущен на порту ${PORT}`);
     console.log('Планировщики активны.');
-});
+});```
