@@ -38,7 +38,6 @@ const bot = new TelegramBot(TELEGRAM_BOT_TOKEN);
 
 // --- MIDDLEWARE ---
 app.use(express.static(path.join(__dirname, '/')));
-app.use(express.json({ limit: '10mb' }));
 app.use((req, res, next) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -47,11 +46,17 @@ app.use((req, res, next) => {
     next();
 });
 
+// ===== ИЗМЕНЕНИЕ ЗДЕСЬ: ПРАВИЛЬНЫЙ ПОРЯДОК MIDDLEWARE =====
+// Сначала обработчик файлов
 app.use(fileUpload({
   useTempFiles : true,
   tempFileDir : '/tmp/',
   limits: { fileSize: 10 * 1024 * 1024 },
 }));
+// Потом обработчик JSON
+app.use(express.json({ limit: '10mb' }));
+// =======================================================
+
 
 // --- ГЛАВНЫЙ МАРШРУТ ---
 app.get('/', (req, res) => {
@@ -334,9 +339,6 @@ app.post('/api/broadcast', async (req, res) => {
     })();
 });
 
-// ======================================================================
-// === ИЗМЕНЕННЫЙ МАРШРУТ ДЛЯ ИМПОРТА МЕНЮ ИЗ JSON-ФАЙЛА ===
-// ======================================================================
 app.post('/api/import-menu-from-file', async (req, res) => {
     try {
         if (!req.files || !req.files.menuFile) {
@@ -345,14 +347,10 @@ app.post('/api/import-menu-from-file', async (req, res) => {
 
         const menuFile = req.files.menuFile;
         
-        // --- ИЗМЕНЕНИЕ ЗДЕСЬ ---
-        // Читаем содержимое файла и сразу удаляем BOM (Byte Order Mark), если он есть
         let fileContent = menuFile.data.toString('utf8');
         if (fileContent.charCodeAt(0) === 0xFEFF) {
-            console.log('Обнаружен и удален BOM-символ из файла.');
             fileContent = fileContent.slice(1);
         }
-        // --- КОНЕЦ ИЗМЕНЕНИЯ ---
 
         let newMenuItems;
         try {
