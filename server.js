@@ -20,13 +20,10 @@ const app = express();
 const PORT = process.env.PORT || 10000;
 const TELEGRAM_BOT_TOKEN = '8227812944:AAFy8ydOkUeCj3Qkjg7_Xsq6zyQpcUyMShY'; 
 
-// --- ИНИЦИАЛИЗАЦИЯ FIREBASE ADMIN SDK (ИСПРАВЛЕНО ДЛЯ RENDER) ---
+// --- ИНИЦИАЛИЗАЦИЯ FIREBASE ADMIN SDK ---
 try {
-  // Этот путь будет работать и локально (если serviceAccountKey.json лежит рядом)
-  // и на Render (где Render создаст файл по этому пути)
   const serviceAccountPath = process.env.FIREBASE_SERVICE_ACCOUNT_KEY_PATH || './serviceAccountKey.json';
   
-  // Проверяем, существует ли файл, чтобы избежать падения на локальной машине без ключа
   if (fs.existsSync(serviceAccountPath)) {
     const serviceAccount = require(serviceAccountPath); 
     if (!admin.apps.length) {
@@ -35,7 +32,6 @@ try {
       });
     }
   } else if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
-      // Резервный вариант, если ключ передается как переменная окружения
       const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
        if (!admin.apps.length) {
         admin.initializeApp({
@@ -78,22 +74,30 @@ app.get('/', (req, res) => {
 // === ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ===
 // ======================================================================
 
-// +++ НОВАЯ ВЕРСИЯ ПАРСЕРА С ИСПОЛЬЗОВАНИЕМ PUPPETEER +++
+// +++ ОБНОВЛЕННАЯ ВЕРСИЯ ПАРСЕРА С ОПТИМИЗАЦИЕЙ ДЛЯ RENDER +++
 async function scrapeVeslaMenu() {
     let browser = null;
     try {
-        console.log('Начинаю парсинг меню с vesla.kz с помощью Puppeteer...');
+        console.log('Начинаю парсинг меню с vesla.kz с помощью Puppeteer (оптимизированный запуск)...');
         const url = 'https://vesla.kz/pavlodar/popular';
 
-        // Запускаем браузер. Важные опции для Render/Heroku: '--no-sandbox' и '--disable-setuid-sandbox'
+        // ИЗМЕНЕНИЕ: Добавлены флаги для снижения потребления памяти
         browser = await puppeteer.launch({
             headless: true,
-            args: ['--no-sandbox', '--disable-setuid-sandbox'],
+            executablePath: process.env.PUPPETEER_EXECUTABLE_PATH, // Используем путь из переменных окружения
+            args: [
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--disable-dev-shm-usage', // Важно для сред с ограниченными ресурсами
+                '--disable-accelerated-2d-canvas',
+                '--no-first-run',
+                '--no-zygote',
+                '--single-process', // Может помочь на слабых машинах
+                '--disable-gpu'
+            ],
         });
 
         const page = await browser.newPage();
-        
-        // Устанавливаем User-Agent, чтобы выглядеть как обычный браузер
         await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
 
         console.log(`Перехожу на страницу: ${url}`);
@@ -101,8 +105,6 @@ async function scrapeVeslaMenu() {
 
         const productSelector = '.product.d-flex.flex-column';
         console.log(`Ожидаю появления селектора: "${productSelector}"...`);
-        
-        // Ждем, пока на странице появится хотя бы одна карточка товара (максимум 30 секунд)
         await page.waitForSelector(productSelector, { timeout: 30000 });
 
         console.log('Элементы найдены. Получаю HTML-контент страницы...');
@@ -160,10 +162,15 @@ async function scrapeVeslaMenu() {
 
 
 async function updateMenuInFirestore() {
+    // Проверяем, есть ли вообще DB, чтобы избежать падения, если ключ не нашелся
+    if (!db.collection) {
+        console.error('Firestore не инициализирован. Пропускаю обновление меню.');
+        return;
+    }
     const scrapedItems = await scrapeVeslaMenu();
     
     if (!scrapedItems || scrapedItems.length === 0) {
-        console.log('Парсер не нашел блюд. Обновление меню в Firestore пропущено, чтобы не удалить существующие данные.');
+        console.log('Парсер не нашел блюд. Обновление меню в Firestore пропущено.');
         return;
     }
 
@@ -185,8 +192,7 @@ async function updateMenuInFirestore() {
     await batch.commit();
     console.log(`Меню в Firestore успешно обновлено. Добавлено ${scrapedItems.length} позиций.`);
 }
-// +++ КОНЕЦ БЛОКА ПАРСИНГА +++
-
+// ... (остальные функции остаются без изменений, я их скрыл для краткости, но они должны быть в вашем файле)
 function determineBloggerLevel(followersCount) {
     const count = Number(followersCount) || 0;
     if (count <= 6000) return { level: 'micro', text: 'Микроблогер' };
@@ -459,7 +465,6 @@ app.post('/api/broadcast', async (req, res) => {
     })();
 });
 
-// ОБНОВЛЕННЫЙ МАРШРУТ ДЛЯ СИНХРОНИЗАЦИИ МЕНЮ (АСИНХРОННЫЙ)
 app.post('/api/sync-menu', (req, res) => {
     console.log('Получен асинхронный запрос на ручную синхронизацию меню...');
     
@@ -477,7 +482,6 @@ app.post('/api/sync-menu', (req, res) => {
         }
     })();
 });
-
 
 // ======================================================================
 // === ПЛАНИРОВЩИКИ И УВЕДОМЛЕНИЯ ===
@@ -568,6 +572,7 @@ app.listen(PORT, () => {
     console.log(`Сервер запущен на порту ${PORT}`);
     console.log('Планировщики активны.');
     
-    console.log('Запускаю первоначальное обновление меню при старте сервера...');
-    updateMenuInFirestore();
+    // ИЗМЕНЕНИЕ: НЕ запускаем тяжелый парсинг при старте сервера, чтобы он не падал.
+    // console.log('Запускаю первоначальное обновление меню при старте сервера...');
+    // updateMenuInFirestore();
 });
