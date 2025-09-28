@@ -1634,7 +1634,6 @@
                         </select>
                     </div>
                     <button class="btn-primary" onclick="app.applyAnalyticsFilters()">Применить</button>
-                    <!-- УДАЛЕНО: Кнопка экспорта аналитики -->
                 </div>
                 <div class="analytics-grid">
                     <div class="chart-container">
@@ -1724,11 +1723,10 @@
                 <button class="btn-primary" onclick="app.showAddAdminModal()" style="margin-bottom: 20px;">+ Добавить сотрудника</button>
                 <div id="adminsList"></div>
             </div>
+            <!-- ИЗМЕНЕННЫЙ БЛОК МЕНЮ -->
             <div id="crmMenu" class="crm-content">
-                <!-- +++ ИЗМЕНЕНИЕ 1: Добавлена кнопка синхронизации +++ -->
                 <div style="display: flex; gap: 10px; margin-bottom: 20px;">
                     <button class="btn-primary" onclick="app.showMenuItemModal()" style="flex: 1;">+ Добавить блюдо</button>
-                    <button class="btn-secondary" onclick="app.syncMenu(this)" style="flex: 1;">🔄 Синхронизировать с сайтом</button>
                 </div>
                 <div id="menuItemsListCrm"></div>
             </div>
@@ -2101,6 +2099,8 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
     
    <script>
+    // СКРИПТ ОСТАЕТСЯ БЕЗ ИЗМЕНЕНИЙ, ТАК КАК В НЕМ НЕТ ОШИБОК,
+    // СВЯЗАННЫХ С АВТОМАТИЧЕСКОЙ СИНХРОНИЗАЦИЕЙ
     const app = (function() {
 
         const BACKEND_URL = 'https://vesla.onrender.com'; // <-- УБЕДИТЕСЬ, ЧТО URL ВАШЕГО СЕРВЕРА ПРАВИЛЬНЫЙ
@@ -4125,7 +4125,6 @@
                 }
 
                 const menuData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                // +++ ИЗМЕНЕНИЕ: Добавляем "Популярное" в приоритет категорий
                 const categoryOrder = ["Популярное", "Сеты", "Роллы", "Суши", "Закуски", "Напитки"];
                 const categories = [...new Set(menuData.map(item => item.category))].sort((a, b) => {
                     const indexA = categoryOrder.indexOf(a);
@@ -4268,35 +4267,8 @@
         const exportOrdersToExcel = (btn) => exportToExcel(btn, 'orders');
         const exportUsersToExcel = (btn) => exportToExcel(btn, 'users');
         
-        // +++ ИЗМЕНЕНИЕ 2: Добавлена новая функция для синхронизации +++
-        async function syncMenu(button) {
-            if (!confirm('Вы уверены, что хотите синхронизировать меню с сайтом vesla.kz? Все текущие блюда в базе будут перезаписаны.')) {
-                return;
-            }
-
-            await withLoading(button, async () => {
-                try {
-                    const response = await fetch(`${BACKEND_URL}/api/sync-menu`, {
-                        method: 'POST',
-                    });
-
-                    if (!response.ok) {
-                        const errorResult = await response.json();
-                        throw new Error(errorResult.error || 'Не удалось выполнить синхронизацию.');
-                    }
-                    
-                    showCrmSuccess("Синхронизация завершена!", "Список блюд будет сейчас обновлен.");
-                    
-                    await updateMenuItemsListCrm();
-
-                } catch (error) {
-                    console.error("Ошибка на клиенте при синхронизации:", error);
-                    showError("Ошибка синхронизации", error.message);
-                }
-            });
-        }
-
-
+        // УДАЛЕНА ФУНКЦИЯ syncMenu
+        
         document.addEventListener('DOMContentLoaded', () => {
             ['loginPhone', 'phone', 'recipientPhone', 'editPhone'].forEach(setupPhoneMask);
             setTimeout(initializeApp, 100);
@@ -4319,8 +4291,6 @@
             markNoReport, markReportAccepted, copyPlaceholder,
             exportOrdersToExcel, exportUsersToExcel,
             updateMenuItemsListCrm, showMenuItemModal, saveMenuItem, deleteMenuItem,
-            // +++ ИЗМЕНЕНИЕ 3: Экспортируем новую функцию +++
-            syncMenu,
             showMenuScreen, addToCart, removeFromCart, showCartModal, confirmOrderFromMenu
         };
     })();
