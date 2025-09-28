@@ -237,7 +237,7 @@ app.post('/api/create-order', async (req, res) => {
 // +++ НОВЫЙ МАРШРУТ ДЛЯ ЗАГРУЗКИ ИЗОБРАЖЕНИЙ МЕНЮ +++
 app.post('/api/upload-menu-image', async (req, res) => {
     // ВАЖНО: Вставьте сюда ваш API ключ от ImgBB
-    const IMGBB_API_KEY = 'YOUR_IMGBB_API_KEY_HERE'; 
+    const IMGBB_API_KEY = '5148efee12c90f87021e50e0155d17a0'; 
 
     if (!IMGBB_API_KEY || IMGBB_API_KEY === 'YOUR_IMGBB_API_KEY_HERE') {
         return res.status(500).json({ error: 'API ключ для ImgBB не настроен на сервере.' });
