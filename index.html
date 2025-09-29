@@ -7,7 +7,6 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-    /* CSS стили остаются без изменений */
     * {
         margin: 0;
         padding: 0;
@@ -22,15 +21,13 @@
         overflow-x: hidden;
     }
 
-    /* ИСПРАВЛЕНО: Стили для корректного выделения и копирования текста */
     body {
-       user-select: none; /* Запрещаем выделение для всего body по умолчанию */
+       user-select: none;
        -webkit-user-select: none;
        -moz-user-select: none;
        -ms-user-select: none;
     }
 
-    /* Разрешаем выделение для конкретных элементов, где это нужно */
     .modal-body, .order-info, .user-details, .blocked-slot-info, .report-link, .user-name-phone, .order-id, .subtitle, p, h1, h2, h3, h4, label, li, a, span {
         user-select: text;
         -webkit-user-select: text;
@@ -38,7 +35,6 @@
         -ms-user-select: text;
     }
     
-    /* Гарантируем стандартное поведение для полей ввода */
     input, textarea, select {
         user-select: auto;
         -webkit-user-select: auto;
@@ -54,7 +50,6 @@
         min-height: 100vh;
     }
 
-    /* Анимации */
     @keyframes fadeIn {
         from { opacity: 0; transform: translateY(20px); }
         to { opacity: 1; transform: translateY(0); }
@@ -66,7 +61,6 @@
         100% { transform: scale(1); }
     }
 
-    /* Главная страница */
     .welcome-screen {
         display: flex;
         flex-direction: column;
@@ -195,7 +189,6 @@
         color: #ff6b6b;
     }
 
-    /* СТИЛИ ДЛЯ ИКОНОК */
     .btn-icon, .btn-icon-block, .btn-icon-unblock {
          background: transparent;
          border: none;
@@ -226,7 +219,6 @@
         background: #c82333;
     }
 
-    /* Формы */
     .form-screen {
         display: none;
         animation: fadeIn 0.5s ease-out;
@@ -309,7 +301,6 @@
         background: #5a5a5a;
     }
 
-    /* Личный кабинет */
     .dashboard {
         display: none;
         animation: fadeIn 0.5s ease-out;
@@ -385,7 +376,6 @@
         z-index: 1;
     }
 
-    /* ИЗМЕНЕНИЕ: Сетка статистики теперь может иметь 3 колонки */
     .user-stats {
         display: grid;
         grid-template-columns: repeat(3, 1fr);
@@ -452,7 +442,7 @@
     .action-icon {
         font-size: 24px;
         margin-bottom: 10px;
-        height: 28px; /* Для выравнивания высоты */
+        height: 28px;
         display: flex;
         align-items: center;
         justify-content: flex-start;
@@ -469,7 +459,6 @@
         color: #999;
     }
 
-    /* CRM панель */
     .crm-screen {
         display: none;
         animation: fadeIn 0.5s ease-out;
@@ -617,7 +606,6 @@
         word-break: break-all;
     }
 
-    /* Блокировки времени */
     .blocked-slots {
         margin-bottom: 20px;
     }
@@ -647,7 +635,6 @@
         font-size: 14px;
     }
 
-    /* Управление пользователями */
     .user-item {
         background: #3a3a3a;
         border: 1px solid #4a4a4a;
@@ -664,7 +651,6 @@
         border-left: 4px solid #dc3545;
     }
     
-    /* Стили для скрытого блюда в CRM */
     .user-item.hidden-item {
         opacity: 0.6;
         background: #333;
@@ -677,8 +663,8 @@
 
     .user-details {
         flex-grow: 1;
-        display: flex; /* Для выравнивания контента */
-        align-items: center; /* Для выравнивания контента */
+        display: flex;
+        align-items: center;
     }
 
 
@@ -719,7 +705,6 @@
         font-weight: bold;
     }
 
-    /* Модальные окна */
     .modal {
         display: none;
         position: fixed;
@@ -764,7 +749,6 @@
         color: #fff;
     }
     
-    /* Теги */
     .tags-container {
         margin-top: 10px;
         min-height: 30px;
@@ -834,7 +818,6 @@
         color: #ff4444;
     }
 
-    /* НОВЫЕ СТИЛИ: Иконка для модального окна с предупреждением */
     .warning-icon {
         font-size: 60px;
         margin-bottom: 20px;
@@ -842,7 +825,6 @@
     }
     
     
-    /* Файловая загрузка */
     .file-upload {
         position: relative;
         display: inline-block;
@@ -916,7 +898,6 @@
         transform: scale(1.1);
     }
 
-    /* Выбор набора */
     .set-selection {
         display: none;
     }
@@ -953,7 +934,6 @@
         line-height: 1.4;
     }
 
-    /* Календарь и время */
     .datetime-selection {
         display: none;
     }
@@ -991,7 +971,6 @@
         display: none; 
     }
 
-    /* Инструкции */
     .instructions {
         background: #3a3a3a;
         padding: 20px;
@@ -1018,7 +997,6 @@
         font-weight: bold;
     }
 
-    /* Статус индикаторы */
     .loading-indicator {
         color: #00b4d8;
         font-size: 14px;
@@ -1047,7 +1025,6 @@
         border-left: 4px solid #00b4d8;
     }
 
-    /* Контакты администратора */
     .admin-contact {
         background: #3a3a3a;
         padding: 20px;
@@ -1072,7 +1049,6 @@
         transform: translateY(-2px);
     }
 
-    /* Миграция данных */
     .migration-info {
         background: #ff6b35;
         color: white;
@@ -1082,9 +1058,8 @@
         text-align: center;
     }
     
-    /* Стили для экрана меню и корзины */
     .menu-screen {
-        padding-bottom: 90px; /* Оставляем место для кнопки корзины */
+        padding-bottom: 90px;
     }
 
     .menu-categories {
@@ -1094,12 +1069,11 @@
         background: #3a3a3a;
         border-radius: 15px;
         padding: 5px;
-        /* Убираем скроллбар */
-        -ms-overflow-style: none;  /* IE и Edge */
-        scrollbar-width: none;  /* Firefox */
+        -ms-overflow-style: none;
+        scrollbar-width: none;
     }
     .menu-categories::-webkit-scrollbar {
-        display: none; /* Chrome, Safari, Opera */
+        display: none;
     }
 
 
@@ -1133,15 +1107,15 @@
         overflow: hidden;
         display: flex;
         border: 2px solid #4a4a4a;
-        align-items: center; /* Выравниваем элементы по центру по вертикали */
+        align-items: center;
     }
 
     .menu-item-image {
-        width: 110px;    /* Увеличим размер для лучшего вида */
+        width: 110px;
         height: 110px;
-        object-fit: cover; /* Гарантирует, что картинка заполнит квадрат без искажений */
+        object-fit: cover;
         flex-shrink: 0;
-        border-radius: 13px 0 0 13px; /* Скругляем только левые углы */
+        border-radius: 13px 0 0 13px;
     }
 
     .menu-item-info {
@@ -1149,8 +1123,8 @@
         flex-grow: 1;
         display: flex;
         flex-direction: column;
-        justify-content: space-between; /* Распределяем пространство */
-        height: 110px; /* Задаем одинаковую высоту */
+        justify-content: space-between;
+        height: 110px;
     }
 
     .menu-item-name {
@@ -1164,13 +1138,19 @@
         color: #999;
         margin: 5px 0;
         line-height: 1.4;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        min-height: 33.6px; 
     }
 
     .menu-item-footer {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-top: 8px;
+        margin-top: auto;
     }
 
     .menu-item-price {
@@ -1242,7 +1222,6 @@
         color: #999;
     }
 
-    /* Адаптивность */
     @media (max-width: 380px) {
         .container {
             padding: 15px;
@@ -1258,7 +1237,6 @@
         }
     }
 
-    /* Scrollbar стилизация */
     ::-webkit-scrollbar {
         width: 8px;
     }
@@ -1276,7 +1254,6 @@
         background: #5a5a5a;
     }
 
-    /* Дополнительные стили для форм */
     .form-row {
         display: flex;
         gap: 15px;
@@ -1320,7 +1297,6 @@
         outline: none;
     }
     
-    /* Новые стили для Аналитики */
     .analytics-filters {
         background: #3a3a3a;
         padding: 20px;
@@ -1354,7 +1330,6 @@
         max-height: 220px;
     }
     
-    /* Стили для подсказок тегов */
     .tag-suggestions-container {
         max-height: 150px;
         overflow-y: auto;
@@ -1386,7 +1361,6 @@
         border-radius: 10px;
     }
 
-    /* Стили для кликабельных плейсхолдеров */
     .placeholder-tag {
         cursor: pointer;
         background: #4a4a4a;
@@ -1533,7 +1507,7 @@
                 <div class="user-name" id="userName"></div>
                 <div id="userLevel" class="user-level"></div>
                 <div class="user-stats">
-                    <div class="stat-item">
+                    <div class="stat-item" id="vcoinStatItem" style="display: none;">
                         <div class="stat-number" id="vcoinBalanceDisplay">0</div>
                         <div class="stat-label">V-Coins</div>
                     </div>
@@ -1745,10 +1719,10 @@
                 <button class="btn-primary" onclick="app.showAddAdminModal()" style="margin-bottom: 20px;">+ Добавить сотрудника</button>
                 <div id="adminsList"></div>
             </div>
-            <!-- ИЗМЕНЕННЫЙ БЛОК МЕНЮ -->
             <div id="crmMenu" class="crm-content">
                 <div style="display: flex; gap: 10px; margin-bottom: 10px;">
                     <button class="btn-primary" onclick="app.showMenuItemModal()" style="flex: 1;">+ Добавить блюдо</button>
+                    <input type="file" id="menuFileInput" onchange="app.handleMenuFileSelect(event)" accept=".xlsx, .xls" style="display: none;" />
                     <button id="importMenuBtn" class="btn-secondary" onclick="app.triggerMenuImport()" style="flex: 1;">Импорт из файла</button>
                 </div>
                 <div class="search-container" style="margin-bottom: 20px;">
@@ -1889,7 +1863,6 @@
                 <button class="btn-primary" onclick="app.closeErrorModal()">Понятно</button>
             </div>
         </div>
-        <!-- НОВОЕ МОДАЛЬНОЕ ОКНО: Превышение лимита -->
         <div id="overdraftModal" class="modal">
             <div class="modal-content">
                 <div class="warning-icon">⚠️</div>
@@ -2152,7 +2125,6 @@
     const app = (function() {
 
         const BACKEND_URL = 'https://vesla.onrender.com';
-
         const TELEGRAM_BOT_TOKEN = '8227812944:AAFy8ydOkUeCj3Qkjg7_Xsq6zyQpcUyMShY';
         
         const firebaseConfig = {
@@ -2208,7 +2180,7 @@
         let appSettings = { orderCooldownDays: 7 };
         let cart = {};
         const LOYALTY_THRESHOLD = 5;
-        const VCOIN_RATE = 10; // 1 V-Coin = 10 Tenge
+        const VCOIN_RATE = 10;
         
         const CITIES = ["Павлодар", "Петропавловск", "Кокшетау", "Костанай", "Усть-Каменогорск"];
 
@@ -2264,54 +2236,23 @@
             }
         }
         
-    function debugTelegramState() {
-        console.log('=== TELEGRAM DEBUG START ===');
-        console.log('window.Telegram exists:', !!window.Telegram);
-        console.log('window.Telegram.WebApp exists:', !!window.Telegram?.WebApp);
-        console.log('Telegram WebApp object:', window.Telegram?.WebApp);
-        console.log('initDataUnsafe:', window.Telegram?.WebApp?.initDataUnsafe);
-        console.log('initData:', window.Telegram?.WebApp?.initData);
-        console.log('User data:', window.Telegram?.WebApp?.initDataUnsafe?.user);
-        console.log('=== TELEGRAM DEBUG END ===');
-    }
-
-    function initTelegram() {
-        debugTelegramState();
-        
-        try {
-            if (window.Telegram && window.Telegram.WebApp) {
-                tg = window.Telegram.WebApp;
-                console.log('Telegram WebApp initialized');
-                
-                tg.ready();
-                tg.expand();
-
-                tg.onEvent('viewportChanged', () => {
-                    if (!tg.isExpanded) return;
-                    ensureAuthenticated();
-                });
-
-                console.log('Checking user data...');
-                console.log('initDataUnsafe:', tg.initDataUnsafe);
-                console.log('user:', tg.initDataUnsafe?.user);
-
-                if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
-                    telegramUser = tg.initDataUnsafe.user;
-                    currentUserId = 'tg_' + telegramUser.id;
-                    console.log('Telegram user found:', telegramUser);
-                    console.log('Generated userId:', currentUserId);
-                    return true;
-                } else {
-                    console.error('No user data in initDataUnsafe');
-                }
-            } else {
-                console.error('Telegram WebApp not available');
-            }
-        } catch (error) {
-            console.error('Error initializing Telegram:', error);
-        }
-        return false;
-    }
+		function initTelegram() {
+			try {
+				if (window.Telegram && window.Telegram.WebApp) {
+					tg = window.Telegram.WebApp;
+					tg.ready();
+					tg.expand();
+					if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
+						telegramUser = tg.initDataUnsafe.user;
+						currentUserId = 'tg_' + telegramUser.id;
+						return true;
+					}
+				}
+			} catch (error) {
+				console.error('Error initializing Telegram:', error);
+			}
+			return false;
+		}
         
         function attachUserListener(userId) {
             if (userListenerUnsubscribe) userListenerUnsubscribe();
@@ -2670,9 +2611,8 @@
                     loyaltyStatus: 'standard',
                     lastOrderTimestamp: null,
                     cooldownNotified: true,
-                    // Инициализация V-Coins
                     vcoin_balance: 0,
-                    vcoin_allowance: 0 // Устанавливается админом
+                    vcoin_allowance: 0
                 };
 
                 await saveUser(newUserId, newUser);
@@ -2693,14 +2633,6 @@
                 'rejected': { text: 'Отклонен', className: 'status-rejected' }
             };
             return statuses[status] || { text: status, className: '' };
-        }
-
-        function getStartOfWeek() {
-            const now = new Date();
-            const day = now.getDay() || 7; 
-            if (day !== 1) now.setHours(-24 * (day - 1));
-            now.setHours(0, 0, 0, 0);
-            return now;
         }
 
         function updateDashboard() {
@@ -2730,7 +2662,18 @@
             const randomTitle = pleasantTitles[Math.floor(Math.random() * pleasantTitles.length)];
             document.getElementById('userLevel').textContent = randomTitle;
 
-            // Отображение баланса V-Coins
+            const vcoinStatBlock = document.getElementById('vcoinStatItem');
+            const userStatsGrid = document.querySelector('.user-stats');
+            const isMacroBlogger = userData.level && userData.level.startsWith('macro');
+
+            if (isMacroBlogger) {
+                vcoinStatBlock.style.display = 'block';
+                userStatsGrid.style.gridTemplateColumns = 'repeat(3, 1fr)';
+            } else {
+                vcoinStatBlock.style.display = 'none';
+                userStatsGrid.style.gridTemplateColumns = 'repeat(2, 1fr)';
+            }
+            
             document.getElementById('vcoinBalanceDisplay').textContent = userData.vcoin_balance || 0;
             document.getElementById('followersDisplay').textContent = (followersCount || 0).toLocaleString('ru-RU');
             document.getElementById('viewsDisplay').textContent = (avgViews || 0).toLocaleString('ru-RU');
@@ -2769,7 +2712,6 @@
             newCollabCard.style.cursor = 'pointer';
             newCollabCard.onclick = () => app.startCollaboration();
             
-            // Если у пользователя нет V-Coins, но он макроблогер, используем старую логику кулдауна
             if (!userData.vcoin_allowance || userData.vcoin_allowance === 0) {
                 if (userData.lastOrderTimestamp) {
                     const lastOrderDate = new Date(userData.lastOrderTimestamp);
@@ -3362,9 +3304,10 @@
             currentOrderData = {};
             cart = {};
             
-            // Если у пользователя есть лимит V-Coins (он макроблогер), он сразу выбирает блюда
-            // Если нет - он микроблогер и выбирает сет
-            if (userData.vcoin_allowance > 0) {
+            const isMacroBlogger = userData.level && userData.level.startsWith('macro');
+            const hasVcoins = userData.vcoin_balance && userData.vcoin_balance > 0;
+
+            if (isMacroBlogger && hasVcoins) {
                 document.getElementById('backFromAddress').onclick = () => app.showDashboard();
                 showAddressForm();
             } else {
@@ -3396,15 +3339,14 @@
             currentOrderData.recipientPhone = document.getElementById('recipientPhone').value;
             currentOrderData.comment = document.getElementById('comment').value;
 
-            // БАГФИКС: Динамическая кнопка "Назад"
             const backButton = document.getElementById('backFromDateTime');
+            const isMacroBlogger = userData.level && userData.level.startsWith('macro');
+            const hasVcoins = userData.vcoin_balance && userData.vcoin_balance > 0;
 
-            if (userData.vcoin_allowance > 0) {
-                // Это пользователь с V-Coins, он пришел с экрана меню
-                backButton.onclick = () => app.showMenuScreen();
+            if (isMacroBlogger && hasVcoins) {
+                backButton.onclick = () => app.showAddressForm();
                 showMenuScreen();
             } else {
-                // Это пользователь без V-Coins, он пришел с экрана адреса (после сетов)
                 backButton.onclick = () => app.showAddressForm();
                 showDateTimeSelection();
                 setupDateInput();
@@ -3541,10 +3483,8 @@
             document.getElementById('editViews').value = reg.avgViews;
             document.getElementById('editPassword').value = '';
             
-            // Поле для V-Coins
             const vcoinInput = document.getElementById('editVcoinAllowance');
             vcoinInput.value = userData.vcoin_allowance || 0;
-            // Показываем поле только админам
             vcoinInput.parentElement.style.display = currentUserRole === 'admin' ? 'block' : 'none';
 
             document.getElementById('editProfileModal').style.display = 'flex';
@@ -3575,7 +3515,6 @@
                     'level': levelData.level, 'tags': updatedTags
                 };
 
-                // Обновление V-Coins только если админ
                 if (currentUserRole === 'admin') {
                     updates.vcoin_allowance = parseInt(document.getElementById('editVcoinAllowance').value) || 0;
                 }
@@ -3622,7 +3561,6 @@
             const order = orderDoc.data();
             
             let itemsHtml = '';
-            // Логика отображения заказа с V-Coins
             if (order.vcoin_cost) {
                 itemsHtml = '<strong>Заказ:</strong><ul>' + order.items.map(item => `<li>${item.name} (x${item.quantity}) - ${item.price / VCOIN_RATE * item.quantity} VC</li>`).join('') + '</ul>'
                 + `<strong>Итого:</strong> ${order.vcoin_cost.toFixed(1)} VC<br>`
@@ -3825,7 +3763,7 @@
         async function addVcoinsToUser() {
             if (!currentUserDetailId) return;
             const amountStr = prompt("Введите количество V-Coins для добавления:", "100");
-            if (amountStr === null) return; // Пользователь нажал "Отмена"
+            if (amountStr === null) return; 
 
             const amountToAdd = parseInt(amountStr);
             if (isNaN(amountToAdd) || amountToAdd <= 0) {
@@ -3838,7 +3776,6 @@
                     vcoin_balance: FieldValue.increment(amountToAdd)
                 });
                 showCrmSuccess("Баланс обновлен!", `${amountToAdd} V-Coins были успешно добавлены.`);
-                // Обновляем модальное окно, чтобы показать новый баланс
                 await showUserDetailModal(currentUserDetailId);
             } catch (error) {
                 console.error("Ошибка при добавлении V-Coins:", error);
