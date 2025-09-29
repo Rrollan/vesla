@@ -23,10 +23,9 @@ const IMGBB_API_KEY = process.env.IMGBB_API_KEY || '5148efee12c90f87021e50e0155d
 
 // --- ИНИЦИАЛИЗАЦИЯ FIREBASE ADMIN SDK ---
 try {
-  // Приоритет отдается переменной окружения - это безопасный способ.
   const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT_KEY 
     ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY)
-    : require('./serviceAccountKey.json'); // Этот способ небезопасен для продакшена!
+    : require('./serviceAccountKey.json');
   
   if (!admin.apps.length) {
     admin.initializeApp({
@@ -36,7 +35,6 @@ try {
   }
 } catch (error) {
   console.error("КРИТИЧЕСКАЯ ОШИБКА: Ключ сервисного аккаунта Firebase не найден. Убедитесь, что переменная окружения FIREBASE_SERVICE_ACCOUNT_KEY установлена.");
-  // process.exit(1); // В продакшене лучше остановить приложение, если нет ключа.
 }
 
 const db = admin.firestore();
@@ -47,7 +45,7 @@ app.use(express.static(path.join(__dirname, '/')));
 app.use((req, res, next) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization'); // Добавляем Authorization
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
     if (req.method === 'OPTIONS') return res.sendStatus(200);
     next();
 });
@@ -61,12 +59,8 @@ app.get('/', (req, res) => {
 });
 
 // ======================================================================
-// === MIDDLEWARE ДЛЯ АУТЕНТИФИКАЦИИ (КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ) ===
+// === MIDDLEWARE ДЛЯ АУТЕНТИФИКАЦИИ ===
 // ======================================================================
-/**
- * Проверяет подлинность пользователя через initData от Telegram.
- * Это гарантирует, что запросы к API отправляются только из вашего Mini App.
- */
 const checkAuth = (req, res, next) => {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -77,22 +71,17 @@ const checkAuth = (req, res, next) => {
     try {
         const params = new URLSearchParams(initData);
         const hash = params.get('hash');
-        params.delete('hash'); // Удаляем hash для проверки
+        params.delete('hash');
 
-        // Сортируем ключи и создаем строку для проверки
         const dataCheckString = Array.from(params.entries())
             .sort(([a], [b]) => a.localeCompare(b))
             .map(([key, value]) => `${key}=${value}`)
             .join('\n');
 
-        // Создаем секретный ключ из токена бота
         const secretKey = crypto.createHmac('sha256', 'WebAppData').update(TELEGRAM_BOT_TOKEN).digest();
-        
-        // Создаем хеш из данных
         const hmac = crypto.createHmac('sha256', secretKey).update(dataCheckString).digest('hex');
 
         if (hmac === hash) {
-            // Если хеши совпадают, данные подлинные. Добавляем пользователя в запрос.
             req.user = JSON.parse(params.get('user'));
             next();
         } else {
@@ -250,7 +239,11 @@ app.post('/api/create-order', checkAuth, async (req, res) => {
         if (!req.body.order) {
             return res.status(400).json({ error: 'Данные заказа отсутствуют.' });
         }
-        const orderData = JSON.parse(req.body.order);
+        
+        // --- ИСПРАВЛЕНИЕ ЗДЕСЬ ---
+        // Данные уже являются объектом благодаря middleware express.json(), поэтому JSON.parse не нужен.
+        const orderData = req.body.order;
+        
         const userRef = db.collection('users').doc(orderData.userId);
 
         await db.runTransaction(async (transaction) => {
@@ -271,18 +264,14 @@ app.post('/api/create-order', checkAuth, async (req, res) => {
                 tags: admin.firestore.FieldValue.arrayUnion(orderData.city.toLowerCase().replace(/\s/g, '-'))
             };
 
-            // --- ИСПРАВЛЕННАЯ ЛОГИКА СПИСАНИЯ БОНУСОВ ---
             if (orderData.vcoin_cost && orderData.vcoin_cost > 0) {
                 const currentBalance = userData.vcoin_balance || 0;
                 if (currentBalance >= orderData.vcoin_cost) {
-                    // Если баланса достаточно, просто списываем
                     userUpdates.vcoin_balance = currentBalance - orderData.vcoin_cost;
                 } else {
-                    // Если баланса недостаточно, списываем его "под ноль", а не в минус
                     userUpdates.vcoin_balance = 0;
                 }
             } else {
-                // Логика для микроблогеров (без V-Бонусов)
                 userUpdates.lastOrderTimestamp = orderData.createdAt;
                 userUpdates.cooldownNotified = false;
             }
@@ -334,7 +323,7 @@ app.post('/api/upload-menu-image', checkAuth, async (req, res) => {
 });
 
 
-// --- НОВЫЙ ЗАЩИЩЕННЫЙ МАРШРУТ ДЛЯ ИМПОРТА МЕНЮ ---
+// Защищенный маршрут для импорта меню
 app.post('/api/import-menu-from-file', checkAuth, async (req, res) => {
     if (!req.files || !req.files.menuFile) {
         return res.status(400).json({ error: 'Файл меню не был загружен.' });
@@ -350,14 +339,12 @@ app.post('/api/import-menu-from-file', checkAuth, async (req, res) => {
             return res.status(400).json({ error: 'Файл пустой или имеет неверный формат.' });
         }
         
-        // Удаляем все старые блюда перед импортом
         const menuCollection = db.collection('menu');
         const oldMenuSnapshot = await menuCollection.get();
         const deleteBatch = db.batch();
         oldMenuSnapshot.docs.forEach(doc => deleteBatch.delete(doc.ref));
         await deleteBatch.commit();
         
-        // Добавляем новые блюда
         const addBatch = db.batch();
         let addedCount = 0;
         menuData.forEach(item => {
@@ -369,7 +356,7 @@ app.post('/api/import-menu-from-file', checkAuth, async (req, res) => {
                     price: Number(item.price),
                     category: String(item.category || 'Без категории'),
                     subcategory: String(item.subcategory || ''),
-                    imageUrl: '', // imageUrl будет добавляться вручную
+                    imageUrl: '',
                     isVisible: true
                 });
                 addedCount++;
@@ -548,4 +535,6 @@ cron.schedule('*/30 * * * *', async () => {
 // ======================================================================
 app.listen(PORT, () => {
     console.log(`Сервер успешно запущен на порту ${PORT}`);
-});
+});```
+
+После замены файла `server.js` на этот код и нового деплоя на Render, функция создания заказа должна заработать без ошибок.
