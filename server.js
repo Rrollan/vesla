@@ -58,6 +58,15 @@ app.get('/', (req, res) => {
 // === ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ===
 // ======================================================================
 
+function getStatusInfo(status) {
+    const statuses = {
+        'new': { text: 'Новый' }, 'confirmed': { text: 'Подтвержден' },
+        'delivered': { text: 'Доставлен' }, 'awaiting_review': { text: 'На проверке' },
+        'completed': { text: 'Завершен' }, 'rejected': { text: 'Отклонен' }
+    };
+    return statuses[status] || { text: status };
+}
+
 function determineBloggerLevel(followersCount) {
     const count = Number(followersCount) || 0;
     if (count <= 6000) return { level: 'micro', text: 'Микроблогер' };
@@ -92,7 +101,7 @@ function personalizeMessage(template, user) {
         .replace(/{rating}/g, rating || '0.0');
 }
 
-async function sendAdminNotification(orderData, screenshotFileBuffer) {
+async function sendAdminNotification(orderData) {
   const adminSnapshot = await db.collection('admins').get();
   if (adminSnapshot.empty) return;
 
@@ -112,7 +121,6 @@ async function sendAdminNotification(orderData, screenshotFileBuffer) {
                 `Instagram: ${instagramLink}\n` +
                 `Уровень: ${determineBloggerLevel(orderData.followersCount).text}`;
 
-    // ИЗМЕНЕНИЕ: Логика для отображения V-Coins или Сета
     if (orderData.vcoin_cost) {
         const itemsList = orderData.items.map(item => `- ${item.name} (x${item.quantity})`).join('\n');
         message += `\n\n🛍️ *Выбранные блюда:*\n${itemsList}\n` +
@@ -178,8 +186,6 @@ async function sendExcelFile(chatId, data, fileNamePrefix, sheetName) {
     const date = new Date().toISOString().split('T')[0];
     const fileName = `${fileNamePrefix}_export_${date}.xlsx`;
     
-    // ===== ИСПРАВЛЕНИЕ ПРЕДУПРЕЖДЕНИЯ (DEPRECATION WARNING) =====
-    // Теперь fileOptions передаются как второй объект в вызове.
     await bot.sendDocument(chatId, fileBuffer, {}, { 
         filename: fileName, 
         contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
@@ -197,7 +203,6 @@ app.post('/api/create-order', async (req, res) => {
         const orderData = JSON.parse(req.body.order);
         const userRef = db.collection('users').doc(orderData.userId);
 
-        // Используем транзакцию для безопасного чтения и обновления баланса
         await db.runTransaction(async (transaction) => {
             const userDoc = await transaction.get(userRef);
             if (!userDoc.exists) {
@@ -206,7 +211,6 @@ app.post('/api/create-order', async (req, res) => {
             const userData = userDoc.data();
             const orderRef = db.collection('orders').doc(orderData.id);
 
-            // Общие данные для обновления пользователя
             const userUpdates = {
                 orders: admin.firestore.FieldValue.arrayUnion({
                     id: orderData.id,
@@ -217,23 +221,18 @@ app.post('/api/create-order', async (req, res) => {
                 tags: admin.firestore.FieldValue.arrayUnion(orderData.city.toLowerCase().replace(/\s/g, '-'))
             };
 
-            // Логика для V-Coins
             if (orderData.vcoin_cost && orderData.vcoin_cost > 0) {
-                // Это заказ за V-Coins
                 const currentBalance = userData.vcoin_balance || 0;
                 userUpdates.vcoin_balance = currentBalance - orderData.vcoin_cost;
             } else {
-                // Это обычный заказ для микроблогера (сет), используем кулдаун
                 userUpdates.lastOrderTimestamp = orderData.createdAt;
                 userUpdates.cooldownNotified = false;
             }
             
-            // Записываем данные в рамках транзакции
             transaction.set(orderRef, orderData);
             transaction.update(userRef, userUpdates);
         });
         
-        // Уведомление админам отправляется после успешной транзакции
         await sendAdminNotification(orderData);
 
         res.status(201).json({ message: 'Заказ успешно создан' });
@@ -280,7 +279,6 @@ app.post('/api/upload-menu-image', async (req, res) => {
 app.post('/api/export-users', async (req, res) => {
     try {
         const { data, chatId } = req.body;
-        // Добавлены поля V-Coins в экспорт
         const formattedData = data.map(user => {
             const reg = user.registration || user;
             const instagramLogin = (reg.instagramLogin || '').replace('@', '');
@@ -308,7 +306,6 @@ app.post('/api/export-users', async (req, res) => {
 app.post('/api/export-orders', async (req, res) => {
     try {
         const { data, chatId } = req.body;
-        // Добавлены поля V-Coins в экспорт
         const formattedData = data.map(order => {
             const instagramLogin = (order.instagram || '').replace('@', '');
             const url = `https://www.instagram.com/${instagramLogin}`;
@@ -333,6 +330,110 @@ app.post('/api/export-orders', async (req, res) => {
     }
 });
 
+// --- ИСПРАВЛЕННЫЙ И ДОПОЛНЕННЫЙ КОД ---
 app.post('/api/broadcast', async (req, res) => {
     const { message, tags, senderChatId } = req.body;
-    if (!message || !senderChatId) { return res.st
+
+    if (!message || !senderChatId) {
+        return res.status(400).json({ error: 'Требуется сообщение и ID отправителя.' });
+    }
+
+    res.status(202).json({ message: 'Процесс рассылки запущен.' });
+
+    try {
+        let usersQuery = db.collection('users');
+        
+        if (tags && tags.length > 0) {
+            usersQuery = usersQuery.where('tags', 'array-contains-any', tags);
+        }
+
+        const snapshot = await usersQuery.get();
+        if (snapshot.empty) {
+            await bot.sendMessage(senderChatId, 'Рассылка завершена. Не найдено пользователей по вашим фильтрам.');
+            return;
+        }
+
+        let successCount = 0;
+        let failureCount = 0;
+        const totalUsers = snapshot.size;
+
+        await bot.sendMessage(senderChatId, `🚀 Начинаю рассылку... Всего пользователей: ${totalUsers}`);
+        
+        for (const doc of snapshot.docs) {
+            const user = doc.data();
+            if (user.telegramId) {
+                try {
+                    const personalized = personalizeMessage(message, user);
+                    await bot.sendMessage(user.telegramId, personalized, { parse_mode: 'Markdown', disable_web_page_preview: true });
+                    successCount++;
+                } catch (error) {
+                    failureCount++;
+                    console.error(`Не удалось отправить сообщение ${user.telegramId}:`, error.response?.body?.description || error.message);
+                }
+            } else {
+                failureCount++;
+            }
+        }
+
+        const reportMessage = `✅ Рассылка завершена!\n\n` +
+                              `- Успешно отправлено: ${successCount}\n` +
+                              `- Не удалось отправить: ${failureCount}`;
+        await bot.sendMessage(senderChatId, reportMessage);
+
+    } catch (error) {
+        console.error('КРИТИЧЕСКАЯ ОШИБКА РАССЫЛКИ:', error);
+        await bot.sendMessage(senderChatId, `❌ Произошла критическая ошибка во время рассылки. Проверьте логи сервера. \n\nОшибка: ${error.message}`);
+    }
+});
+
+// ======================================================================
+// === CRON ЗАДАЧИ ===
+// ======================================================================
+cron.schedule('*/30 * * * *', async () => {
+    console.log('CRON: Запуск проверки напоминаний об отчетах...');
+    try {
+        const now = new Date();
+        const twentyFourHoursAgo = new Date(now.getTime() - (24 * 60 * 60 * 1000));
+
+        const ordersSnapshot = await db.collection('orders')
+            .where('status', '==', 'delivered')
+            .where('reminderSent', '==', false)
+            .get();
+
+        if (ordersSnapshot.empty) {
+            return;
+        }
+
+        for (const doc of ordersSnapshot.docs) {
+            const order = doc.data();
+            const deliveryDate = new Date(order.createdAt); 
+
+            if (deliveryDate <= twentyFourHoursAgo) {
+                const userDoc = await db.collection('users').doc(order.userId).get();
+                if (userDoc.exists) {
+                    const user = userDoc.data();
+                    if (user.telegramId) {
+                        const message = `👋 Привет, ${user.registration.firstName}! Напоминаем, что мы ждем отчет по вашему заказу \`${order.orderNumber}\`. Пожалуйста, сдайте его в личном кабинете.`;
+                        try {
+                            await bot.sendMessage(user.telegramId, message, { parse_mode: 'Markdown' });
+                            await doc.ref.update({ reminderSent: true });
+                            console.log(`CRON: Напоминание отправлено пользователю ${user.telegramId} по заказу ${order.orderNumber}`);
+                        } catch (error) {
+                            console.error(`CRON: Ошибка отправки напоминания пользователю ${user.telegramId}:`, error.response?.body?.description || error.message);
+                        }
+                    }
+                }
+            }
+        }
+    } catch (error) {
+        console.error('CRON: Критическая ошибка при проверке напоминаний:', error);
+    }
+});
+
+
+// ======================================================================
+// === ЗАПУСК СЕРВЕРА ===
+// ======================================================================
+app.listen(PORT, () => {
+    console.log(`Сервер успешно запущен на порту ${PORT}`);
+});
