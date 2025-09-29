@@ -1067,42 +1067,58 @@
     
     /* --- НОВЫЕ/ИЗМЕНЕННЫЕ СТИЛИ ДЛЯ МЕНЮ --- */
     .menu-screen {
-        padding-bottom: 120px; /* Увеличено место для нижней плашки */
+        padding-bottom: 150px; /* Увеличено место для нижней плашки */
     }
 
     .menu-header-sticky {
         position: sticky;
         top: 0;
         background: #2a2a2a;
-        padding-top: 15px;
+        padding-top: 5px;
         z-index: 100;
         margin: -20px -20px 0 -20px;
-        padding: 15px 20px 0 20px;
+        padding: 0 20px 0 20px;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .menu-top-bar {
+        display: flex;
+        align-items: center;
+        margin-bottom: 15px;
+        padding-top: 15px;
+    }
+
+    .menu-top-bar .btn-back {
+        margin-bottom: 0;
+        margin-right: 10px;
+        padding: 10px;
+        width: 44px;
+        height: 44px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
 
     .menu-info-bar {
-        text-align: center;
-        margin-bottom: 15px;
+       flex-grow: 1;
+       text-align: left;
     }
     .menu-info-bar h2 {
-        font-size: 22px;
-        margin-bottom: 8px;
+        font-size: 20px;
+        margin-bottom: 4px;
+        text-align: left;
     }
     .menu-budget-display {
         background: #3a3a3a;
         border: 1px solid #4a4a4a;
         border-radius: 12px;
-        padding: 8px 15px;
-        display: inline-block;
+        padding: 6px 12px;
+        display: inline-flex;
+        align-items: center;
         font-size: 14px;
         font-weight: 500;
         color: #ffc107;
-    }
-    .menu-budget-display .v-bonus-icon {
-        background: transparent;
-        color: #ffc107;
-        box-shadow: none;
-        vertical-align: -2px;
     }
 
     .menu-categories {
@@ -1182,12 +1198,12 @@
         flex-grow: 1;
         display: flex;
         flex-direction: column;
-        justify-content: flex-start; /* Изменено */
+        justify-content: flex-start;
         height: 120px;
     }
     
     .menu-item-content-wrapper {
-        flex-grow: 1; /* Этот блок будет расти, отодвигая футер вниз */
+        flex-grow: 1;
     }
 
     .menu-item-name {
@@ -1212,7 +1228,7 @@
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-top: auto; /* ГЛАВНОЕ ИСПРАВЛЕНИЕ: прижимает футер к низу */
+        margin-top: auto;
     }
 
     .menu-item-price {
@@ -1266,48 +1282,40 @@
         margin: 0 auto;
     }
     .cart-fab-content button {
-        margin-top: 10px;
+        margin-top: 15px;
     }
 
     .cart-summary {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        font-size: 16px;
-    }
-    .cart-summary-label {
+        font-size: 14px;
         color: #ccc;
     }
     .cart-summary-value {
         font-weight: 600;
+        font-size: 16px;
         color: #fff;
-    }
-    .cart-summary-value .v-bonus-icon {
-        color: #4a2b00;
-        background: linear-gradient(135deg, #ffdd7a, #ffc107);
+        display: flex;
+        align-items: center;
     }
 
-    .cart-item {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 12px 0;
-        border-bottom: 1px solid #4a4a4a;
+    .cart-progress-bar-container {
+        height: 6px;
+        background-color: #4a4a4a;
+        border-radius: 3px;
+        overflow: hidden;
+        margin-top: 8px;
     }
-    #cartItemsList .cart-item:last-child {
-        border-bottom: none;
+    .cart-progress-bar {
+        height: 100%;
+        width: 0%;
+        background: linear-gradient(90deg, #00b4d8, #0099b8);
+        border-radius: 3px;
+        transition: width 0.3s ease-out;
     }
-    .cart-item-name {
-        font-weight: 500;
-    }
-    .cart-item-details {
-        font-size: 12px;
-        color: #999;
-    }
-    
-    .cart-total-price {
-        display: flex;
-        align-items: center;
+    .cart-progress-bar.overdraft {
+        background: linear-gradient(90deg, #ff6b35, #dc3545);
     }
     
     .v-bonus-icon {
@@ -1898,9 +1906,12 @@
         <!-- --- ОБНОВЛЕННЫЙ ЭКРАН МЕНЮ --- -->
         <div id="menuSelectionScreen" class="form-screen menu-screen" style="display: none;">
             <div class="menu-header-sticky">
-                <div class="menu-info-bar">
-                    <h2>Соберите ваш заказ</h2>
-                    <div id="menuBudgetDisplay" class="menu-budget-display">Ваш бартерный бюджет: 0</div>
+                <div class="menu-top-bar">
+                    <button class="btn-back" onclick="app.showAddressForm()">←</button>
+                    <div class="menu-info-bar">
+                        <h2>Соберите ваш заказ</h2>
+                        <div id="menuBudgetDisplay" class="menu-budget-display">Ваш бюджет: 0</div>
+                    </div>
                 </div>
                 <div id="menu-categories" class="menu-categories"></div>
             </div>
@@ -1910,6 +1921,9 @@
                     <div class="cart-summary">
                         <span class="cart-summary-label">Итого / Бюджет</span>
                         <span id="cart-summary-value" class="cart-summary-value"></span>
+                    </div>
+                    <div class="cart-progress-bar-container">
+                        <div id="cart-progress-bar" class="cart-progress-bar"></div>
                     </div>
                     <button class="btn-primary" onclick="app.checkBalanceAndProceed()">Далее</button>
                 </div>
@@ -2211,18 +2225,6 @@
             </div>
         </div>
         
-        <div id="orderConfirmationModal" class="modal">
-            <div class="modal-content" style="max-width: 400px;">
-                <h2>Ваш заказ</h2>
-                <div id="cartItemsList" class="modal-body" style="margin: 20px 0; max-height: 40vh; overflow-y: auto;"></div>
-                <h3 style="margin: 10px 0; display: flex; align-items: center; justify-content: center;">Итого: <span id="cartTotal" class="cart-total-price" style="margin-left: 10px;">0</span></h3>
-                <div style="display: flex; gap: 10px; margin-top: 20px;">
-                    <button class="btn-primary" onclick="app.checkBalanceAndProceed()" style="flex: 1;">Подтвердить</button>
-                    <button class="btn-secondary" onclick="app.closeSimpleModal('orderConfirmationModal')" style="flex: 1;">Назад</button>
-                </div>
-            </div>
-        </div>
-
     </div>
 
     <div class="admin-panel" id="adminPanel" style="display: none;">
@@ -2301,7 +2303,6 @@
             document.getElementById(SCREENS.CRITICAL_ERROR).style.display = 'flex';
         }
         
-        // --- НОВАЯ/ИЗМЕНЕННАЯ ФУНКЦИЯ ---
         async function apiFetch(endpoint, options = {}) {
             if (!tg || !tg.initData) {
                  showCriticalError("Данные авторизации Telegram не найдены. Пожалуйста, перезапустите приложение.");
@@ -2314,7 +2315,7 @@
             };
             
             if (options.body instanceof FormData) {
-                delete defaultHeaders['Content-Type']; // fetch сам установит правильный Content-Type
+                delete defaultHeaders['Content-Type'];
             }
 
             const response = await fetch(`${BACKEND_URL}${endpoint}`, {
@@ -2330,11 +2331,7 @@
                 throw new Error(errorResult.error || `Сервер вернул ошибку ${response.status}`);
             }
 
-            // Для delete запросов тело ответа может быть пустым
-            if (response.status === 204) {
-                return;
-            }
-
+            if (response.status === 204) return;
             return response.json();
         }
 
@@ -2768,7 +2765,6 @@
             return statuses[status] || { text: status, className: '' };
         }
 
-        // --- НОВАЯ ФУНКЦИЯ ДЛЯ ОТОБРАЖЕНИЯ БОНУСОВ ---
         function formatVBonus(amount) {
             return `<span>${Number(amount).toFixed(1)}</span><span class="v-bonus-icon">V</span>`;
         }
@@ -3432,10 +3428,8 @@
             cart = {};
             
             const isMacroBlogger = userData.level && userData.level.startsWith('macro');
-            const hasVcoins = userData.vcoin_balance && userData.vcoin_balance > 0;
 
-            if (isMacroBlogger && hasVcoins) {
-                document.getElementById('backFromAddress').onclick = () => app.showDashboard();
+            if (isMacroBlogger) {
                 showAddressForm();
             } else {
                 showSetSelection();
@@ -3468,7 +3462,6 @@
 
             const backButton = document.getElementById('backFromDateTime');
             const isMacroBlogger = userData.level && userData.level.startsWith('macro');
-            const hasVcoins = userData.vcoin_balance && userData.vcoin_balance > 0;
 
             if (isMacroBlogger) {
                 backButton.onclick = () => app.showAddressForm();
@@ -3565,12 +3558,9 @@
                     reportMissed: false
                 };
                 
-                const formData = new FormData();
-                formData.append('order', JSON.stringify(newOrder));
-
                 await apiFetch('/api/create-order', {
                     method: 'POST',
-                    body: JSON.stringify({ order: newOrder }) // Отправляем как JSON
+                    body: JSON.stringify({ order: newOrder }) // ИСПРАВЛЕНА ОТПРАВКА
                 });
                 
                 showSuccessMessage("Ваш заказ успешно оформлен!");
@@ -4070,7 +4060,7 @@
                             <div>
                                 <span class="user-name-phone">${item.name}</span>
                                 <div style="font-size: 14px; color: #ccc;">
-                                    Категория: ${item.category} | Цена: ${item.price} ₸ (${formatVBonus(item.price / VCOIN_RATE)})
+                                    Категория: ${item.category} | Цена: ${item.price} ₸
                                 </div>
                             </div>
                         </div>
@@ -4191,7 +4181,6 @@
             }
         }
 
-                // --- ИСПРАВЛЕННАЯ ФУНКЦИЯ ---
         async function exportToExcel(button, dataType) {
             await withLoading(button, async () => {
                 let data;
@@ -4203,7 +4192,6 @@
                     data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 }
 
-                // Заменяем старый fetch на новый защищенный apiFetch
                 await apiFetch(`/api/export-${dataType}`, {
                     method: 'POST',
                     body: JSON.stringify({ data: data, chatId: telegramUser.id })
@@ -4215,15 +4203,6 @@
         
         // --- НОВЫЕ/ИЗМЕНЕННЫЕ ФУНКЦИИ ДЛЯ МЕНЮ ---
         
-        function getBarterBudget() {
-            // Здесь можно будет добавить более сложную логику, если бюджет будет зависеть от уровня
-            const level = userData.level;
-            if(level === 'macro-b') return 20000;
-            if(level === 'macro-a') return 15000;
-            // По умолчанию для всех остальных (включая микроблогеров, если они как-то попадут на этот экран)
-            return 10000; 
-        }
-
         async function loadAndRenderMenu() {
             const container = document.getElementById('menu-items-container');
             const mainTabsContainer = document.getElementById('menu-categories');
@@ -4232,9 +4211,9 @@
             mainTabsContainer.innerHTML = '';
             cart = {};
             
-            const budget = getBarterBudget();
+            const budget = userData.vcoin_balance || 0;
             currentOrderData.budget = budget;
-            document.getElementById('menuBudgetDisplay').innerHTML = `Ваш бартерный бюджет: <strong>${budget.toLocaleString('ru-RU')} ₸</strong>`;
+            document.getElementById('menuBudgetDisplay').innerHTML = `Ваш бюджет: <strong>${formatVBonus(budget)}</strong>`;
             
             updateCartView();
 
@@ -4310,8 +4289,8 @@
             if (menuObserver) menuObserver.disconnect();
 
             const options = {
-                root: null, // viewport
-                rootMargin: '-40% 0px -60% 0px', // Активировать, когда секция в середине экрана
+                root: null, 
+                rootMargin: '-40% 0px -60% 0px',
                 threshold: 0
             };
 
@@ -4319,9 +4298,10 @@
                 entries.forEach(entry => {
                     const id = entry.target.getAttribute('id');
                     const tab = document.querySelector(`.menu-category-tab[data-category-id="${id}"]`);
-                    if (entry.isIntersecting) {
+                    if (entry.isIntersecting && tab) {
                         document.querySelectorAll('.menu-category-tab').forEach(t => t.classList.remove('active'));
-                        if(tab) tab.classList.add('active');
+                        tab.classList.add('active');
+                        tab.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
                     }
                 });
             }, options);
@@ -4343,7 +4323,7 @@
                             <div class="menu-item-desc">${item.description || ''}</div>
                         </div>
                         <div class="menu-item-footer">
-                            <div class="menu-item-price">${item.price.toLocaleString('ru-RU')} ₸</div>
+                            <div class="menu-item-price">${formatVBonus(item.price / VCOIN_RATE)}</div>
                             <div class="menu-item-controls">
                                 <button class="quantity-btn" onclick="app.removeFromCart('${item.id}')">-</button>
                                 <span class="item-quantity">0</span>
@@ -4374,7 +4354,7 @@
         }
 
         function updateCartView() {
-            let totalTenge = 0;
+            let totalVCoins = 0;
             let count = 0;
 
             document.querySelectorAll('.menu-item-card').forEach(card => {
@@ -4384,7 +4364,7 @@
             });
 
             for (const itemId in cart) {
-                totalTenge += cart[itemId].price * cart[itemId].quantity;
+                totalVCoins += (cart[itemId].price / VCOIN_RATE) * cart[itemId].quantity;
                 count += cart[itemId].quantity;
             }
 
@@ -4392,36 +4372,41 @@
             if (count > 0) {
                 const budget = currentOrderData.budget || 0;
                 const summaryEl = document.getElementById('cart-summary-value');
-                summaryEl.innerHTML = `${totalTenge.toLocaleString('ru-RU')} / ${budget.toLocaleString('ru-RU')} ₸`;
-                summaryEl.style.color = totalTenge > budget ? '#dc3545' : '#fff';
+                summaryEl.innerHTML = `${formatVBonus(totalVCoins)} / ${formatVBonus(budget)}`;
+                
+                const progressBar = document.getElementById('cart-progress-bar');
+                const progressPercent = Math.min((totalVCoins / budget) * 100, 100);
+                progressBar.style.width = `${progressPercent}%`;
+
+                if (totalVCoins > budget) {
+                    summaryEl.style.color = '#dc3545';
+                    progressBar.classList.add('overdraft');
+                } else {
+                    summaryEl.style.color = '#fff';
+                    progressBar.classList.remove('overdraft');
+                }
                 cartFab.style.display = 'block';
             } else {
                 cartFab.style.display = 'none';
             }
         }
 
-        function showCartModal() {
-            // Эта функция больше не нужна для отображения корзины,
-            // но оставим ее на случай, если захотите вернуть модальное окно.
-            // Вместо нее теперь используется checkBalanceAndProceed
-            checkBalanceAndProceed();
-        }
-
         function checkBalanceAndProceed() {
-            const totalTenge = Object.values(cart).reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            const totalVCoins = Object.values(cart).reduce((sum, item) => sum + (item.price / VCOIN_RATE) * item.quantity, 0);
             const budget = currentOrderData.budget || 0;
 
             currentOrderData.items = Object.values(cart).map(item => ({ id: item.id, name: item.name, price: item.price, quantity: item.quantity }));
-            currentOrderData.total_cost_tenge = totalTenge;
+            currentOrderData.vcoin_cost = totalVCoins;
             currentOrderData.payment_due_tenge = 0;
             
-            if (totalTenge > budget) {
-                const overdraftTenge = totalTenge - budget;
+            if (totalVCoins > budget) {
+                const overdraftVCoins = totalVCoins - budget;
+                const overdraftTenge = overdraftVCoins * VCOIN_RATE;
                 currentOrderData.payment_due_tenge = overdraftTenge;
 
                 const message = `
-                    <strong>Сумма заказа:</strong> ${totalTenge.toLocaleString('ru-RU')} ₸<br>
-                    <strong>Ваш бюджет:</strong> ${budget.toLocaleString('ru-RU')} ₸<br>
+                    <strong>Сумма заказа:</strong> ${formatVBonus(totalVCoins)}<br>
+                    <strong>Ваш бюджет:</strong> ${formatVBonus(budget)}<br>
                     <hr style="border-color: #4a4a4a; margin: 10px 0;">
                     <strong>К доплате: ${overdraftTenge.toLocaleString('ru-RU')} ₸</strong><br><br>
                     Сумму превышения необходимо будет оплатить отдельно. Продолжить?
@@ -4489,7 +4474,7 @@
             markNoReport, markReportAccepted, copyPlaceholder,
             exportOrdersToExcel, exportUsersToExcel,
             updateMenuItemsListCrm, showMenuItemModal, saveMenuItem, deleteMenuItem,
-            showMenuScreen, addToCart, removeFromCart, showCartModal,
+            showMenuScreen, addToCart, removeFromCart,
             triggerMenuImport, handleMenuFileSelect, toggleMenuItemVisibility,
             addVcoinsToUser,
             checkBalanceAndProceed, proceedToDateTimeSelection
