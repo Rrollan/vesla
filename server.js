@@ -177,7 +177,9 @@ async function sendExcelFile(chatId, data, fileNamePrefix, sheetName) {
     const fileBuffer = xlsx.write(workbook, { bookType: 'xlsx', type: 'buffer' });
     const date = new Date().toISOString().split('T')[0];
     const fileName = `${fileNamePrefix}_export_${date}.xlsx`;
-
+    
+    // ===== ИСПРАВЛЕНИЕ ПРЕДУПРЕЖДЕНИЯ (DEPRECATION WARNING) =====
+    // Теперь fileOptions передаются как второй объект в вызове.
     await bot.sendDocument(chatId, fileBuffer, {}, { 
         filename: fileName, 
         contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
@@ -215,7 +217,7 @@ app.post('/api/create-order', async (req, res) => {
                 tags: admin.firestore.FieldValue.arrayUnion(orderData.city.toLowerCase().replace(/\s/g, '-'))
             };
 
-            // ИЗМЕНЕНИЕ: Логика для V-Coins
+            // Логика для V-Coins
             if (orderData.vcoin_cost && orderData.vcoin_cost > 0) {
                 // Это заказ за V-Coins
                 const currentBalance = userData.vcoin_balance || 0;
@@ -278,7 +280,7 @@ app.post('/api/upload-menu-image', async (req, res) => {
 app.post('/api/export-users', async (req, res) => {
     try {
         const { data, chatId } = req.body;
-        // ИЗМЕНЕНИЕ: Добавлены поля V-Coins в экспорт
+        // Добавлены поля V-Coins в экспорт
         const formattedData = data.map(user => {
             const reg = user.registration || user;
             const instagramLogin = (reg.instagramLogin || '').replace('@', '');
@@ -306,7 +308,7 @@ app.post('/api/export-users', async (req, res) => {
 app.post('/api/export-orders', async (req, res) => {
     try {
         const { data, chatId } = req.body;
-        // ИЗМЕНЕНИЕ: Добавлены поля V-Coins в экспорт
+        // Добавлены поля V-Coins в экспорт
         const formattedData = data.map(order => {
             const instagramLogin = (order.instagram || '').replace('@', '');
             const url = `https://www.instagram.com/${instagramLogin}`;
@@ -333,207 +335,4 @@ app.post('/api/export-orders', async (req, res) => {
 
 app.post('/api/broadcast', async (req, res) => {
     const { message, tags, senderChatId } = req.body;
-    if (!message || !senderChatId) { return res.status(400).json({ error: 'Отсутствует текст сообщения или ID отправителя.' }); }
-    
-    res.status(202).json({ message: 'Рассылка запущена.' });
-
-    (async () => {
-        try {
-            let usersQuery = db.collection('users');
-            if (tags && tags.length > 0) {
-                usersQuery = usersQuery.where("tags", "array-contains-any", tags);
-            }
-            const usersSnapshot = await usersQuery.get();
-
-            if (usersSnapshot.empty) {
-                return await bot.sendMessage(senderChatId, '⚠️ Рассылка завершена. Не найдено пользователей по вашим критериям.');
-            }
-            
-            const usersToSend = usersSnapshot.docs
-                .map(doc => doc.data())
-                .filter(user => user.telegramId); 
-
-            if (usersToSend.length === 0) {
-                return await bot.sendMessage(senderChatId, '⚠️ Рассылка завершена. Пользователи найдены, но ни у кого из них нет Telegram ID.');
-            }
-            let successCount = 0, errorCount = 0;
-            
-            for (const user of usersToSend) {
-                try {
-                    const personalizedText = personalizeMessage(message, user);
-                    await bot.sendMessage(user.telegramId, personalizedText, { parse_mode: 'Markdown' });
-                    successCount++;
-                } catch (e) {
-                    console.error(`Ошибка отправки пользователю ${user.telegramId}:`, e.response?.body?.description || e.message);
-                    errorCount++;
-                }
-                await new Promise(resolve => setTimeout(resolve, 100)); 
-            }
-            await bot.sendMessage(senderChatId, `✅ Рассылка завершена!\n\nУспешно отправлено: ${successCount}\nОшибок: ${errorCount}`);
-        } catch (error) {
-            console.error('Критическая ошибка в процессе рассылки:', error);
-            await bot.sendMessage(senderChatId, `❌ Произошла критическая ошибка во время рассылки: ${error.message}`);
-        }
-    })();
-});
-
-app.post('/api/import-menu-from-file', async (req, res) => {
-    try {
-        if (!req.files || !req.files.menuFile) {
-            return res.status(400).json({ error: 'Файл меню не был загружен.' });
-        }
-
-        const menuFile = req.files.menuFile;
-        let fileContent = menuFile.data.toString('utf8');
-        if (fileContent.charCodeAt(0) === 0xFEFF) fileContent = fileContent.slice(1);
-        
-        const newMenuItems = JSON.parse(fileContent);
-        if (!Array.isArray(newMenuItems)) {
-             return res.status(400).json({ error: 'Содержимое файла должно быть списком (массивом) [...] блюд.' });
-        }
-
-        const menuCollection = db.collection('menu');
-        const oldMenuSnapshot = await menuCollection.get();
-        const batchDelete = db.batch();
-        oldMenuSnapshot.docs.forEach(doc => batchDelete.delete(doc.ref));
-        await batchDelete.commit();
-
-        const batchWrite = db.batch();
-        newMenuItems.forEach(item => {
-            if (item.name && typeof item.price === 'number') {
-                const newDocRef = menuCollection.doc();
-                batchWrite.set(newDocRef, {
-                    name: item.name || 'Без названия', description: item.description || '',
-                    price: item.price || 0, category: item.category || 'Без категории',
-                    subcategory: item.subcategory || '', imageUrl: item.imageUrl || '',
-                    isVisible: item.isVisible !== false // По умолчанию видимо
-                });
-            }
-        });
-        await batchWrite.commit();
-        res.status(200).json({ success: true, message: `Успешно импортировано ${newMenuItems.length} блюд.` });
-    } catch (error) {
-        console.error('Ошибка во время импорта меню из файла:', error);
-        res.status(500).json({ error: 'Произошла ошибка на сервере во время импорта.' });
-    }
-});
-
-// ======================================================================
-// === ПЛАНИРОВЩИКИ И УВЕДОМЛЕНИЯ ===
-// ======================================================================
-async function sendTelegramNotification(chatId, text) {
-    try {
-        await bot.sendMessage(chatId, text, { parse_mode: 'Markdown' });
-    } catch (error) {
-        console.error(`Ошибка отправки в Telegram для ${chatId}:`, error.response ? error.response.body : error.message);
-    }
-}
-
-async function checkAndNotifyUsers() {
-    try {
-        const settingsDoc = await db.collection('settings').doc('config').get();
-        const cooldownDays = settingsDoc.exists ? settingsDoc.data().orderCooldownDays : 7;
-        const now = new Date();
-        
-        // ИЗМЕНЕНИЕ: Уведомления о кулдауне только для тех, у кого нет V-Coins
-        const usersSnapshot = await db.collection('users')
-            .where('lastOrderTimestamp', '!=', null)
-            .where('cooldownNotified', '==', false)
-            .where('vcoin_allowance', '==', 0)
-            .get();
-        
-        if (usersSnapshot.empty) return;
-
-        for (const doc of usersSnapshot.docs) {
-            const user = doc.data();
-            const lastOrderDate = new Date(user.lastOrderTimestamp);
-            const nextAvailableDate = new Date(lastOrderDate.getTime());
-            nextAvailableDate.setDate(lastOrderDate.getDate() + cooldownDays);
-
-            if (now >= nextAvailableDate && user.telegramId) {
-                const message = `👋 ${user.registration.firstName}, отличные новости! Вы снова можете оформить заказ на бартер. Ждем вашу заявку!`;
-                await sendAndUpdate(user.telegramId, message, doc.ref, { cooldownNotified: true });
-            }
-        }
-    } catch (error) {
-        console.error("Ошибка в checkAndNotifyUsers:", error);
-    }
-}
-
-async function checkReportReminders() {
-     try {
-        const now = new Date();
-        const reminderTime = new Date(now.getTime() - (24 * 60 * 60 * 1000));
-        
-        const ordersSnapshot = await db.collection('orders')
-            .where('status', '==', 'delivered')
-            .where('reminderSent', '==', false)
-            .get();
-
-        if (ordersSnapshot.empty) return;
-
-        for (const doc of ordersSnapshot.docs) {
-            const order = doc.data();
-            const deliveryDate = new Date(order.createdAt);
-            
-            if (deliveryDate <= reminderTime && order.userId) {
-                const userDoc = await db.collection('users').doc(order.userId).get();
-                if (userDoc.exists && userDoc.data().telegramId) {
-                    const message = `🔔 Напоминание: Прошло 24 часа с момента доставки вашего заказа *${order.orderNumber}*. Пожалуйста, не забудьте сдать отчет в личном кабинете.`;
-                    await sendAndUpdate(userDoc.data().telegramId, message, doc.ref, { reminderSent: true });
-                } else {
-                    await doc.ref.update({ reminderSent: true });
-                }
-            }
-        }
-    } catch (error) {
-        console.error("Ошибка в checkReportReminders:", error);
-    }
-}
-
-async function sendAndUpdate(chatId, message, docRef, updateData) {
-    try {
-        await sendTelegramNotification(chatId, message);
-        await docRef.update(updateData);
-    } catch (err) {
-        console.error(`Сетевая или DB ошибка для ${chatId}:`, err.message);
-    }
-}
-
-// Задачи по расписанию
-cron.schedule('0 9 * * *', checkAndNotifyUsers, { timezone: "Asia/Almaty" });
-cron.schedule('0 * * * *', checkReportReminders, { timezone: "Asia/Almaty" }); 
-
-// НОВЫЙ CRON JOB: Еженедельное начисление V-Coins
-cron.schedule('1 0 * * 1', async () => {
-    console.log('Запуск еженедельного начисления V-Coins...');
-    try {
-        const usersRef = db.collection('users');
-        const snapshot = await usersRef.where('vcoin_allowance', '>', 0).get();
-
-        if (snapshot.empty) {
-            console.log('Нет пользователей для начисления V-Coins.');
-            return;
-        }
-
-        const batch = db.batch();
-        snapshot.forEach(doc => {
-            const user = doc.data();
-            // Устанавливаем баланс равным еженедельному лимиту
-            batch.update(doc.ref, { vcoin_balance: user.vcoin_allowance });
-        });
-
-        await batch.commit();
-        console.log(`V-Coins начислены для ${snapshot.size} пользователей.`);
-    } catch (error) {
-        console.error("Критическая ошибка при еженедельном начислении V-Coins:", error);
-    }
-}, {
-    timezone: "Asia/Almaty"
-});
-
-// --- ЗАПУСК СЕРВЕРА ---
-app.listen(PORT, () => {
-    console.log(`Сервер запущен на порту ${PORT}`);
-    console.log('Планировщики активны.');
-});
+    if (!message || !senderChatId) { return res.st
