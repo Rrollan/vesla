@@ -1416,7 +1416,7 @@
         <div id="welcomeScreen" class="welcome-screen">
             <div class="logo-container">
                 <div class="logo-icon">
-                    <img src="logo.jpg" alt="logo">
+                    <img src="logo.png" alt="logo">
                 </div>
             </div>
             <h1>Бартер для блогеров</h1>
@@ -1629,7 +1629,7 @@
                 <div style="background: #3a3a3a; padding: 20px; border-radius: 15px; margin-top: 20px;">
                     <h3>Общие настройки</h3>
                     <div class="form-group" style="margin-top: 15px;">
-                        <label for="cooldownSetting">Период ожидания между заказами (в днях)</label>
+                        <label for="cooldownSetting">Период ожидания между заказами (в днях, для микроблогеров)</label>
                         <input type="number" id="cooldownSetting" min="0" placeholder="Например: 7">
                         <button class="btn-primary" onclick="app.saveSettings(this)" style="margin-top: 15px;">Сохранить настройку</button>
                     </div>
@@ -1833,7 +1833,7 @@
         </div>
 
         <div id="dateTimeScreen" class="form-screen datetime-selection" style="display: none;">
-            <button class="btn-back" id="backFromDateTime" onclick="app.showMenuScreen()">← Назад к меню</button>
+            <button class="btn-back" id="backFromDateTime">← Назад</button>
             <div class="form-header">
                 <h2>Дата и время доставки</h2>
             </div>
@@ -1960,6 +1960,7 @@
                         </div>
                     </div>
                 </div>
+                <button class="btn-primary" id="addVcoinsBtn" onclick="app.addVcoinsToUser()" style="margin-top: 10px;">+ Добавить V-Coins</button>
                 <button class="btn-secondary" id="resetCooldownBtn" onclick="app.resetOrderCooldown()" style="margin-top: 10px;">Сбросить ограничение заказа</button>
                 <button class="btn-secondary" onclick="app.closeUserDetailModal()" style="margin-top: 10px;">Закрыть</button>
             </div>
@@ -3361,7 +3362,7 @@
             currentOrderData = {};
             cart = {};
             
-            // Если у пользователя есть V-Coins (он макроблогер), он сразу выбирает блюда
+            // Если у пользователя есть лимит V-Coins (он макроблогер), он сразу выбирает блюда
             // Если нет - он микроблогер и выбирает сет
             if (userData.vcoin_allowance > 0) {
                 document.getElementById('backFromAddress').onclick = () => app.showDashboard();
@@ -3395,10 +3396,16 @@
             currentOrderData.recipientPhone = document.getElementById('recipientPhone').value;
             currentOrderData.comment = document.getElementById('comment').value;
 
-            // Если V-Coins есть, идем в меню, если нет - к выбору даты (для сетов)
+            // БАГФИКС: Динамическая кнопка "Назад"
+            const backButton = document.getElementById('backFromDateTime');
+
             if (userData.vcoin_allowance > 0) {
+                // Это пользователь с V-Coins, он пришел с экрана меню
+                backButton.onclick = () => app.showMenuScreen();
                 showMenuScreen();
             } else {
+                // Это пользователь без V-Coins, он пришел с экрана адреса (после сетов)
+                backButton.onclick = () => app.showAddressForm();
                 showDateTimeSelection();
                 setupDateInput();
             }
@@ -3618,8 +3625,8 @@
             // Логика отображения заказа с V-Coins
             if (order.vcoin_cost) {
                 itemsHtml = '<strong>Заказ:</strong><ul>' + order.items.map(item => `<li>${item.name} (x${item.quantity}) - ${item.price / VCOIN_RATE * item.quantity} VC</li>`).join('') + '</ul>'
-                + `<strong>Итого:</strong> ${order.vcoin_cost} VC<br>`
-                + `<strong>К доплате:</strong> ${order.payment_due_tenge || 0} ₸<br>`;
+                + `<strong>Итого:</strong> ${order.vcoin_cost.toFixed(1)} VC<br>`
+                + `<strong>К доплате:</strong> ${(order.payment_due_tenge || 0).toFixed(0)} ₸<br>`;
             } else if (order.setName) {
                 itemsHtml = `<strong>Выбранный набор:</strong> ${order.setName}<br>`;
             }
@@ -3814,6 +3821,31 @@
             renderTags(user.tags || []);
             document.getElementById('userDetailModal').style.display = 'flex';
         }
+
+        async function addVcoinsToUser() {
+            if (!currentUserDetailId) return;
+            const amountStr = prompt("Введите количество V-Coins для добавления:", "100");
+            if (amountStr === null) return; // Пользователь нажал "Отмена"
+
+            const amountToAdd = parseInt(amountStr);
+            if (isNaN(amountToAdd) || amountToAdd <= 0) {
+                return showError("Ошибка ввода", "Пожалуйста, введите положительное число.");
+            }
+
+            try {
+                const userRef = db.collection(COLLECTIONS.USERS).doc(currentUserDetailId);
+                await userRef.update({
+                    vcoin_balance: FieldValue.increment(amountToAdd)
+                });
+                showCrmSuccess("Баланс обновлен!", `${amountToAdd} V-Coins были успешно добавлены.`);
+                // Обновляем модальное окно, чтобы показать новый баланс
+                await showUserDetailModal(currentUserDetailId);
+            } catch (error) {
+                console.error("Ошибка при добавлении V-Coins:", error);
+                showError("Ошибка", "Не удалось обновить баланс пользователя.");
+            }
+        }
+
 
         function renderTags(tags) {
             const container = document.getElementById('userTagsContainer');
@@ -4108,84 +4140,26 @@
                     return showError("Ошибка", "Не удалось определить ваш ID для отправки файла. Перезагрузите приложение.");
                 }
 
-                let collectionRef, searchInputId, orderByField;
+                let data;
                 if (dataType === 'orders') {
-                    collectionRef = db.collection(COLLECTIONS.ORDERS);
-                    searchInputId = 'orderSearch';
-                    orderByField = 'createdAt';
+                    const snapshot = await db.collection(COLLECTIONS.ORDERS).orderBy('createdAt', 'desc').get();
+                    data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 } else {
-                    collectionRef = db.collection(COLLECTIONS.USERS);
-                    searchInputId = 'userSearch';
-                    orderByField = 'registrationDate';
+                    const snapshot = await db.collection(COLLECTIONS.USERS).orderBy('registrationDate', 'desc').get();
+                    data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 }
 
-                const searchQuery = document.getElementById(searchInputId).value.toLowerCase();
-                const snapshot = await collectionRef.orderBy(orderByField, 'desc').get();
-
-                if (snapshot.empty) {
-                    return showError("Нет данных", "Нет данных для экспорта.");
-                }
-                
-                const allItems = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-                const filteredItems = allItems.filter(item => {
-                    let searchString = '';
-                    if (dataType === 'orders') {
-                        searchString = `${item.userName} ${item.phone} ${item.instagram} ${item.orderNumber}`.toLowerCase();
-                    } else {
-                        const reg = item.registration || item;
-                        if (!reg.firstName) return false;
-                        searchString = `${reg.firstName} ${reg.phone} ${reg.instagramLogin}`.toLowerCase();
-                    }
-                    return searchString.includes(searchQuery);
-                });
-
-                if (filteredItems.length === 0) {
-                    return showError("Нет данных", "По текущему фильтру нет данных для экспорта.");
-                }
-
-                let formattedData;
-                if (dataType === 'orders') {
-                    formattedData = filteredItems.map(order => {
-                        const instagramLogin = (order.instagram || '').replace('@', '');
-                        const url = `https://www.instagram.com/${instagramLogin}`;
-                        return {
-                            'Номер заказа': order.orderNumber, 'Статус': getStatusInfo(order.status).text, 'Имя блогера': order.userName,
-                            'Телефон блогера': order.phone,
-                            'Instagram': `=HYPERLINK("${url}", "@${instagramLogin}")`,
-                            'Город': order.city, 'Адрес': `${order.street}, п. ${order.entrance || '-'}, эт. ${order.floor || '-'}`,
-                            'Дата доставки': order.date, 'Время доставки': order.time, 'Выбранный набор': order.setName || 'Свой заказ',
-                            'Комментарий': order.comment, 'Ссылка на отчет': order.reportLink,
-                            'Дата создания': new Date(order.createdAt).toLocaleString('ru-RU')
-                        };
-                    });
-                } else { // users
-                    formattedData = filteredItems.map(user => {
-                        const reg = user.registration || user;
-                        const instagramLogin = (reg.instagramLogin || '').replace('@', '');
-                        const url = `https://www.instagram.com/${instagramLogin}`;
-                        return {
-                            'Имя': reg.firstName, 'Телефон': reg.phone,
-                            'Instagram': `=HYPERLINK("${url}", "@${instagramLogin}")`,
-                            'Подписчики': reg.followersCount, 'Просмотры': reg.avgViews, 'Рейтинг': calculateBloggerRating(user),
-                            'Уровень': determineBloggerLevel(reg.followersCount).text, 'Статус лояльности': user.loyaltyStatus || 'standard',
-                            'Заблокирован': user.isBlocked ? 'Да' : 'Нет', 'Причина блокировки': user.blockReason, 'Штрафы': user.strikes || 0,
-                            'Теги': (user.tags || []).join('; '), 'Дата регистрации': new Date(user.registrationDate).toLocaleDateString('ru-RU'),
-                        };
-                    });
-                }
-                
                 const response = await fetch(`${BACKEND_URL}/api/export-${dataType}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ data: formattedData, chatId: telegramUser.id })
+                    body: JSON.stringify({ data: data, chatId: telegramUser.id })
                 });
 
                 if (!response.ok) {
                     const errorResult = await response.json();
                     throw new Error(errorResult.error || `Сервер вернул ошибку ${response.status}`);
                 }
-                showCrmSuccess("Запрос отправлен!", `Excel-файл с ${dataType === 'orders' ? 'заказами' : 'пользователями'} будет отправлен вам в личные сообщения.`);
+                showCrmSuccess("Запрос отправлен!", `Excel-файл будет отправлен вам в личные сообщения.`);
             });
         }
 
@@ -4342,8 +4316,8 @@
 
             for (const itemId in cart) {
                 const item = cart[itemId];
-                const itemEl = document.createElement('div');
                 const itemTotalVCoins = (item.quantity * item.price) / VCOIN_RATE;
+                itemEl = document.createElement('div');
                 itemEl.className = 'cart-item';
                 itemEl.innerHTML = `
                     <div>
@@ -4457,7 +4431,7 @@
             updateMenuItemsListCrm, showMenuItemModal, saveMenuItem, deleteMenuItem,
             showMenuScreen, addToCart, removeFromCart, showCartModal, confirmOrderFromMenu,
             triggerMenuImport, handleMenuFileSelect, toggleMenuItemVisibility,
-            proceedWithOverdraft
+            proceedWithOverdraft, addVcoinsToUser
         };
     })();
 </script>
