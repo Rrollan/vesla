@@ -1,11 +1,11 @@
-// --- ЗАВИСИМОСТИ ---
+// --- ЗАВИСИСИМОСТИ ---
 const express = require('express');
 const path = require('path');
 const admin = require('firebase-admin');
 const cron = require('node-cron');
 const TelegramBot = require('node-telegram-bot-api');
 const xlsx = require('xlsx');
-const fs = require('fs');
+const crypto = require('crypto'); // Встроенный модуль для криптографии
 
 // ЗАВИСИМОСТИ ДЛЯ РУЧНОГО УПРАВЛЕНИЯ
 const fileUpload = require('express-fileupload');
@@ -16,21 +16,27 @@ const FormData = require('form-data');
 // --- ИНИЦИАЛИЗАЦИЯ ---
 const app = express();
 const PORT = process.env.PORT || 10000;
-const TELEGRAM_BOT_TOKEN = '8227812944:AAFy8ydOkUeCj3Qkjg7_Xsq6zyQpcUyMShY'; 
+
+// ВАЖНО: Храните токен в переменных окружения, а не в коде!
+const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '8227812944:AAFy8ydOkUeCj3Qkjg7_Xsq6zyQpcUyMShY';
+const IMGBB_API_KEY = process.env.IMGBB_API_KEY || '5148efee12c90f87021e50e0155d17a0';
 
 // --- ИНИЦИАЛИЗАЦИЯ FIREBASE ADMIN SDK ---
 try {
+  // Приоритет отдается переменной окружения - это безопасный способ.
   const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT_KEY 
     ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY)
-    : require('./serviceAccountKey.json');
+    : require('./serviceAccountKey.json'); // Этот способ небезопасен для продакшена!
   
   if (!admin.apps.length) {
     admin.initializeApp({
       credential: admin.credential.cert(serviceAccount)
     });
+     console.log("Firebase Admin SDK успешно инициализирован.");
   }
 } catch (error) {
-  console.error("КРИТИЧЕСКАЯ ОШИБКА: Ключ сервисного аккаунта Firebase не найден. Убедитесь, что файл serviceAccountKey.json существует или переменная окружения FIREBASE_SERVICE_ACCOUNT_KEY установлена.");
+  console.error("КРИТИЧЕСКАЯ ОШИБКА: Ключ сервисного аккаунта Firebase не найден. Убедитесь, что переменная окружения FIREBASE_SERVICE_ACCOUNT_KEY установлена.");
+  // process.exit(1); // В продакшене лучше остановить приложение, если нет ключа.
 }
 
 const db = admin.firestore();
@@ -41,7 +47,7 @@ app.use(express.static(path.join(__dirname, '/')));
 app.use((req, res, next) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization'); // Добавляем Authorization
     if (req.method === 'OPTIONS') return res.sendStatus(200);
     next();
 });
@@ -53,6 +59,51 @@ app.use(express.json({ limit: '10mb' }));
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
+
+// ======================================================================
+// === MIDDLEWARE ДЛЯ АУТЕНТИФИКАЦИИ (КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ) ===
+// ======================================================================
+/**
+ * Проверяет подлинность пользователя через initData от Telegram.
+ * Это гарантирует, что запросы к API отправляются только из вашего Mini App.
+ */
+const checkAuth = (req, res, next) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(401).json({ error: 'Отсутствует заголовок авторизации' });
+    }
+    
+    const initData = authHeader.split(' ')[1];
+    try {
+        const params = new URLSearchParams(initData);
+        const hash = params.get('hash');
+        params.delete('hash'); // Удаляем hash для проверки
+
+        // Сортируем ключи и создаем строку для проверки
+        const dataCheckString = Array.from(params.entries())
+            .sort(([a], [b]) => a.localeCompare(b))
+            .map(([key, value]) => `${key}=${value}`)
+            .join('\n');
+
+        // Создаем секретный ключ из токена бота
+        const secretKey = crypto.createHmac('sha256', 'WebAppData').update(TELEGRAM_BOT_TOKEN).digest();
+        
+        // Создаем хеш из данных
+        const hmac = crypto.createHmac('sha256', secretKey).update(dataCheckString).digest('hex');
+
+        if (hmac === hash) {
+            // Если хеши совпадают, данные подлинные. Добавляем пользователя в запрос.
+            req.user = JSON.parse(params.get('user'));
+            next();
+        } else {
+            return res.status(403).json({ error: 'Неверная подпись данных. Запрос отклонен.' });
+        }
+    } catch (error) {
+        console.error('Ошибка валидации initData:', error);
+        return res.status(400).json({ error: 'Ошибка обработки данных авторизации.' });
+    }
+};
+
 
 // ======================================================================
 // === ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ===
@@ -102,13 +153,10 @@ function personalizeMessage(template, user) {
 }
 
 async function sendAdminNotification(orderData) {
-  const adminSnapshot = await db.collection('admins').get();
+  const adminSnapshot = await db.collection('admins').where('receivesNotifications', '==', true).get();
   if (adminSnapshot.empty) return;
 
-  const adminDocs = adminSnapshot.docs.filter(doc => doc.data().receivesNotifications !== false);
-  if (adminDocs.length === 0) return;
-
-  const adminChatIds = adminDocs.map(doc => doc.id);
+  const adminChatIds = adminSnapshot.docs.map(doc => doc.id);
   
   const instagramLogin = (orderData.instagram || '').replace('@', '');
   const instagramLink = `[@${instagramLogin}](https://www.instagram.com/${instagramLogin})`;
@@ -124,7 +172,7 @@ async function sendAdminNotification(orderData) {
     if (orderData.vcoin_cost) {
         const itemsList = orderData.items.map(item => `- ${item.name} (x${item.quantity})`).join('\n');
         message += `\n\n🛍️ *Выбранные блюда:*\n${itemsList}\n` +
-                   `*Стоимость:* ${orderData.vcoin_cost.toFixed(1)} VC\n` +
+                   `*Стоимость:* ${orderData.vcoin_cost.toFixed(1)} V-Бонусов\n` +
                    `*К доплате:* *${(orderData.payment_due_tenge || 0).toFixed(0)} ₸*`;
     } else if (orderData.setName) {
         message += `\n🍱 *Выбранный набор:* ${orderData.setName}`;
@@ -195,10 +243,12 @@ async function sendExcelFile(chatId, data, fileNamePrefix, sheetName) {
 // ======================================================================
 // === API МАРШРУТЫ ===
 // ======================================================================
-app.post('/api/create-order', async (req, res) => {
+
+// Защищенный маршрут создания заказа
+app.post('/api/create-order', checkAuth, async (req, res) => {
     try {
         if (!req.body.order) {
-            return res.status(400).json({ error: 'Order data is missing.' });
+            return res.status(400).json({ error: 'Данные заказа отсутствуют.' });
         }
         const orderData = JSON.parse(req.body.order);
         const userRef = db.collection('users').doc(orderData.userId);
@@ -221,10 +271,18 @@ app.post('/api/create-order', async (req, res) => {
                 tags: admin.firestore.FieldValue.arrayUnion(orderData.city.toLowerCase().replace(/\s/g, '-'))
             };
 
+            // --- ИСПРАВЛЕННАЯ ЛОГИКА СПИСАНИЯ БОНУСОВ ---
             if (orderData.vcoin_cost && orderData.vcoin_cost > 0) {
                 const currentBalance = userData.vcoin_balance || 0;
-                userUpdates.vcoin_balance = currentBalance - orderData.vcoin_cost;
+                if (currentBalance >= orderData.vcoin_cost) {
+                    // Если баланса достаточно, просто списываем
+                    userUpdates.vcoin_balance = currentBalance - orderData.vcoin_cost;
+                } else {
+                    // Если баланса недостаточно, списываем его "под ноль", а не в минус
+                    userUpdates.vcoin_balance = 0;
+                }
             } else {
+                // Логика для микроблогеров (без V-Бонусов)
                 userUpdates.lastOrderTimestamp = orderData.createdAt;
                 userUpdates.cooldownNotified = false;
             }
@@ -242,10 +300,9 @@ app.post('/api/create-order', async (req, res) => {
     }
 });
 
-app.post('/api/upload-menu-image', async (req, res) => {
-    const IMGBB_API_KEY = '5148efee12c90f87021e50e0155d17a0'; 
-
-    if (!IMGBB_API_KEY || IMGBB_API_KEY === 'YOUR_IMGBB_API_KEY_HERE') {
+// Защищенный маршрут загрузки изображения для меню
+app.post('/api/upload-menu-image', checkAuth, async (req, res) => {
+    if (!IMGBB_API_KEY) {
         return res.status(500).json({ error: 'API ключ для ImgBB не настроен на сервере.' });
     }
     if (!req.files || !req.files.image) {
@@ -276,7 +333,61 @@ app.post('/api/upload-menu-image', async (req, res) => {
     }
 });
 
-app.post('/api/export-users', async (req, res) => {
+
+// --- НОВЫЙ ЗАЩИЩЕННЫЙ МАРШРУТ ДЛЯ ИМПОРТА МЕНЮ ---
+app.post('/api/import-menu-from-file', checkAuth, async (req, res) => {
+    if (!req.files || !req.files.menuFile) {
+        return res.status(400).json({ error: 'Файл меню не был загружен.' });
+    }
+
+    try {
+        const workbook = xlsx.read(req.files.menuFile.data, { type: 'buffer' });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        const menuData = xlsx.utils.sheet_to_json(worksheet);
+
+        if (menuData.length === 0) {
+            return res.status(400).json({ error: 'Файл пустой или имеет неверный формат.' });
+        }
+        
+        // Удаляем все старые блюда перед импортом
+        const menuCollection = db.collection('menu');
+        const oldMenuSnapshot = await menuCollection.get();
+        const deleteBatch = db.batch();
+        oldMenuSnapshot.docs.forEach(doc => deleteBatch.delete(doc.ref));
+        await deleteBatch.commit();
+        
+        // Добавляем новые блюда
+        const addBatch = db.batch();
+        let addedCount = 0;
+        menuData.forEach(item => {
+            if (item.name && item.price) {
+                const newItemRef = menuCollection.doc();
+                addBatch.set(newItemRef, {
+                    name: String(item.name),
+                    description: String(item.description || ''),
+                    price: Number(item.price),
+                    category: String(item.category || 'Без категории'),
+                    subcategory: String(item.subcategory || ''),
+                    imageUrl: '', // imageUrl будет добавляться вручную
+                    isVisible: true
+                });
+                addedCount++;
+            }
+        });
+
+        await addBatch.commit();
+
+        res.status(200).json({ message: `Импорт завершен. Добавлено ${addedCount} блюд.` });
+    } catch (error) {
+        console.error('Ошибка импорта меню из файла:', error);
+        res.status(500).json({ error: 'Внутренняя ошибка сервера при импорте.' });
+    }
+});
+
+
+// Защищенный маршрут экспорта пользователей
+app.post('/api/export-users', checkAuth, async (req, res) => {
     try {
         const { data, chatId } = req.body;
         const formattedData = data.map(user => {
@@ -288,8 +399,8 @@ app.post('/api/export-users', async (req, res) => {
                 'Instagram': `=HYPERLINK("${url}", "@${instagramLogin}")`,
                 'Подписчики': reg.followersCount, 'Просмотры': reg.avgViews, 'Рейтинг': calculateBloggerRating(user),
                 'Уровень': determineBloggerLevel(reg.followersCount).text, 
-                'Баланс V-Coins': user.vcoin_balance || 0,
-                'Лимит V-Coins': user.vcoin_allowance || 0,
+                'Баланс V-Бонусов': user.vcoin_balance || 0,
+                'Лимит V-Бонусов': user.vcoin_allowance || 0,
                 'Статус лояльности': user.loyaltyStatus || 'standard',
                 'Заблокирован': user.isBlocked ? 'Да' : 'Нет', 'Причина блокировки': user.blockReason, 'Штрафы': user.strikes || 0,
                 'Теги': (user.tags || []).join('; '), 'Дата регистрации': new Date(user.registrationDate).toLocaleDateString('ru-RU'),
@@ -303,7 +414,8 @@ app.post('/api/export-users', async (req, res) => {
     }
 });
 
-app.post('/api/export-orders', async (req, res) => {
+// Защищенный маршрут экспорта заказов
+app.post('/api/export-orders', checkAuth, async (req, res) => {
     try {
         const { data, chatId } = req.body;
         const formattedData = data.map(order => {
@@ -315,7 +427,7 @@ app.post('/api/export-orders', async (req, res) => {
                 'Instagram': `=HYPERLINK("${url}", "@${instagramLogin}")`,
                 'Город': order.city, 'Адрес': `${order.street}, п. ${order.entrance || '-'}, эт. ${order.floor || '-'}`,
                 'Дата доставки': order.date, 'Время доставки': order.time,
-                'Стоимость (VC)': order.vcoin_cost ? order.vcoin_cost.toFixed(1) : '-',
+                'Стоимость (V-Бонусы)': order.vcoin_cost ? order.vcoin_cost.toFixed(1) : '-',
                 'К доплате (₸)': order.payment_due_tenge ? order.payment_due_tenge.toFixed(0) : 0,
                 'Выбранный набор': order.setName || 'Меню',
                 'Комментарий': order.comment, 'Ссылка на отчет': order.reportLink,
@@ -330,8 +442,8 @@ app.post('/api/export-orders', async (req, res) => {
     }
 });
 
-// --- ИСПРАВЛЕННЫЙ И ДОПОЛНЕННЫЙ КОД ---
-app.post('/api/broadcast', async (req, res) => {
+// Защищенный маршрут для рассылки
+app.post('/api/broadcast', checkAuth, async (req, res) => {
     const { message, tags, senderChatId } = req.body;
 
     if (!message || !senderChatId) {
@@ -424,16 +536,4 @@ cron.schedule('*/30 * * * *', async () => {
                     }
                 }
             }
-        }
-    } catch (error) {
-        console.error('CRON: Критическая ошибка при проверке напоминаний:', error);
-    }
-});
-
-
-// ======================================================================
-// === ЗАПУСК СЕРВЕРА ===
-// ======================================================================
-app.listen(PORT, () => {
-    console.log(`Сервер успешно запущен на порту ${PORT}`);
-});
+     
