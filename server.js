@@ -46,13 +46,8 @@ app.use((req, res, next) => {
     next();
 });
 
-// ===== ФИНАЛЬНОЕ ИСПРАВЛЕНИЕ: ПРАВИЛЬНЫЙ ПОРЯДОК И КОНФИГУРАЦИЯ MIDDLEWARE =====
-// Сначала обработчик файлов, работающий в памяти (без опций)
 app.use(fileUpload());
-// Потом обработчик JSON для других маршрутов
 app.use(express.json({ limit: '10mb' }));
-// ==============================================================================
-
 
 // --- ГЛАВНЫЙ МАРШРУТ ---
 app.get('/', (req, res) => {
@@ -117,26 +112,25 @@ async function sendAdminNotification(orderData, screenshotFileBuffer) {
                 `Instagram: ${instagramLink}\n` +
                 `Уровень: ${determineBloggerLevel(orderData.followersCount).text}`;
 
-  if (orderData.setName) {
-    message += `\n🍱 *Выбранный набор:* ${orderData.setName}`;
-  } else if (orderData.items && orderData.items.length > 0) {
-    const itemsList = orderData.items.map(item => `- ${item.name} (x${item.quantity})`).join('\n');
-    message += `\n\n🛍️ *Выбранные блюда:*\n${itemsList}\n*Итого:* ${orderData.totalPrice} ₸`;
-  }
+    // ИЗМЕНЕНИЕ: Логика для отображения V-Coins или Сета
+    if (orderData.vcoin_cost) {
+        const itemsList = orderData.items.map(item => `- ${item.name} (x${item.quantity})`).join('\n');
+        message += `\n\n🛍️ *Выбранные блюда:*\n${itemsList}\n` +
+                   `*Стоимость:* ${orderData.vcoin_cost.toFixed(1)} VC\n` +
+                   `*К доплате:* *${(orderData.payment_due_tenge || 0).toFixed(0)} ₸*`;
+    } else if (orderData.setName) {
+        message += `\n🍱 *Выбранный набор:* ${orderData.setName}`;
+    }
 
   message += `\n\n🗓 *Доставка:*\n` +
              `Дата: ${orderData.date} в ${orderData.time}\n` +
              `Город: ${orderData.city}\n` +
-             `Адрес: ${orderData.street}, п. ${orderData.entrance}, эт. ${orderData.floor}\n` +
+             `Адрес: ${orderData.street}, п. ${orderData.entrance || '-'}, эт. ${orderData.floor || '-'}\n` +
              `Комментарий: ${orderData.comment || '-'}`;
   
   for (const chatId of adminChatIds) {
     try {
-      if (screenshotFileBuffer) {
-        await bot.sendPhoto(chatId, screenshotFileBuffer, { caption: message, parse_mode: 'Markdown' });
-      } else {
-        await bot.sendMessage(chatId, message, { parse_mode: 'Markdown' });
-      }
+      await bot.sendMessage(chatId, message, { parse_mode: 'Markdown' });
     } catch (error) {
       console.error(`Ошибка отправки админу ${chatId}:`, error.response?.body?.description || error.message);
     }
@@ -173,7 +167,7 @@ async function sendExcelFile(chatId, data, fileNamePrefix, sheetName) {
     const worksheet = xlsx.utils.json_to_sheet(processedData);
     
     const columnWidths = Object.keys(processedData[0]).map(key => ({
-        wch: processedData.reduce((w, r) => Math.max(w, r[key] ? r[key].toString().length : 10), 10)
+        wch: processedData.reduce((w, r) => Math.max(w, String(r[key] || '').length), key.length + 2)
     }));
     worksheet['!cols'] = columnWidths;
 
@@ -199,27 +193,46 @@ app.post('/api/create-order', async (req, res) => {
             return res.status(400).json({ error: 'Order data is missing.' });
         }
         const orderData = JSON.parse(req.body.order);
-        
-        const screenshotFile = req.files && req.files.screenshot ? req.files.screenshot : null;
-
-        const batch = db.batch();
-        const orderRef = db.collection('orders').doc(orderData.id);
-        batch.set(orderRef, orderData);
-
         const userRef = db.collection('users').doc(orderData.userId);
-        const userOrders = { id: orderData.id, orderNumber: orderData.orderNumber, status: 'new', createdAt: orderData.createdAt };
-        const cityTag = orderData.city.toLowerCase().replace(/\s/g, '-');
-        
-        batch.update(userRef, { 
-            orders: admin.firestore.FieldValue.arrayUnion(userOrders),
-            tags: admin.firestore.FieldValue.arrayUnion(cityTag),
-            lastOrderTimestamp: orderData.createdAt,
-            cooldownNotified: false
-        });
 
-        await batch.commit();
+        // Используем транзакцию для безопасного чтения и обновления баланса
+        await db.runTransaction(async (transaction) => {
+            const userDoc = await transaction.get(userRef);
+            if (!userDoc.exists) {
+                throw new Error("Пользователь не найден");
+            }
+            const userData = userDoc.data();
+            const orderRef = db.collection('orders').doc(orderData.id);
+
+            // Общие данные для обновления пользователя
+            const userUpdates = {
+                orders: admin.firestore.FieldValue.arrayUnion({
+                    id: orderData.id,
+                    orderNumber: orderData.orderNumber,
+                    status: 'new',
+                    createdAt: orderData.createdAt
+                }),
+                tags: admin.firestore.FieldValue.arrayUnion(orderData.city.toLowerCase().replace(/\s/g, '-'))
+            };
+
+            // ИЗМЕНЕНИЕ: Логика для V-Coins
+            if (orderData.vcoin_cost && orderData.vcoin_cost > 0) {
+                // Это заказ за V-Coins
+                const currentBalance = userData.vcoin_balance || 0;
+                userUpdates.vcoin_balance = currentBalance - orderData.vcoin_cost;
+            } else {
+                // Это обычный заказ для микроблогера (сет), используем кулдаун
+                userUpdates.lastOrderTimestamp = orderData.createdAt;
+                userUpdates.cooldownNotified = false;
+            }
+            
+            // Записываем данные в рамках транзакции
+            transaction.set(orderRef, orderData);
+            transaction.update(userRef, userUpdates);
+        });
         
-        await sendAdminNotification(orderData, screenshotFile ? screenshotFile.data : null);
+        // Уведомление админам отправляется после успешной транзакции
+        await sendAdminNotification(orderData);
 
         res.status(201).json({ message: 'Заказ успешно создан' });
     } catch (error) {
@@ -238,10 +251,9 @@ app.post('/api/upload-menu-image', async (req, res) => {
         return res.status(400).json({ error: 'Файл изображения не был загружен.' });
     }
     const imageFile = req.files.image;
-    const tempFilePath = imageFile.tempFilePath;
 
     try {
-        const processedImageBuffer = await sharp(tempFilePath)
+        const processedImageBuffer = await sharp(imageFile.data)
             .resize(500, 500, { fit: 'cover', position: 'center' })
             .webp({ quality: 80 })
             .toBuffer();
@@ -260,17 +272,30 @@ app.post('/api/upload-menu-image', async (req, res) => {
     } catch (error) {
         console.error('Ошибка обработки или загрузки изображения:', error.response ? error.response.data : error.message);
         res.status(500).json({ error: 'Внутренняя ошибка сервера при загрузке изображения.' });
-    } finally {
-        fs.unlink(tempFilePath, err => { 
-            if (err) console.error("Не удалось удалить временный файл:", tempFilePath, err);
-        });
     }
 });
 
 app.post('/api/export-users', async (req, res) => {
     try {
         const { data, chatId } = req.body;
-        await sendExcelFile(chatId, data, 'users', 'Пользователи');
+        // ИЗМЕНЕНИЕ: Добавлены поля V-Coins в экспорт
+        const formattedData = data.map(user => {
+            const reg = user.registration || user;
+            const instagramLogin = (reg.instagramLogin || '').replace('@', '');
+            const url = `https://www.instagram.com/${instagramLogin}`;
+            return {
+                'Имя': reg.firstName, 'Телефон': reg.phone,
+                'Instagram': `=HYPERLINK("${url}", "@${instagramLogin}")`,
+                'Подписчики': reg.followersCount, 'Просмотры': reg.avgViews, 'Рейтинг': calculateBloggerRating(user),
+                'Уровень': determineBloggerLevel(reg.followersCount).text, 
+                'Баланс V-Coins': user.vcoin_balance || 0,
+                'Лимит V-Coins': user.vcoin_allowance || 0,
+                'Статус лояльности': user.loyaltyStatus || 'standard',
+                'Заблокирован': user.isBlocked ? 'Да' : 'Нет', 'Причина блокировки': user.blockReason, 'Штрафы': user.strikes || 0,
+                'Теги': (user.tags || []).join('; '), 'Дата регистрации': new Date(user.registrationDate).toLocaleDateString('ru-RU'),
+            };
+        });
+        await sendExcelFile(chatId, formattedData, 'users', 'Пользователи');
         res.status(200).json({ message: 'Файл успешно отправлен.' });
     } catch (error) {
         console.error('Ошибка при экспорте пользователей:', error);
@@ -281,7 +306,24 @@ app.post('/api/export-users', async (req, res) => {
 app.post('/api/export-orders', async (req, res) => {
     try {
         const { data, chatId } = req.body;
-        await sendExcelFile(chatId, data, 'orders', 'Заказы');
+        // ИЗМЕНЕНИЕ: Добавлены поля V-Coins в экспорт
+        const formattedData = data.map(order => {
+            const instagramLogin = (order.instagram || '').replace('@', '');
+            const url = `https://www.instagram.com/${instagramLogin}`;
+            return {
+                'Номер заказа': order.orderNumber, 'Статус': getStatusInfo(order.status).text, 'Имя блогера': order.userName,
+                'Телефон блогера': order.phone,
+                'Instagram': `=HYPERLINK("${url}", "@${instagramLogin}")`,
+                'Город': order.city, 'Адрес': `${order.street}, п. ${order.entrance || '-'}, эт. ${order.floor || '-'}`,
+                'Дата доставки': order.date, 'Время доставки': order.time,
+                'Стоимость (VC)': order.vcoin_cost ? order.vcoin_cost.toFixed(1) : '-',
+                'К доплате (₸)': order.payment_due_tenge ? order.payment_due_tenge.toFixed(0) : 0,
+                'Выбранный набор': order.setName || 'Меню',
+                'Комментарий': order.comment, 'Ссылка на отчет': order.reportLink,
+                'Дата создания': new Date(order.createdAt).toLocaleString('ru-RU')
+            };
+        });
+        await sendExcelFile(chatId, formattedData, 'orders', 'Заказы');
         res.status(200).json({ message: 'Файл успешно отправлен.' });
     } catch (error) {
         console.error('Ошибка при экспорте заказов:', error);
@@ -342,60 +384,39 @@ app.post('/api/import-menu-from-file', async (req, res) => {
         }
 
         const menuFile = req.files.menuFile;
-        
         let fileContent = menuFile.data.toString('utf8');
-        if (fileContent.charCodeAt(0) === 0xFEFF) {
-            fileContent = fileContent.slice(1);
-        }
-
-        let newMenuItems;
-        try {
-            newMenuItems = JSON.parse(fileContent);
-        } catch (e) {
-            console.error('!!! ОШИБКА JSON.parse:', e.message);
-            return res.status(400).json({ error: 'Ошибка в синтаксисе JSON-файла. Проверьте кавычки и запятые.' });
-        }
+        if (fileContent.charCodeAt(0) === 0xFEFF) fileContent = fileContent.slice(1);
         
+        const newMenuItems = JSON.parse(fileContent);
         if (!Array.isArray(newMenuItems)) {
              return res.status(400).json({ error: 'Содержимое файла должно быть списком (массивом) [...] блюд.' });
         }
 
-        console.log(`Получено ${newMenuItems.length} блюд из файла. Начинаю импорт в Firebase...`);
-
         const menuCollection = db.collection('menu');
         const oldMenuSnapshot = await menuCollection.get();
         const batchDelete = db.batch();
-        oldMenuSnapshot.docs.forEach(doc => {
-            batchDelete.delete(doc.ref);
-        });
+        oldMenuSnapshot.docs.forEach(doc => batchDelete.delete(doc.ref));
         await batchDelete.commit();
-        console.log('Старое меню удалено.');
 
         const batchWrite = db.batch();
         newMenuItems.forEach(item => {
             if (item.name && typeof item.price === 'number') {
                 const newDocRef = menuCollection.doc();
                 batchWrite.set(newDocRef, {
-                    name: item.name || 'Без названия',
-                    description: item.description || '',
-                    price: item.price || 0,
-                    category: item.category || 'Без категории',
-                    subcategory: item.subcategory || '',
-                    imageUrl: item.imageUrl || ''
+                    name: item.name || 'Без названия', description: item.description || '',
+                    price: item.price || 0, category: item.category || 'Без категории',
+                    subcategory: item.subcategory || '', imageUrl: item.imageUrl || '',
+                    isVisible: item.isVisible !== false // По умолчанию видимо
                 });
             }
         });
         await batchWrite.commit();
-
-        console.log('Новое меню успешно импортировано в Firebase!');
         res.status(200).json({ success: true, message: `Успешно импортировано ${newMenuItems.length} блюд.` });
-
     } catch (error) {
         console.error('Ошибка во время импорта меню из файла:', error);
         res.status(500).json({ error: 'Произошла ошибка на сервере во время импорта.' });
     }
 });
-
 
 // ======================================================================
 // === ПЛАНИРОВЩИКИ И УВЕДОМЛЕНИЯ ===
@@ -407,15 +428,18 @@ async function sendTelegramNotification(chatId, text) {
         console.error(`Ошибка отправки в Telegram для ${chatId}:`, error.response ? error.response.body : error.message);
     }
 }
+
 async function checkAndNotifyUsers() {
     try {
         const settingsDoc = await db.collection('settings').doc('config').get();
         const cooldownDays = settingsDoc.exists ? settingsDoc.data().orderCooldownDays : 7;
         const now = new Date();
         
+        // ИЗМЕНЕНИЕ: Уведомления о кулдауне только для тех, у кого нет V-Coins
         const usersSnapshot = await db.collection('users')
             .where('lastOrderTimestamp', '!=', null)
             .where('cooldownNotified', '==', false)
+            .where('vcoin_allowance', '==', 0)
             .get();
         
         if (usersSnapshot.empty) return;
@@ -435,6 +459,7 @@ async function checkAndNotifyUsers() {
         console.error("Ошибка в checkAndNotifyUsers:", error);
     }
 }
+
 async function checkReportReminders() {
      try {
         const now = new Date();
@@ -465,18 +490,47 @@ async function checkReportReminders() {
         console.error("Ошибка в checkReportReminders:", error);
     }
 }
+
 async function sendAndUpdate(chatId, message, docRef, updateData) {
     try {
         await sendTelegramNotification(chatId, message);
         await docRef.update(updateData);
-        console.log(`Уведомление для ${chatId} отправлено, документ обновлен.`);
     } catch (err) {
         console.error(`Сетевая или DB ошибка для ${chatId}:`, err.message);
     }
 }
+
+// Задачи по расписанию
 cron.schedule('0 9 * * *', checkAndNotifyUsers, { timezone: "Asia/Almaty" });
 cron.schedule('0 * * * *', checkReportReminders, { timezone: "Asia/Almaty" }); 
 
+// НОВЫЙ CRON JOB: Еженедельное начисление V-Coins
+cron.schedule('1 0 * * 1', async () => {
+    console.log('Запуск еженедельного начисления V-Coins...');
+    try {
+        const usersRef = db.collection('users');
+        const snapshot = await usersRef.where('vcoin_allowance', '>', 0).get();
+
+        if (snapshot.empty) {
+            console.log('Нет пользователей для начисления V-Coins.');
+            return;
+        }
+
+        const batch = db.batch();
+        snapshot.forEach(doc => {
+            const user = doc.data();
+            // Устанавливаем баланс равным еженедельному лимиту
+            batch.update(doc.ref, { vcoin_balance: user.vcoin_allowance });
+        });
+
+        await batch.commit();
+        console.log(`V-Coins начислены для ${snapshot.size} пользователей.`);
+    } catch (error) {
+        console.error("Критическая ошибка при еженедельном начислении V-Coins:", error);
+    }
+}, {
+    timezone: "Asia/Almaty"
+});
 
 // --- ЗАПУСК СЕРВЕРА ---
 app.listen(PORT, () => {
