@@ -13,6 +13,10 @@
         box-sizing: border-box;
     }
 
+    html {
+        scroll-behavior: smooth;
+    }
+
     body {
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         background: #2a2a2a;
@@ -1059,7 +1063,19 @@
     }
     
     .menu-screen {
+        padding-top: 65px; /* Добавлено, чтобы меню не перекрывалось шапкой */
         padding-bottom: 90px;
+    }
+
+    /* --- НОВЫЕ СТИЛИ ДЛЯ МЕНЮ --- */
+    .menu-header-sticky {
+        position: sticky;
+        top: 0;
+        background: #2a2a2a;
+        padding: 15px 0 0;
+        z-index: 100;
+        margin: -20px -20px 20px -20px;
+        padding: 15px 20px 0;
     }
 
     .menu-categories {
@@ -1076,7 +1092,6 @@
         display: none;
     }
 
-
     .menu-category-tab {
         padding: 10px 20px;
         cursor: pointer;
@@ -1088,6 +1103,7 @@
         font-size: 14px;
         font-weight: 600;
         border-radius: 12px;
+        text-decoration: none;
     }
 
     .menu-category-tab.active {
@@ -1095,11 +1111,31 @@
         background: #00b4d8;
     }
 
+    .menu-section {
+        margin-bottom: 30px;
+    }
+
+    .menu-category-title, .menu-subcategory-title {
+        margin-bottom: 15px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid #4a4a4a;
+    }
+
+    .menu-category-title {
+        font-size: 22px;
+    }
+    .menu-subcategory-title {
+        font-size: 18px;
+        color: #00b4d8;
+        margin-top: 20px;
+    }
+
     .menu-items-grid {
         display: grid;
         grid-template-columns: 1fr;
         gap: 15px;
     }
+    /* --- КОНЕЦ НОВЫХ СТИЛЕЙ ДЛЯ МЕНЮ --- */
 
     .menu-item-card {
         background: #3a3a3a;
@@ -1157,6 +1193,8 @@
         font-weight: bold;
         font-size: 18px;
         color: #00b4d8;
+        display: flex;
+        align-items: center;
     }
 
     .menu-item-controls {
@@ -1220,6 +1258,28 @@
     .cart-item-details {
         font-size: 12px;
         color: #999;
+    }
+    
+    .cart-total-price {
+        display: flex;
+        align-items: center;
+    }
+    
+    /* --- НОВЫЙ СТИЛЬ ДЛЯ ИКОНКИ БОНУСОВ --- */
+    .v-bonus-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 20px;
+        height: 20px;
+        background: linear-gradient(135deg, #ffdd7a, #ffc107);
+        border-radius: 50%;
+        color: #4a2b00;
+        font-weight: bold;
+        font-size: 13px;
+        margin-left: 4px;
+        vertical-align: -3px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.2);
     }
 
     @media (max-width: 380px) {
@@ -1509,7 +1569,7 @@
                 <div class="user-stats">
                     <div class="stat-item" id="vcoinStatItem" style="display: none;">
                         <div class="stat-number" id="vcoinBalanceDisplay">0</div>
-                        <div class="stat-label">V-Coins</div>
+                        <div class="stat-label">V-Бонусы</div>
                     </div>
                     <div class="stat-item">
                         <div class="stat-number" id="followersDisplay">0</div>
@@ -1791,17 +1851,15 @@
         </div>
 
         <div id="menuSelectionScreen" class="form-screen menu-screen" style="display: none;">
-            <button class="btn-back" onclick="app.showAddressForm()">← Назад к адресу</button>
-            <div class="form-header">
-                <h2>Выберите блюда</h2>
+            <div class="menu-header-sticky">
+                <button class="btn-back" onclick="app.showAddressForm()">← Назад к адресу</button>
+                <div id="menu-categories" class="menu-categories"></div>
             </div>
-            <div id="menu-categories" class="menu-categories"></div>
-            <div id="menu-subcategories" class="menu-categories" style="margin-top: -10px; display: none;"></div>
-            <div id="menu-items-grid" class="menu-items-grid"></div>
+            <div id="menu-items-container"></div>
             <div id="cart-fab" class="cart-fab" style="display: none;">
                 <button class="btn-primary" onclick="app.showCartModal()">
                     <span>🛒 Корзина</span>
-                    <span id="cart-total">0 VC</span>
+                    <span id="cart-total" class="cart-total-price">0</span>
                 </button>
             </div>
         </div>
@@ -1866,10 +1924,10 @@
         <div id="overdraftModal" class="modal">
             <div class="modal-content">
                 <div class="warning-icon">⚠️</div>
-                <h2 id="overdraftTitle">Превышен лимит V-Coins</h2>
+                <h2 id="overdraftTitle">Требуется доплата</h2>
                 <p class="subtitle" id="overdraftMessage" style="text-align: left; line-height: 1.6;"></p>
                 <div style="display: flex; gap: 10px; margin-top: 20px;">
-                    <button class="btn-primary" onclick="app.proceedWithOverdraft()" style="flex: 1;">Подтвердить</button>
+                    <button class="btn-primary" onclick="app.proceedToDateTimeSelection()" style="flex: 1;">Продолжить</button>
                     <button class="btn-secondary" onclick="app.closeSimpleModal('overdraftModal')" style="flex: 1;">Отмена</button>
                 </div>
             </div>
@@ -1933,7 +1991,7 @@
                         </div>
                     </div>
                 </div>
-                <button class="btn-primary" id="addVcoinsBtn" onclick="app.addVcoinsToUser()" style="margin-top: 10px;">+ Добавить V-Coins</button>
+                <button class="btn-primary" id="addVcoinsBtn" onclick="app.addVcoinsToUser()" style="margin-top: 10px;">+ Добавить V-Бонусы</button>
                 <button class="btn-secondary" id="resetCooldownBtn" onclick="app.resetOrderCooldown()" style="margin-top: 10px;">Сбросить ограничение заказа</button>
                 <button class="btn-secondary" onclick="app.closeUserDetailModal()" style="margin-top: 10px;">Закрыть</button>
             </div>
@@ -1979,7 +2037,7 @@
                         <input type="password" id="editPassword" placeholder="Новый пароль">
                     </div>
                     <div class="form-group">
-                        <label for="editVcoinAllowance">Еженедельный лимит V-Coins (только для админов)</label>
+                        <label for="editVcoinAllowance">Еженедельный лимит V-Бонусов (только для админов)</label>
                         <input type="number" id="editVcoinAllowance" min="0">
                     </div>
                 </form>
@@ -2104,9 +2162,9 @@
             <div class="modal-content" style="max-width: 400px;">
                 <h2>Ваш заказ</h2>
                 <div id="cartItemsList" class="modal-body" style="margin: 20px 0; max-height: 40vh; overflow-y: auto;"></div>
-                <h3 style="margin: 10px 0;">Итого: <span id="cartTotal">0</span> VC</h3>
+                <h3 style="margin: 10px 0; display: flex; align-items: center; justify-content: center;">Итого: <span id="cartTotal" class="cart-total-price" style="margin-left: 10px;">0</span></h3>
                 <div style="display: flex; gap: 10px; margin-top: 20px;">
-                    <button class="btn-primary" onclick="app.confirmOrderFromMenu()" style="flex: 1;">Подтвердить</button>
+                    <button class="btn-primary" onclick="app.checkBalanceAndProceed()" style="flex: 1;">Подтвердить</button>
                     <button class="btn-secondary" onclick="app.closeSimpleModal('orderConfirmationModal')" style="flex: 1;">Назад</button>
                 </div>
             </div>
@@ -2635,6 +2693,11 @@
             return statuses[status] || { text: status, className: '' };
         }
 
+        // --- НОВАЯ ФУНКЦИЯ ДЛЯ ОТОБРАЖЕНИЯ БОНУСОВ ---
+        function formatVBonus(amount) {
+            return `<span>${Number(amount).toFixed(1)}</span><span class="v-bonus-icon">V</span>`;
+        }
+        
         function updateDashboard() {
             const dataSource = userData.registration || userData;
             if (!dataSource || !dataSource.firstName) return;
@@ -2674,7 +2737,7 @@
                 userStatsGrid.style.gridTemplateColumns = 'repeat(2, 1fr)';
             }
             
-            document.getElementById('vcoinBalanceDisplay').textContent = userData.vcoin_balance || 0;
+            document.getElementById('vcoinBalanceDisplay').innerHTML = formatVBonus(userData.vcoin_balance || 0);
             document.getElementById('followersDisplay').textContent = (followersCount || 0).toLocaleString('ru-RU');
             document.getElementById('viewsDisplay').textContent = (avgViews || 0).toLocaleString('ru-RU');
 
@@ -3562,8 +3625,9 @@
             
             let itemsHtml = '';
             if (order.vcoin_cost) {
-                itemsHtml = '<strong>Заказ:</strong><ul>' + order.items.map(item => `<li>${item.name} (x${item.quantity}) - ${item.price / VCOIN_RATE * item.quantity} VC</li>`).join('') + '</ul>'
-                + `<strong>Итого:</strong> ${order.vcoin_cost.toFixed(1)} VC<br>`
+                const itemsList = order.items.map(item => `<li>${item.name} (x${item.quantity}) - ${formatVBonus((item.price / VCOIN_RATE) * item.quantity)}</li>`).join('');
+                itemsHtml = `<strong>Заказ:</strong><ul>${itemsList}</ul>`
+                + `<strong>Итого:</strong> ${formatVBonus(order.vcoin_cost)}<br>`
                 + `<strong>К доплате:</strong> ${(order.payment_due_tenge || 0).toFixed(0)} ₸<br>`;
             } else if (order.setName) {
                 itemsHtml = `<strong>Выбранный набор:</strong> ${order.setName}<br>`;
@@ -3755,14 +3819,14 @@
             const user = userDoc.data();
             const reg = user.registration || user;
             document.getElementById('userDetailTitle').textContent = reg.firstName;
-            document.getElementById('userDetailBody').innerHTML = `<strong>Телефон:</strong> ${reg.phone}<br><strong>Instagram:</strong> <a href="https://www.instagram.com/${reg.instagramLogin.replace('@','')}" target="_blank" style="color: #00b4d8; text-decoration: none;">@${reg.instagramLogin}</a><br><strong>Подписчики:</strong> ${reg.followersCount}<br><strong>Просмотры:</strong> ${reg.avgViews}<br><strong>Рейтинг:</strong> ⭐ ${calculateBloggerRating(user)}<br><strong>Баланс V-Coins:</strong> ${user.vcoin_balance || 0}<br><strong>Лимит V-Coins:</strong> ${user.vcoin_allowance || 0}`;
+            document.getElementById('userDetailBody').innerHTML = `<strong>Телефон:</strong> ${reg.phone}<br><strong>Instagram:</strong> <a href="https://www.instagram.com/${reg.instagramLogin.replace('@','')}" target="_blank" style="color: #00b4d8; text-decoration: none;">@${reg.instagramLogin}</a><br><strong>Подписчики:</strong> ${reg.followersCount}<br><strong>Просмотры:</strong> ${reg.avgViews}<br><strong>Рейтинг:</strong> ⭐ ${calculateBloggerRating(user)}<br><strong>Баланс V-Бонусов:</strong> ${formatVBonus(user.vcoin_balance || 0)}<br><strong>Лимит V-Бонусов:</strong> ${formatVBonus(user.vcoin_allowance || 0)}`;
             renderTags(user.tags || []);
             document.getElementById('userDetailModal').style.display = 'flex';
         }
 
         async function addVcoinsToUser() {
             if (!currentUserDetailId) return;
-            const amountStr = prompt("Введите количество V-Coins для добавления:", "100");
+            const amountStr = prompt("Введите количество V-Бонусов для добавления:", "100");
             if (amountStr === null) return; 
 
             const amountToAdd = parseInt(amountStr);
@@ -3775,10 +3839,10 @@
                 await userRef.update({
                     vcoin_balance: FieldValue.increment(amountToAdd)
                 });
-                showCrmSuccess("Баланс обновлен!", `${amountToAdd} V-Coins были успешно добавлены.`);
+                showCrmSuccess("Баланс обновлен!", `${amountToAdd} V-Бонусов были успешно добавлены.`);
                 await showUserDetailModal(currentUserDetailId);
             } catch (error) {
-                console.error("Ошибка при добавлении V-Coins:", error);
+                console.error("Ошибка при добавлении V-Бонусов:", error);
                 showError("Ошибка", "Не удалось обновить баланс пользователя.");
             }
         }
@@ -3947,7 +4011,7 @@
                             <div>
                                 <span class="user-name-phone">${item.name}</span>
                                 <div style="font-size: 14px; color: #ccc;">
-                                    Категория: ${item.category} | Цена: ${item.price} ₸ (${item.price / VCOIN_RATE} VC)
+                                    Категория: ${item.category} | Цена: ${item.price} ₸ (${formatVBonus(item.price / VCOIN_RATE)})
                                 </div>
                             </div>
                         </div>
@@ -4101,82 +4165,87 @@
         }
 
         async function loadAndRenderMenu() {
-            const grid = document.getElementById('menu-items-grid');
+            const container = document.getElementById('menu-items-container');
             const mainTabsContainer = document.getElementById('menu-categories');
-            const subTabsContainer = document.getElementById('menu-subcategories');
             
-            grid.innerHTML = '<div class="loading-indicator">Загрузка меню...</div>';
+            container.innerHTML = '<div class="loading-indicator">Загрузка меню...</div>';
             mainTabsContainer.innerHTML = '';
-            subTabsContainer.innerHTML = '';
-            subTabsContainer.style.display = 'none';
             cart = {};
             updateCartView();
 
             try {
                 const snapshot = await db.collection(COLLECTIONS.MENU).where("isVisible", "==", true).get();
                 if (snapshot.empty) {
-                    grid.innerHTML = '<div class="empty-state">Меню пока пустое.</div>';
+                    container.innerHTML = '<div class="empty-state">Меню пока пустое.</div>';
                     return;
                 }
+                container.innerHTML = ''; // Очищаем
 
                 const menuData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 const categoryOrder = ["Сеты", "Роллы", "Пицца", "ВОК / ТОМ-ЯМ", "Закуски", "Напитки", "Дополнительно"];
-                const mainCategories = [...new Set(menuData.map(item => item.category))].sort((a, b) => {
+                const categories = {};
+                menuData.forEach(item => {
+                    if (!categories[item.category]) {
+                        categories[item.category] = {};
+                    }
+                    const subcategory = item.subcategory || 'Основное';
+                    if (!categories[item.category][subcategory]) {
+                        categories[item.category][subcategory] = [];
+                    }
+                    categories[item.category][subcategory].push(item);
+                });
+
+                const sortedCategories = Object.keys(categories).sort((a, b) => {
                     const indexA = categoryOrder.indexOf(a);
                     const indexB = categoryOrder.indexOf(b);
-                    if (indexA === -1) return 1;
-                    if (indexB === -1) return -1;
+                    if (indexA === -1) return 1; if (indexB === -1) return -1;
                     return indexA - indexB;
                 });
                 
-                mainCategories.forEach((cat, index) => {
-                    const tab = document.createElement('button');
+                sortedCategories.forEach((catName) => {
+                    // Создаем навигационную вкладку
+                    const tab = document.createElement('a');
                     tab.className = 'menu-category-tab';
-                    tab.textContent = cat;
-                    tab.onclick = () => {
-                        document.querySelectorAll('#menu-categories .menu-category-tab').forEach(t => t.classList.remove('active'));
-                        tab.classList.add('active');
-                        
-                        const categoryItems = menuData.filter(item => item.category === cat);
-                        const subcategories = [...new Set(categoryItems.map(item => item.subcategory))].filter(Boolean);
-
-                        subTabsContainer.innerHTML = '';
-                        grid.innerHTML = '';
-
-                        if (subcategories.length > 0) {
-                            subTabsContainer.style.display = 'flex';
-                            subcategories.forEach((subcat, subIndex) => {
-                                const subTab = document.createElement('button');
-                                subTab.className = 'menu-category-tab';
-                                subTab.textContent = subcat;
-                                subTab.onclick = () => {
-                                    document.querySelectorAll('#menu-subcategories .menu-category-tab').forEach(t => t.classList.remove('active'));
-                                    subTab.classList.add('active');
-                                    renderMenuItems(categoryItems.filter(item => item.subcategory === subcat));
-                                };
-                                subTabsContainer.appendChild(subTab);
-                                if (subIndex === 0) subTab.click(); 
-                            });
-                        } else {
-                            subTabsContainer.style.display = 'none';
-                            renderMenuItems(categoryItems);
-                        }
-                    };
+                    tab.textContent = catName;
+                    tab.href = `#category-${catName.replace(/\s/g, '-')}`;
                     mainTabsContainer.appendChild(tab);
-                    if (index === 0) tab.click();
+
+                    // Создаем секцию для категории
+                    const section = document.createElement('div');
+                    section.className = 'menu-section';
+                    section.id = `category-${catName.replace(/\s/g, '-')}`;
+                    
+                    const catTitle = document.createElement('h2');
+                    catTitle.className = 'menu-category-title';
+                    catTitle.textContent = catName;
+                    section.appendChild(catTitle);
+
+                    for (const subcatName in categories[catName]) {
+                        if (Object.keys(categories[catName]).length > 1) {
+                            const subcatTitle = document.createElement('h3');
+                            subcatTitle.className = 'menu-subcategory-title';
+                            subcatTitle.textContent = subcatName;
+                            section.appendChild(subcatTitle);
+                        }
+
+                        const grid = document.createElement('div');
+                        grid.className = 'menu-items-grid';
+                        categories[catName][subcatName].forEach(item => {
+                           grid.appendChild(createMenuItemCard(item));
+                        });
+                        section.appendChild(grid);
+                    }
+                    container.appendChild(section);
                 });
 
             } catch (error) {
                 console.error("Error loading menu:", error);
-                grid.innerHTML = '<div class="empty-state">Не удалось загрузить меню.</div>';
+                container.innerHTML = '<div class="empty-state">Не удалось загрузить меню.</div>';
             }
         }
 
-        function renderMenuItems(items) {
-            const grid = document.getElementById('menu-items-grid');
-            grid.innerHTML = '';
-            items.forEach(item => {
-                const card = document.createElement('div');
+        function createMenuItemCard(item) {
+             const card = document.createElement('div');
                 card.className = 'menu-item-card';
                 card.dataset.id = item.id;
                 card.innerHTML = `
@@ -4185,7 +4254,7 @@
                         <div class="menu-item-name">${item.name}</div>
                         <div class="menu-item-desc">${item.description || ''}</div>
                         <div class="menu-item-footer">
-                            <div class="menu-item-price">${item.price / VCOIN_RATE} VC</div>
+                            <div class="menu-item-price">${formatVBonus(item.price / VCOIN_RATE)}</div>
                             <div class="menu-item-controls">
                                 <button class="quantity-btn" onclick="app.removeFromCart('${item.id}')">-</button>
                                 <span class="item-quantity">0</span>
@@ -4194,9 +4263,7 @@
                         </div>
                     </div>
                 `;
-                grid.appendChild(card);
-            });
-            updateCartView();
+            return card;
         }
 
         function addToCart(item) {
@@ -4238,7 +4305,7 @@
 
             const cartFab = document.getElementById('cart-fab');
             if (count > 0) {
-                document.getElementById('cart-total').textContent = `${total.toFixed(1)} VC`;
+                document.getElementById('cart-total').innerHTML = formatVBonus(total);
                 cartFab.style.display = 'block';
             } else {
                 cartFab.style.display = 'none';
@@ -4254,38 +4321,42 @@
             for (const itemId in cart) {
                 const item = cart[itemId];
                 const itemTotalVCoins = (item.quantity * item.price) / VCOIN_RATE;
-                itemEl = document.createElement('div');
+                const itemEl = document.createElement('div');
                 itemEl.className = 'cart-item';
                 itemEl.innerHTML = `
                     <div>
                         <div class="cart-item-name">${item.name}</div>
-                        <div class="cart-item-details">${item.quantity} x ${item.price / VCOIN_RATE} VC</div>
+                        <div class="cart-item-details">${item.quantity} x ${formatVBonus(item.price / VCOIN_RATE)}</div>
                     </div>
-                    <span>${itemTotalVCoins.toFixed(1)} VC</span>
+                    <span class="cart-total-price">${formatVBonus(itemTotalVCoins)}</span>
                 `;
                 list.appendChild(itemEl);
                 total += itemTotalVCoins;
             }
-            totalEl.textContent = total.toFixed(1);
+            totalEl.innerHTML = formatVBonus(total);
             document.getElementById('orderConfirmationModal').style.display = 'flex';
         }
 
-        function confirmOrderFromMenu() {
+        // --- НОВАЯ ЛОГИКА ПОДТВЕРЖДЕНИЯ ЗАКАЗА ---
+        function checkBalanceAndProceed() {
             const totalVCoins = Object.values(cart).reduce((sum, item) => sum + (item.price * item.quantity) / VCOIN_RATE, 0);
             const userBalance = userData.vcoin_balance || 0;
 
             currentOrderData.items = Object.values(cart).map(item => ({ id: item.id, name: item.name, price: item.price, quantity: item.quantity }));
             currentOrderData.vcoin_cost = totalVCoins;
             currentOrderData.payment_due_tenge = 0;
+            
+            closeSimpleModal('orderConfirmationModal'); // Сначала закрываем корзину
 
             if (totalVCoins > userBalance) {
+                // Если не хватает - показываем окно доплаты
                 const overdraftVCoins = totalVCoins - userBalance;
                 const overdraftTenge = overdraftVCoins * VCOIN_RATE;
                 currentOrderData.payment_due_tenge = overdraftTenge;
 
                 const message = `
-                    <strong>Сумма заказа:</strong> ${totalVCoins.toFixed(1)} VC<br>
-                    <strong>Ваш баланс:</strong> ${userBalance.toFixed(1)} VC<br>
+                    <strong>Сумма заказа:</strong> ${formatVBonus(totalVCoins)}<br>
+                    <strong>Ваш баланс:</strong> ${formatVBonus(userBalance)}<br>
                     <hr style="border-color: #4a4a4a; margin: 10px 0;">
                     <strong>К доплате: ${overdraftTenge.toFixed(0)} ₸</strong><br><br>
                     Сумму превышения необходимо будет оплатить отдельно. Продолжить?
@@ -4293,12 +4364,12 @@
                 document.getElementById('overdraftMessage').innerHTML = message;
                 document.getElementById('overdraftModal').style.display = 'flex';
             } else {
-                proceedWithOverdraft();
+                // Если хватает - сразу переходим к выбору даты
+                proceedToDateTimeSelection();
             }
         }
         
-        function proceedWithOverdraft() {
-            closeSimpleModal('orderConfirmationModal');
+        function proceedToDateTimeSelection() {
             closeSimpleModal('overdraftModal');
             showDateTimeSelection();
             setupDateInput();
@@ -4366,9 +4437,11 @@
             markNoReport, markReportAccepted, copyPlaceholder,
             exportOrdersToExcel, exportUsersToExcel,
             updateMenuItemsListCrm, showMenuItemModal, saveMenuItem, deleteMenuItem,
-            showMenuScreen, addToCart, removeFromCart, showCartModal, confirmOrderFromMenu,
+            showMenuScreen, addToCart, removeFromCart, showCartModal,
             triggerMenuImport, handleMenuFileSelect, toggleMenuItemVisibility,
-            proceedWithOverdraft, addVcoinsToUser
+            addVcoinsToUser,
+            // Новые функции для исправленной логики заказа
+            checkBalanceAndProceed, proceedToDateTimeSelection
         };
     })();
 </script>
