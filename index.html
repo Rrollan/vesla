@@ -400,6 +400,9 @@
         font-size: 18px;
         font-weight: 600;
         color: #00b4d8;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
 
     .stat-label {
@@ -1062,72 +1065,94 @@
         text-align: center;
     }
     
+    /* --- НОВЫЕ/ИЗМЕНЕННЫЕ СТИЛИ ДЛЯ МЕНЮ --- */
     .menu-screen {
-        padding-top: 65px; /* Добавлено, чтобы меню не перекрывалось шапкой */
-        padding-bottom: 90px;
+        padding-bottom: 120px; /* Увеличено место для нижней плашки */
     }
 
-    /* --- НОВЫЕ СТИЛИ ДЛЯ МЕНЮ --- */
     .menu-header-sticky {
         position: sticky;
         top: 0;
         background: #2a2a2a;
-        padding: 15px 0 0;
+        padding-top: 15px;
         z-index: 100;
-        margin: -20px -20px 20px -20px;
-        padding: 15px 20px 0;
+        margin: -20px -20px 0 -20px;
+        padding: 15px 20px 0 20px;
+    }
+
+    .menu-info-bar {
+        text-align: center;
+        margin-bottom: 15px;
+    }
+    .menu-info-bar h2 {
+        font-size: 22px;
+        margin-bottom: 8px;
+    }
+    .menu-budget-display {
+        background: #3a3a3a;
+        border: 1px solid #4a4a4a;
+        border-radius: 12px;
+        padding: 8px 15px;
+        display: inline-block;
+        font-size: 14px;
+        font-weight: 500;
+        color: #ffc107;
+    }
+    .menu-budget-display .v-bonus-icon {
+        background: transparent;
+        color: #ffc107;
+        box-shadow: none;
+        vertical-align: -2px;
     }
 
     .menu-categories {
         display: flex;
         overflow-x: auto;
-        margin-bottom: 20px;
-        background: #3a3a3a;
-        border-radius: 15px;
-        padding: 5px;
         -ms-overflow-style: none;
         scrollbar-width: none;
+        padding-bottom: 15px;
     }
     .menu-categories::-webkit-scrollbar {
         display: none;
     }
 
     .menu-category-tab {
-        padding: 10px 20px;
+        padding: 8px 18px;
         cursor: pointer;
         white-space: nowrap;
         color: #999;
-        transition: all 0.3s ease;
-        border: none;
-        background: transparent;
+        transition: all 0.2s ease-in-out;
+        border: 2px solid #4a4a4a;
+        background: #3a3a3a;
         font-size: 14px;
         font-weight: 600;
-        border-radius: 12px;
+        border-radius: 20px;
         text-decoration: none;
+        margin-right: 10px;
     }
 
     .menu-category-tab.active {
         color: white;
         background: #00b4d8;
+        border-color: #00b4d8;
     }
 
     .menu-section {
         margin-bottom: 30px;
-    }
-
-    .menu-category-title, .menu-subcategory-title {
-        margin-bottom: 15px;
-        padding-bottom: 10px;
-        border-bottom: 1px solid #4a4a4a;
+        padding-top: 10px;
     }
 
     .menu-category-title {
         font-size: 22px;
+        margin-bottom: 20px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid #4a4a4a;
     }
     .menu-subcategory-title {
         font-size: 18px;
-        color: #00b4d8;
+        color: #ccc;
         margin-top: 20px;
+        margin-bottom: 15px;
     }
 
     .menu-items-grid {
@@ -1135,23 +1160,21 @@
         grid-template-columns: 1fr;
         gap: 15px;
     }
-    /* --- КОНЕЦ НОВЫХ СТИЛЕЙ ДЛЯ МЕНЮ --- */
 
     .menu-item-card {
         background: #3a3a3a;
         border-radius: 15px;
         overflow: hidden;
         display: flex;
-        border: 2px solid #4a4a4a;
-        align-items: center;
+        border: 1px solid #4a4a4a;
     }
 
     .menu-item-image {
-        width: 110px;
-        height: 110px;
+        width: 120px;
+        height: 120px;
         object-fit: cover;
         flex-shrink: 0;
-        border-radius: 13px 0 0 13px;
+        border-radius: 14px 0 0 14px;
     }
 
     .menu-item-info {
@@ -1159,40 +1182,43 @@
         flex-grow: 1;
         display: flex;
         flex-direction: column;
-        justify-content: space-between;
-        height: 110px;
+        justify-content: flex-start; /* Изменено */
+        height: 120px;
+    }
+    
+    .menu-item-content-wrapper {
+        flex-grow: 1; /* Этот блок будет расти, отодвигая футер вниз */
     }
 
     .menu-item-name {
         font-weight: 600;
         font-size: 16px;
-        line-height: 1.2;
+        line-height: 1.3;
+        margin-bottom: 5px;
     }
     
     .menu-item-desc {
         font-size: 12px;
         color: #999;
-        margin: 5px 0;
         line-height: 1.4;
         display: -webkit-box;
         -webkit-line-clamp: 2;
         -webkit-box-orient: vertical;
         overflow: hidden;
         text-overflow: ellipsis;
-        min-height: 33.6px; 
     }
 
     .menu-item-footer {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-top: auto;
+        margin-top: auto; /* ГЛАВНОЕ ИСПРАВЛЕНИЕ: прижимает футер к низу */
     }
 
     .menu-item-price {
         font-weight: bold;
         font-size: 18px;
-        color: #00b4d8;
+        color: #fff;
         display: flex;
         align-items: center;
     }
@@ -1200,48 +1226,67 @@
     .menu-item-controls {
         display: flex;
         align-items: center;
-        background: #2a2a2a;
+        background: #4a4a4a;
         border-radius: 20px;
-        border: 1px solid #4a4a4a;
     }
 
     .quantity-btn {
         background: transparent;
         border: none;
         color: white;
-        font-size: 20px;
-        font-weight: bold;
+        font-size: 24px;
+        font-weight: 400;
         cursor: pointer;
-        padding: 5px 14px;
+        padding: 4px 14px;
     }
 
     .item-quantity {
         padding: 0 5px;
         font-size: 16px;
+        font-weight: 500;
         min-width: 20px;
         text-align: center;
     }
 
     .cart-fab {
         position: fixed;
-        bottom: 20px;
-        left: 50%;
-        transform: translateX(-50%);
-        width: 90%;
-        max-width: 380px;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        background: rgba(42, 42, 42, 0.9);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        padding: 15px 20px 20px 20px;
         z-index: 998;
+        border-top: 1px solid #4a4a4a;
     }
 
-    .cart-fab button {
-        width: 100%;
-        padding: 18px;
-        font-size: 18px;
+    .cart-fab-content {
+        max-width: 380px;
+        margin: 0 auto;
+    }
+    .cart-fab-content button {
+        margin-top: 10px;
+    }
+
+    .cart-summary {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-top: 0;
+        font-size: 16px;
     }
-    
+    .cart-summary-label {
+        color: #ccc;
+    }
+    .cart-summary-value {
+        font-weight: 600;
+        color: #fff;
+    }
+    .cart-summary-value .v-bonus-icon {
+        color: #4a2b00;
+        background: linear-gradient(135deg, #ffdd7a, #ffc107);
+    }
+
     .cart-item {
         display: flex;
         justify-content: space-between;
@@ -1265,7 +1310,6 @@
         align-items: center;
     }
     
-    /* --- НОВЫЙ СТИЛЬ ДЛЯ ИКОНКИ БОНУСОВ --- */
     .v-bonus-icon {
         display: inline-flex;
         align-items: center;
@@ -1281,6 +1325,7 @@
         vertical-align: -3px;
         box-shadow: 0 1px 3px rgba(0,0,0,0.2);
     }
+    /* --- КОНЕЦ НОВЫХ СТИЛЕЙ --- */
 
     @media (max-width: 380px) {
         .container {
@@ -1850,19 +1895,27 @@
             </form>
         </div>
 
+        <!-- --- ОБНОВЛЕННЫЙ ЭКРАН МЕНЮ --- -->
         <div id="menuSelectionScreen" class="form-screen menu-screen" style="display: none;">
             <div class="menu-header-sticky">
-                <button class="btn-back" onclick="app.showAddressForm()">← Назад к адресу</button>
+                <div class="menu-info-bar">
+                    <h2>Соберите ваш заказ</h2>
+                    <div id="menuBudgetDisplay" class="menu-budget-display">Ваш бартерный бюджет: 0</div>
+                </div>
                 <div id="menu-categories" class="menu-categories"></div>
             </div>
             <div id="menu-items-container"></div>
             <div id="cart-fab" class="cart-fab" style="display: none;">
-                <button class="btn-primary" onclick="app.showCartModal()">
-                    <span>🛒 Корзина</span>
-                    <span id="cart-total" class="cart-total-price">0</span>
-                </button>
+                <div class="cart-fab-content">
+                    <div class="cart-summary">
+                        <span class="cart-summary-label">Итого / Бюджет</span>
+                        <span id="cart-summary-value" class="cart-summary-value"></span>
+                    </div>
+                    <button class="btn-primary" onclick="app.checkBalanceAndProceed()">Далее</button>
+                </div>
             </div>
         </div>
+
 
         <div id="dateTimeScreen" class="form-screen datetime-selection" style="display: none;">
             <button class="btn-back" id="backFromDateTime">← Назад</button>
@@ -2183,7 +2236,6 @@
     const app = (function() {
 
         const BACKEND_URL = 'https://vesla.onrender.com';
-        const TELEGRAM_BOT_TOKEN = '8227812944:AAFy8ydOkUeCj3Qkjg7_Xsq6zyQpcUyMShY';
         
         const firebaseConfig = {
             apiKey: "AIzaSyATmIapS6SJi7KnvKrJp5sfD9VMXxKMCgA",
@@ -2235,6 +2287,7 @@
         let currentReportingOrderId = null;
         let currentUserDetailId = null;
         let userListenerUnsubscribe = null;
+        let menuObserver = null;
         let appSettings = { orderCooldownDays: 7 };
         let cart = {};
         const LOYALTY_THRESHOLD = 5;
@@ -2246,6 +2299,43 @@
             document.getElementById('criticalErrorMessage').innerHTML = message;
             document.querySelectorAll('.form-screen, .dashboard, .welcome-screen, .crm-screen').forEach(s => s.style.display = 'none');
             document.getElementById(SCREENS.CRITICAL_ERROR).style.display = 'flex';
+        }
+        
+        // --- НОВАЯ/ИЗМЕНЕННАЯ ФУНКЦИЯ ---
+        async function apiFetch(endpoint, options = {}) {
+            if (!tg || !tg.initData) {
+                 showCriticalError("Данные авторизации Telegram не найдены. Пожалуйста, перезапустите приложение.");
+                 throw new Error("Telegram initData is missing.");
+            }
+
+            const defaultHeaders = {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${tg.initData}`
+            };
+            
+            if (options.body instanceof FormData) {
+                delete defaultHeaders['Content-Type']; // fetch сам установит правильный Content-Type
+            }
+
+            const response = await fetch(`${BACKEND_URL}${endpoint}`, {
+                ...options,
+                headers: {
+                    ...defaultHeaders,
+                    ...options.headers,
+                },
+            });
+
+            if (!response.ok) {
+                const errorResult = await response.json();
+                throw new Error(errorResult.error || `Сервер вернул ошибку ${response.status}`);
+            }
+
+            // Для delete запросов тело ответа может быть пустым
+            if (response.status === 204) {
+                return;
+            }
+
+            return response.json();
         }
 
         function ensureAuthenticated() {
@@ -2269,29 +2359,14 @@
                 if (!counterDoc.exists) {
                     nextNumber = 101;
                 } else {
-                    nextNumber = counterDoc.data().currentNumber + 1;
+                    const current = counterDoc.data().currentNumber || 100;
+                    nextNumber = current + 1;
                 }
                 transaction.set(counterRef, { currentNumber: nextNumber }, { merge: true });
                 return nextNumber;
             });
 
             return `${cityCode}-${newOrderNumber}`;
-        }
-
-        async function sendTelegramNotification(chatId, message) {
-            if (!chatId) return;
-            const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
-            try {
-                const response = await fetch(url, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ chat_id: chatId, text: message, parse_mode: 'Markdown' })
-                });
-                const result = await response.json();
-                if (!result.ok) throw new Error(result.description);
-            } catch (error) {
-                console.error(`Ошибка отправки уведомления в Telegram для ${chatId}:`, error);
-            }
         }
         
 		function initTelegram() {
@@ -3331,7 +3406,6 @@
 
         async function sendBroadcast(button) {
             await withLoading(button, async () => {
-                if (!ensureAuthenticated()) return;
                 const message = document.getElementById('broadcastMessage').value.trim();
                 const selectedTags = Array.from(document.querySelectorAll('#broadcastTagsContainer .tag')).map(el => el.textContent.replace(' ×', ''));
                 
@@ -3339,24 +3413,14 @@
                     return showError('Ошибка', 'Сообщение не может быть пустым.');
                 }
 
-                if (!telegramUser || !telegramUser.id) {
-                    return showError('Ошибка', 'Не удалось определить ваш Telegram ID. Пожалуйста, перезапустите приложение.');
-                }
-
-                const response = await fetch(`${BACKEND_URL}/api/broadcast`, {
+                await apiFetch('/api/broadcast', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         message: message,
                         tags: selectedTags,
                         senderChatId: telegramUser.id
                     })
                 });
-
-                if (response.status !== 202) {
-                    const errorResult = await response.json();
-                    throw new Error(errorResult.error || `Сервер вернул ошибку ${response.status}`);
-                }
                 
                 showCrmSuccess("Запрос принят!", "Рассылка запущена на сервере. Отчет придет в личные сообщения.");
             });
@@ -3406,7 +3470,7 @@
             const isMacroBlogger = userData.level && userData.level.startsWith('macro');
             const hasVcoins = userData.vcoin_balance && userData.vcoin_balance > 0;
 
-            if (isMacroBlogger && hasVcoins) {
+            if (isMacroBlogger) {
                 backButton.onclick = () => app.showAddressForm();
                 showMenuScreen();
             } else {
@@ -3504,15 +3568,10 @@
                 const formData = new FormData();
                 formData.append('order', JSON.stringify(newOrder));
 
-                const response = await fetch(`${BACKEND_URL}/api/create-order`, {
+                await apiFetch('/api/create-order', {
                     method: 'POST',
-                    body: formData
+                    body: JSON.stringify({ order: newOrder }) // Отправляем как JSON
                 });
-
-                if (!response.ok) {
-                    const errorResult = await response.json();
-                    throw new Error(errorResult.error || 'Ошибка на сервере при создании заказа');
-                }
                 
                 showSuccessMessage("Ваш заказ успешно оформлен!");
             });
@@ -4091,14 +4150,11 @@
 
                     try {
                         button.innerHTML = 'Обработка фото...';
-                        const response = await fetch(`${BACKEND_URL}/api/upload-menu-image`, {
+                        const result = await apiFetch('/api/upload-menu-image', {
                             method: 'POST',
                             body: formData
                         });
-
-                        const result = await response.json();
-
-                        if (!response.ok || !result.success) {
+                        if (!result.success) {
                             throw new Error(result.error || 'Ошибка при загрузке изображения на сервер.');
                         }
                         imageUrl = result.imageUrl;
@@ -4137,10 +4193,6 @@
 
         async function exportToExcel(button, dataType) {
             await withLoading(button, async () => {
-                if (!telegramUser?.id) {
-                    return showError("Ошибка", "Не удалось определить ваш ID для отправки файла. Перезагрузите приложение.");
-                }
-
                 let data;
                 if (dataType === 'orders') {
                     const snapshot = await db.collection(COLLECTIONS.ORDERS).orderBy('createdAt', 'desc').get();
@@ -4150,18 +4202,24 @@
                     data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 }
 
-                const response = await fetch(`${BACKEND_URL}/api/export-${dataType}`, {
+                await apiFetch(`/api/export-${dataType}`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ data: data, chatId: telegramUser.id })
                 });
 
-                if (!response.ok) {
-                    const errorResult = await response.json();
-                    throw new Error(errorResult.error || `Сервер вернул ошибку ${response.status}`);
-                }
                 showCrmSuccess("Запрос отправлен!", `Excel-файл будет отправлен вам в личные сообщения.`);
             });
+        }
+        
+        // --- НОВЫЕ/ИЗМЕНЕННЫЕ ФУНКЦИИ ДЛЯ МЕНЮ ---
+        
+        function getBarterBudget() {
+            // Здесь можно будет добавить более сложную логику, если бюджет будет зависеть от уровня
+            const level = userData.level;
+            if(level === 'macro-b') return 20000;
+            if(level === 'macro-a') return 15000;
+            // По умолчанию для всех остальных (включая микроблогеров, если они как-то попадут на этот экран)
+            return 10000; 
         }
 
         async function loadAndRenderMenu() {
@@ -4171,6 +4229,11 @@
             container.innerHTML = '<div class="loading-indicator">Загрузка меню...</div>';
             mainTabsContainer.innerHTML = '';
             cart = {};
+            
+            const budget = getBarterBudget();
+            currentOrderData.budget = budget;
+            document.getElementById('menuBudgetDisplay').innerHTML = `Ваш бартерный бюджет: <strong>${budget.toLocaleString('ru-RU')} ₸</strong>`;
+            
             updateCartView();
 
             try {
@@ -4179,19 +4242,15 @@
                     container.innerHTML = '<div class="empty-state">Меню пока пустое.</div>';
                     return;
                 }
-                container.innerHTML = ''; // Очищаем
+                container.innerHTML = '';
 
                 const menuData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 const categoryOrder = ["Сеты", "Роллы", "Пицца", "ВОК / ТОМ-ЯМ", "Закуски", "Напитки", "Дополнительно"];
                 const categories = {};
                 menuData.forEach(item => {
-                    if (!categories[item.category]) {
-                        categories[item.category] = {};
-                    }
+                    if (!categories[item.category]) categories[item.category] = {};
                     const subcategory = item.subcategory || 'Основное';
-                    if (!categories[item.category][subcategory]) {
-                        categories[item.category][subcategory] = [];
-                    }
+                    if (!categories[item.category][subcategory]) categories[item.category][subcategory] = [];
                     categories[item.category][subcategory].push(item);
                 });
 
@@ -4203,17 +4262,17 @@
                 });
                 
                 sortedCategories.forEach((catName) => {
-                    // Создаем навигационную вкладку
+                    const categoryId = `category-${catName.replace(/[\s/]/g, '-')}`;
                     const tab = document.createElement('a');
                     tab.className = 'menu-category-tab';
                     tab.textContent = catName;
-                    tab.href = `#category-${catName.replace(/\s/g, '-')}`;
+                    tab.href = `#${categoryId}`;
+                    tab.dataset.categoryId = categoryId;
                     mainTabsContainer.appendChild(tab);
 
-                    // Создаем секцию для категории
                     const section = document.createElement('div');
                     section.className = 'menu-section';
-                    section.id = `category-${catName.replace(/\s/g, '-')}`;
+                    section.id = categoryId;
                     
                     const catTitle = document.createElement('h2');
                     catTitle.className = 'menu-category-title';
@@ -4221,7 +4280,7 @@
                     section.appendChild(catTitle);
 
                     for (const subcatName in categories[catName]) {
-                        if (Object.keys(categories[catName]).length > 1) {
+                        if (Object.keys(categories[catName]).length > 1 && subcatName !== 'Основное') {
                             const subcatTitle = document.createElement('h3');
                             subcatTitle.className = 'menu-subcategory-title';
                             subcatTitle.textContent = subcatName;
@@ -4237,11 +4296,37 @@
                     }
                     container.appendChild(section);
                 });
+                setupMenuObserver();
 
             } catch (error) {
                 console.error("Error loading menu:", error);
                 container.innerHTML = '<div class="empty-state">Не удалось загрузить меню.</div>';
             }
+        }
+        
+        function setupMenuObserver() {
+            if (menuObserver) menuObserver.disconnect();
+
+            const options = {
+                root: null, // viewport
+                rootMargin: '-40% 0px -60% 0px', // Активировать, когда секция в середине экрана
+                threshold: 0
+            };
+
+            menuObserver = new IntersectionObserver((entries, observer) => {
+                entries.forEach(entry => {
+                    const id = entry.target.getAttribute('id');
+                    const tab = document.querySelector(`.menu-category-tab[data-category-id="${id}"]`);
+                    if (entry.isIntersecting) {
+                        document.querySelectorAll('.menu-category-tab').forEach(t => t.classList.remove('active'));
+                        if(tab) tab.classList.add('active');
+                    }
+                });
+            }, options);
+
+            document.querySelectorAll('.menu-section').forEach(section => {
+                menuObserver.observe(section);
+            });
         }
 
         function createMenuItemCard(item) {
@@ -4251,10 +4336,12 @@
                 card.innerHTML = `
                     <img src="${item.imageUrl || 'https://via.placeholder.com/150'}" class="menu-item-image" alt="${item.name}">
                     <div class="menu-item-info">
-                        <div class="menu-item-name">${item.name}</div>
-                        <div class="menu-item-desc">${item.description || ''}</div>
+                        <div class="menu-item-content-wrapper">
+                            <div class="menu-item-name">${item.name}</div>
+                            <div class="menu-item-desc">${item.description || ''}</div>
+                        </div>
                         <div class="menu-item-footer">
-                            <div class="menu-item-price">${formatVBonus(item.price / VCOIN_RATE)}</div>
+                            <div class="menu-item-price">${item.price.toLocaleString('ru-RU')} ₸</div>
                             <div class="menu-item-controls">
                                 <button class="quantity-btn" onclick="app.removeFromCart('${item.id}')">-</button>
                                 <span class="item-quantity">0</span>
@@ -4285,27 +4372,26 @@
         }
 
         function updateCartView() {
-            let total = 0;
+            let totalTenge = 0;
             let count = 0;
 
             document.querySelectorAll('.menu-item-card').forEach(card => {
                 const itemId = card.dataset.id;
                 const quantityEl = card.querySelector('.item-quantity');
-                if (cart[itemId]) {
-                    quantityEl.textContent = cart[itemId].quantity;
-                } else {
-                    quantityEl.textContent = 0;
-                }
+                quantityEl.textContent = cart[itemId] ? cart[itemId].quantity : 0;
             });
 
             for (const itemId in cart) {
-                total += (cart[itemId].price / VCOIN_RATE) * cart[itemId].quantity;
+                totalTenge += cart[itemId].price * cart[itemId].quantity;
                 count += cart[itemId].quantity;
             }
 
             const cartFab = document.getElementById('cart-fab');
             if (count > 0) {
-                document.getElementById('cart-total').innerHTML = formatVBonus(total);
+                const budget = currentOrderData.budget || 0;
+                const summaryEl = document.getElementById('cart-summary-value');
+                summaryEl.innerHTML = `${totalTenge.toLocaleString('ru-RU')} / ${budget.toLocaleString('ru-RU')} ₸`;
+                summaryEl.style.color = totalTenge > budget ? '#dc3545' : '#fff';
                 cartFab.style.display = 'block';
             } else {
                 cartFab.style.display = 'none';
@@ -4313,58 +4399,34 @@
         }
 
         function showCartModal() {
-            const list = document.getElementById('cartItemsList');
-            const totalEl = document.getElementById('cartTotal');
-            list.innerHTML = '';
-            let total = 0;
-
-            for (const itemId in cart) {
-                const item = cart[itemId];
-                const itemTotalVCoins = (item.quantity * item.price) / VCOIN_RATE;
-                const itemEl = document.createElement('div');
-                itemEl.className = 'cart-item';
-                itemEl.innerHTML = `
-                    <div>
-                        <div class="cart-item-name">${item.name}</div>
-                        <div class="cart-item-details">${item.quantity} x ${formatVBonus(item.price / VCOIN_RATE)}</div>
-                    </div>
-                    <span class="cart-total-price">${formatVBonus(itemTotalVCoins)}</span>
-                `;
-                list.appendChild(itemEl);
-                total += itemTotalVCoins;
-            }
-            totalEl.innerHTML = formatVBonus(total);
-            document.getElementById('orderConfirmationModal').style.display = 'flex';
+            // Эта функция больше не нужна для отображения корзины,
+            // но оставим ее на случай, если захотите вернуть модальное окно.
+            // Вместо нее теперь используется checkBalanceAndProceed
+            checkBalanceAndProceed();
         }
 
-        // --- НОВАЯ ЛОГИКА ПОДТВЕРЖДЕНИЯ ЗАКАЗА ---
         function checkBalanceAndProceed() {
-            const totalVCoins = Object.values(cart).reduce((sum, item) => sum + (item.price * item.quantity) / VCOIN_RATE, 0);
-            const userBalance = userData.vcoin_balance || 0;
+            const totalTenge = Object.values(cart).reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            const budget = currentOrderData.budget || 0;
 
             currentOrderData.items = Object.values(cart).map(item => ({ id: item.id, name: item.name, price: item.price, quantity: item.quantity }));
-            currentOrderData.vcoin_cost = totalVCoins;
+            currentOrderData.total_cost_tenge = totalTenge;
             currentOrderData.payment_due_tenge = 0;
             
-            closeSimpleModal('orderConfirmationModal'); // Сначала закрываем корзину
-
-            if (totalVCoins > userBalance) {
-                // Если не хватает - показываем окно доплаты
-                const overdraftVCoins = totalVCoins - userBalance;
-                const overdraftTenge = overdraftVCoins * VCOIN_RATE;
+            if (totalTenge > budget) {
+                const overdraftTenge = totalTenge - budget;
                 currentOrderData.payment_due_tenge = overdraftTenge;
 
                 const message = `
-                    <strong>Сумма заказа:</strong> ${formatVBonus(totalVCoins)}<br>
-                    <strong>Ваш баланс:</strong> ${formatVBonus(userBalance)}<br>
+                    <strong>Сумма заказа:</strong> ${totalTenge.toLocaleString('ru-RU')} ₸<br>
+                    <strong>Ваш бюджет:</strong> ${budget.toLocaleString('ru-RU')} ₸<br>
                     <hr style="border-color: #4a4a4a; margin: 10px 0;">
-                    <strong>К доплате: ${overdraftTenge.toFixed(0)} ₸</strong><br><br>
+                    <strong>К доплате: ${overdraftTenge.toLocaleString('ru-RU')} ₸</strong><br><br>
                     Сумму превышения необходимо будет оплатить отдельно. Продолжить?
                 `;
                 document.getElementById('overdraftMessage').innerHTML = message;
                 document.getElementById('overdraftModal').style.display = 'flex';
             } else {
-                // Если хватает - сразу переходим к выбору даты
                 proceedToDateTimeSelection();
             }
         }
@@ -4392,25 +4454,13 @@
                 const formData = new FormData();
                 formData.append('menuFile', file);
 
-                try {
-                    const response = await fetch(`${BACKEND_URL}/api/import-menu-from-file`, {
-                        method: 'POST',
-                        body: formData
-                    });
-                    
-                    const result = await response.json();
-                    
-                    if (!response.ok) {
-                        throw new Error(result.error || `Сервер вернул ошибку ${response.status}`);
-                    }
-                    
-                    showCrmSuccess("Импорт завершен!", result.message);
-                    updateMenuItemsListCrm();
-
-                } catch (error) {
-                     console.error("Ошибка импорта меню:", error);
-                     showError("Ошибка импорта", error.message);
-                }
+                const result = await apiFetch('/api/import-menu-from-file', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                showCrmSuccess("Импорт завершен!", result.message);
+                updateMenuItemsListCrm();
             });
             event.target.value = '';
         }
@@ -4440,7 +4490,6 @@
             showMenuScreen, addToCart, removeFromCart, showCartModal,
             triggerMenuImport, handleMenuFileSelect, toggleMenuItemVisibility,
             addVcoinsToUser,
-            // Новые функции для исправленной логики заказа
             checkBalanceAndProceed, proceedToDateTimeSelection
         };
     })();
