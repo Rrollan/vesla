@@ -385,9 +385,10 @@
         z-index: 1;
     }
 
+    /* ИЗМЕНЕНИЕ: Сетка статистики теперь может иметь 3 колонки */
     .user-stats {
         display: grid;
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: repeat(3, 1fr);
         gap: 15px;
         margin-top: 20px;
         position: relative;
@@ -831,6 +832,13 @@
         font-size: 60px;
         margin-bottom: 20px;
         color: #ff4444;
+    }
+
+    /* НОВЫЕ СТИЛИ: Иконка для модального окна с предупреждением */
+    .warning-icon {
+        font-size: 60px;
+        margin-bottom: 20px;
+        color: #ffc107;
     }
     
     
@@ -1526,6 +1534,10 @@
                 <div id="userLevel" class="user-level"></div>
                 <div class="user-stats">
                     <div class="stat-item">
+                        <div class="stat-number" id="vcoinBalanceDisplay">0</div>
+                        <div class="stat-label">V-Coins</div>
+                    </div>
+                    <div class="stat-item">
                         <div class="stat-number" id="followersDisplay">0</div>
                         <div class="stat-label">Подписчики</div>
                     </div>
@@ -1810,14 +1822,12 @@
                 <h2>Выберите блюда</h2>
             </div>
             <div id="menu-categories" class="menu-categories"></div>
-            <!-- ===== НОВЫЙ КОНТЕЙНЕР ДЛЯ ПОДКАТЕГОРИЙ ===== -->
             <div id="menu-subcategories" class="menu-categories" style="margin-top: -10px; display: none;"></div>
-            <!-- ============================================ -->
             <div id="menu-items-grid" class="menu-items-grid"></div>
             <div id="cart-fab" class="cart-fab" style="display: none;">
                 <button class="btn-primary" onclick="app.showCartModal()">
                     <span>🛒 Корзина</span>
-                    <span id="cart-total">0 ₸</span>
+                    <span id="cart-total">0 VC</span>
                 </button>
             </div>
         </div>
@@ -1877,6 +1887,18 @@
                 <h2 id="errorTitle">Ошибка</h2>
                 <p class="subtitle" id="errorMessage"></p>
                 <button class="btn-primary" onclick="app.closeErrorModal()">Понятно</button>
+            </div>
+        </div>
+        <!-- НОВОЕ МОДАЛЬНОЕ ОКНО: Превышение лимита -->
+        <div id="overdraftModal" class="modal">
+            <div class="modal-content">
+                <div class="warning-icon">⚠️</div>
+                <h2 id="overdraftTitle">Превышен лимит V-Coins</h2>
+                <p class="subtitle" id="overdraftMessage" style="text-align: left; line-height: 1.6;"></p>
+                <div style="display: flex; gap: 10px; margin-top: 20px;">
+                    <button class="btn-primary" onclick="app.proceedWithOverdraft()" style="flex: 1;">Подтвердить</button>
+                    <button class="btn-secondary" onclick="app.closeSimpleModal('overdraftModal')" style="flex: 1;">Отмена</button>
+                </div>
             </div>
         </div>
         <div id="rejectionModal" class="modal">
@@ -1982,6 +2004,10 @@
                         <label for="editPassword">Новый пароль (оставьте пустым, если не меняете)</label>
                         <input type="password" id="editPassword" placeholder="Новый пароль">
                     </div>
+                    <div class="form-group">
+                        <label for="editVcoinAllowance">Еженедельный лимит V-Coins (только для админов)</label>
+                        <input type="number" id="editVcoinAllowance" min="0">
+                    </div>
                 </form>
                 <div style="display: flex; gap: 10px;">
                     <button class="btn-primary" onclick="app.saveProfile(this)" style="flex: 1;">Сохранить</button>
@@ -2069,7 +2095,7 @@
                         <textarea id="menuItemDesc" rows="3"></textarea>
                     </div>
                     <div class="form-group">
-                        <label for="menuItemPrice">Цена</label>
+                        <label for="menuItemPrice">Цена (в тенге)</label>
                         <input type="number" id="menuItemPrice" required>
                     </div>
                     <div class="form-group">
@@ -2085,7 +2111,7 @@
                         </select>
                     </div>
                     <div class="form-group">
-                         <label for="menuItemSubcategory">Подкатегория (для роллов)</label>
+                         <label for="menuItemSubcategory">Подкатегория (например, для роллов)</label>
                          <input type="text" id="menuItemSubcategory" placeholder="Например: Филадельфия, Запечённые">
                      </div>
                      <div class="form-group">
@@ -2104,7 +2130,7 @@
             <div class="modal-content" style="max-width: 400px;">
                 <h2>Ваш заказ</h2>
                 <div id="cartItemsList" class="modal-body" style="margin: 20px 0; max-height: 40vh; overflow-y: auto;"></div>
-                <h3 style="margin: 10px 0;">Итого: <span id="cartTotal">0</span> ₸</h3>
+                <h3 style="margin: 10px 0;">Итого: <span id="cartTotal">0</span> VC</h3>
                 <div style="display: flex; gap: 10px; margin-top: 20px;">
                     <button class="btn-primary" onclick="app.confirmOrderFromMenu()" style="flex: 1;">Подтвердить</button>
                     <button class="btn-secondary" onclick="app.closeSimpleModal('orderConfirmationModal')" style="flex: 1;">Назад</button>
@@ -2181,6 +2207,7 @@
         let appSettings = { orderCooldownDays: 7 };
         let cart = {};
         const LOYALTY_THRESHOLD = 5;
+        const VCOIN_RATE = 10; // 1 V-Coin = 10 Tenge
         
         const CITIES = ["Павлодар", "Петропавловск", "Кокшетау", "Костанай", "Усть-Каменогорск"];
 
@@ -2641,7 +2668,10 @@
                     tags: [bloggerData.level],
                     loyaltyStatus: 'standard',
                     lastOrderTimestamp: null,
-                    cooldownNotified: true
+                    cooldownNotified: true,
+                    // Инициализация V-Coins
+                    vcoin_balance: 0,
+                    vcoin_allowance: 0 // Устанавливается админом
                 };
 
                 await saveUser(newUserId, newUser);
@@ -2699,6 +2729,8 @@
             const randomTitle = pleasantTitles[Math.floor(Math.random() * pleasantTitles.length)];
             document.getElementById('userLevel').textContent = randomTitle;
 
+            // Отображение баланса V-Coins
+            document.getElementById('vcoinBalanceDisplay').textContent = userData.vcoin_balance || 0;
             document.getElementById('followersDisplay').textContent = (followersCount || 0).toLocaleString('ru-RU');
             document.getElementById('viewsDisplay').textContent = (avgViews || 0).toLocaleString('ru-RU');
 
@@ -2735,21 +2767,9 @@
             newCollabCard.style.opacity = '1';
             newCollabCard.style.cursor = 'pointer';
             newCollabCard.onclick = () => app.startCollaboration();
-
-            if (userData.loyaltyStatus === 'premium') {
-                const startOfWeek = getStartOfWeek();
-                const ordersThisWeek = (userData.orders || []).filter(o => new Date(o.createdAt) >= startOfWeek).length;
-                const availableOrders = 2 - ordersThisWeek;
-                
-                loyaltyPanel.innerHTML = `⭐ У вас премиум-статус!<br>Доступно заказов на этой неделе: <strong>${availableOrders} из 2</strong>`;
-                loyaltyPanel.style.display = 'block';
-
-                if (availableOrders <= 0) {
-                    newCollabCard.style.opacity = '0.5';
-                    newCollabCard.style.cursor = 'not-allowed';
-                    newCollabCard.onclick = null;
-                }
-            } else {
+            
+            // Если у пользователя нет V-Coins, но он макроблогер, используем старую логику кулдауна
+            if (!userData.vcoin_allowance || userData.vcoin_allowance === 0) {
                 if (userData.lastOrderTimestamp) {
                     const lastOrderDate = new Date(userData.lastOrderTimestamp);
                     const nextAvailableDate = new Date(lastOrderDate.setDate(lastOrderDate.getDate() + appSettings.orderCooldownDays));
@@ -3341,11 +3361,13 @@
             currentOrderData = {};
             cart = {};
             
-            if (userData.level === 'micro') {
-                showSetSelection();
-            } else {
+            // Если у пользователя есть V-Coins (он макроблогер), он сразу выбирает блюда
+            // Если нет - он микроблогер и выбирает сет
+            if (userData.vcoin_allowance > 0) {
                 document.getElementById('backFromAddress').onclick = () => app.showDashboard();
                 showAddressForm();
+            } else {
+                showSetSelection();
             }
         }
         
@@ -3354,9 +3376,7 @@
             showAddressForm();
         }
 
-        function handleCityChange() {
-            // Логика со скриншотом удалена
-        }
+        function handleCityChange() {}
 
         function selectSet(element, setId) {
             document.querySelectorAll('.set-item').forEach(item => item.classList.remove('selected'));
@@ -3375,7 +3395,8 @@
             currentOrderData.recipientPhone = document.getElementById('recipientPhone').value;
             currentOrderData.comment = document.getElementById('comment').value;
 
-            if (userData.level !== 'micro') {
+            // Если V-Coins есть, идем в меню, если нет - к выбору даты (для сетов)
+            if (userData.vcoin_allowance > 0) {
                 showMenuScreen();
             } else {
                 showDateTimeSelection();
@@ -3512,6 +3533,13 @@
             document.getElementById('editFollowers').value = reg.followersCount;
             document.getElementById('editViews').value = reg.avgViews;
             document.getElementById('editPassword').value = '';
+            
+            // Поле для V-Coins
+            const vcoinInput = document.getElementById('editVcoinAllowance');
+            vcoinInput.value = userData.vcoin_allowance || 0;
+            // Показываем поле только админам
+            vcoinInput.parentElement.style.display = currentUserRole === 'admin' ? 'block' : 'none';
+
             document.getElementById('editProfileModal').style.display = 'flex';
         }
 
@@ -3539,6 +3567,12 @@
                     'registration.avgViews': parseInt(document.getElementById('editViews').value),
                     'level': levelData.level, 'tags': updatedTags
                 };
+
+                // Обновление V-Coins только если админ
+                if (currentUserRole === 'admin') {
+                    updates.vcoin_allowance = parseInt(document.getElementById('editVcoinAllowance').value) || 0;
+                }
+
                 const newPassword = document.getElementById('editPassword').value.trim();
                 if (validatePassword(newPassword)) updates['registration.password'] = hashPassword(newPassword);
                 
@@ -3581,8 +3615,11 @@
             const order = orderDoc.data();
             
             let itemsHtml = '';
-            if (order.items && order.items.length > 0) {
-                itemsHtml = '<strong>Заказ:</strong><ul>' + order.items.map(item => `<li>${item.name} (x${item.quantity}) - ${item.price * item.quantity} ₸</li>`).join('') + '</ul><strong>Итого:</strong> ' + order.totalPrice + ' ₸<br>';
+            // Логика отображения заказа с V-Coins
+            if (order.vcoin_cost) {
+                itemsHtml = '<strong>Заказ:</strong><ul>' + order.items.map(item => `<li>${item.name} (x${item.quantity}) - ${item.price / VCOIN_RATE * item.quantity} VC</li>`).join('') + '</ul>'
+                + `<strong>Итого:</strong> ${order.vcoin_cost} VC<br>`
+                + `<strong>К доплате:</strong> ${order.payment_due_tenge || 0} ₸<br>`;
             } else if (order.setName) {
                 itemsHtml = `<strong>Выбранный набор:</strong> ${order.setName}<br>`;
             }
@@ -3773,7 +3810,7 @@
             const user = userDoc.data();
             const reg = user.registration || user;
             document.getElementById('userDetailTitle').textContent = reg.firstName;
-            document.getElementById('userDetailBody').innerHTML = `<strong>Телефон:</strong> ${reg.phone}<br><strong>Instagram:</strong> <a href="https://www.instagram.com/${reg.instagramLogin.replace('@','')}" target="_blank" style="color: #00b4d8; text-decoration: none;">@${reg.instagramLogin}</a><br><strong>Подписчики:</strong> ${reg.followersCount}<br><strong>Просмотры:</strong> ${reg.avgViews}<br><strong>Рейтинг:</strong> ⭐ ${calculateBloggerRating(user)}`;
+            document.getElementById('userDetailBody').innerHTML = `<strong>Телефон:</strong> ${reg.phone}<br><strong>Instagram:</strong> <a href="https://www.instagram.com/${reg.instagramLogin.replace('@','')}" target="_blank" style="color: #00b4d8; text-decoration: none;">@${reg.instagramLogin}</a><br><strong>Подписчики:</strong> ${reg.followersCount}<br><strong>Просмотры:</strong> ${reg.avgViews}<br><strong>Рейтинг:</strong> ⭐ ${calculateBloggerRating(user)}<br><strong>Баланс V-Coins:</strong> ${user.vcoin_balance || 0}<br><strong>Лимит V-Coins:</strong> ${user.vcoin_allowance || 0}`;
             renderTags(user.tags || []);
             document.getElementById('userDetailModal').style.display = 'flex';
         }
@@ -3941,7 +3978,7 @@
                             <div>
                                 <span class="user-name-phone">${item.name}</span>
                                 <div style="font-size: 14px; color: #ccc;">
-                                    Категория: ${item.category} | Цена: ${item.price} ₸
+                                    Категория: ${item.category} | Цена: ${item.price} ₸ (${item.price / VCOIN_RATE} VC)
                                 </div>
                             </div>
                         </div>
@@ -4237,7 +4274,7 @@
                         <div class="menu-item-name">${item.name}</div>
                         <div class="menu-item-desc">${item.description || ''}</div>
                         <div class="menu-item-footer">
-                            <div class="menu-item-price">${item.price} ₸</div>
+                            <div class="menu-item-price">${item.price / VCOIN_RATE} VC</div>
                             <div class="menu-item-controls">
                                 <button class="quantity-btn" onclick="app.removeFromCart('${item.id}')">-</button>
                                 <span class="item-quantity">0</span>
@@ -4284,13 +4321,13 @@
             });
 
             for (const itemId in cart) {
-                total += cart[itemId].price * cart[itemId].quantity;
+                total += (cart[itemId].price / VCOIN_RATE) * cart[itemId].quantity;
                 count += cart[itemId].quantity;
             }
 
             const cartFab = document.getElementById('cart-fab');
             if (count > 0) {
-                document.getElementById('cart-total').textContent = `${total} ₸`;
+                document.getElementById('cart-total').textContent = `${total.toFixed(1)} VC`;
                 cartFab.style.display = 'block';
             } else {
                 cartFab.style.display = 'none';
@@ -4306,31 +4343,52 @@
             for (const itemId in cart) {
                 const item = cart[itemId];
                 const itemEl = document.createElement('div');
+                const itemTotalVCoins = (item.quantity * item.price) / VCOIN_RATE;
                 itemEl.className = 'cart-item';
                 itemEl.innerHTML = `
                     <div>
                         <div class="cart-item-name">${item.name}</div>
-                        <div class="cart-item-details">${item.quantity} x ${item.price} ₸</div>
+                        <div class="cart-item-details">${item.quantity} x ${item.price / VCOIN_RATE} VC</div>
                     </div>
-                    <span>${item.quantity * item.price} ₸</span>
+                    <span>${itemTotalVCoins.toFixed(1)} VC</span>
                 `;
                 list.appendChild(itemEl);
-                total += item.quantity * item.price;
+                total += itemTotalVCoins;
             }
-            totalEl.textContent = total;
+            totalEl.textContent = total.toFixed(1);
             document.getElementById('orderConfirmationModal').style.display = 'flex';
         }
 
         function confirmOrderFromMenu() {
-            currentOrderData.items = Object.values(cart).map(item => ({
-                id: item.id,
-                name: item.name,
-                price: item.price,
-                quantity: item.quantity
-            }));
-            currentOrderData.totalPrice = Object.values(cart).reduce((sum, item) => sum + item.price * item.quantity, 0);
+            const totalVCoins = Object.values(cart).reduce((sum, item) => sum + (item.price * item.quantity) / VCOIN_RATE, 0);
+            const userBalance = userData.vcoin_balance || 0;
 
+            currentOrderData.items = Object.values(cart).map(item => ({ id: item.id, name: item.name, price: item.price, quantity: item.quantity }));
+            currentOrderData.vcoin_cost = totalVCoins;
+            currentOrderData.payment_due_tenge = 0;
+
+            if (totalVCoins > userBalance) {
+                const overdraftVCoins = totalVCoins - userBalance;
+                const overdraftTenge = overdraftVCoins * VCOIN_RATE;
+                currentOrderData.payment_due_tenge = overdraftTenge;
+
+                const message = `
+                    <strong>Сумма заказа:</strong> ${totalVCoins.toFixed(1)} VC<br>
+                    <strong>Ваш баланс:</strong> ${userBalance.toFixed(1)} VC<br>
+                    <hr style="border-color: #4a4a4a; margin: 10px 0;">
+                    <strong>К доплате: ${overdraftTenge.toFixed(0)} ₸</strong><br><br>
+                    Сумму превышения необходимо будет оплатить отдельно. Продолжить?
+                `;
+                document.getElementById('overdraftMessage').innerHTML = message;
+                document.getElementById('overdraftModal').style.display = 'flex';
+            } else {
+                proceedWithOverdraft();
+            }
+        }
+        
+        function proceedWithOverdraft() {
             closeSimpleModal('orderConfirmationModal');
+            closeSimpleModal('overdraftModal');
             showDateTimeSelection();
             setupDateInput();
         }
@@ -4398,7 +4456,8 @@
             exportOrdersToExcel, exportUsersToExcel,
             updateMenuItemsListCrm, showMenuItemModal, saveMenuItem, deleteMenuItem,
             showMenuScreen, addToCart, removeFromCart, showCartModal, confirmOrderFromMenu,
-            triggerMenuImport, handleMenuFileSelect, toggleMenuItemVisibility
+            triggerMenuImport, handleMenuFileSelect, toggleMenuItemVisibility,
+            proceedWithOverdraft
         };
     })();
 </script>
