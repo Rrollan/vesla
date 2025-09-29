@@ -4191,6 +4191,7 @@
             }
         }
 
+                // --- ИСПРАВЛЕННАЯ ФУНКЦИЯ ---
         async function exportToExcel(button, dataType) {
             await withLoading(button, async () => {
                 let data;
@@ -4202,6 +4203,7 @@
                     data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 }
 
+                // Заменяем старый fetch на новый защищенный apiFetch
                 await apiFetch(`/api/export-${dataType}`, {
                     method: 'POST',
                     body: JSON.stringify({ data: data, chatId: telegramUser.id })
