@@ -161,7 +161,7 @@ async function sendAdminNotification(orderData) {
     if (orderData.vcoin_cost) {
         const itemsList = orderData.items.map(item => `- ${item.name} (x${item.quantity})`).join('\n');
         const totalCostInVcoins = orderData.vcoin_cost;
-        const paidByVCoin = Math.min(totalCostInVcoins, orderData.budget);
+        const paidByVCoin = Math.min(totalCostInVcoins, orderData.budget || 0);
 
         message += `\n\n🛍️ *Выбранные блюда:*\n${itemsList}\n` +
                    `*Общая стоимость:* ${totalCostInVcoins.toFixed(1)} V-Бонусов\n` +
@@ -237,41 +237,71 @@ async function sendExcelFile(chatId, data, fileNamePrefix, sheetName) {
 // === API МАРШРУТЫ ===
 // ======================================================================
 
-// Защищенный маршрут создания заказа
+// START: Обновленный маршрут создания заказа с надежной проверкой времени
 app.post('/api/create-order', checkAuth, async (req, res) => {
     try {
-        if (!req.body.order) {
-            return res.status(400).json({ error: 'Данные заказа отсутствуют.' });
+        const { order: orderData } = req.body;
+        if (!orderData || !orderData.city || !orderData.date || !orderData.time) {
+            return res.status(400).json({ error: 'Неполные данные заказа. Отсутствует город, дата или время.' });
         }
-        
-        const orderData = req.body.order;
-        const serverDate = new Date().toISOString().split('T')[0];
-        if (orderData.date !== serverDate) {
-            console.warn(`Попытка создать заказ на неверную дату. Клиент: ${orderData.date}, Сервер: ${serverDate}`);
-            return res.status(400).json({ error: 'Заказы принимаются только на текущий день.' });
-        }
-        
-        const userRef = db.collection('users').doc(orderData.userId);
 
+        const { city, date, time } = orderData;
+
+        // --- 1. Проверка на прошедшее время ---
+        const now = new Date();
+        now.setMinutes(now.getMinutes() + 45); // Буфер на приготовление 45 минут
+        const earliestAllowedTime = now.toTimeString().slice(0, 5);
+        if (date === new Date().toISOString().split('T')[0] && time < earliestAllowedTime) {
+            return res.status(400).json({ error: `Выбранное время (${time}) уже прошло или слишком близко. Минимальное время заказа: ${earliestAllowedTime}.` });
+        }
+
+        // --- 2. Проверка по расписанию и блокировкам ---
+        const scheduleDoc = await db.collection('schedules').doc(city).get();
+        const blocksSnapshot = await db.collection('blockedSlots').where('city', '==', city).where('date', '==', date).get();
+
+        // Проверка на блокировку всего дня
+        if (blocksSnapshot.docs.some(doc => doc.data().type === 'fullday')) {
+            return res.status(400).json({ error: 'На сегодня доставка в этом городе полностью заблокирована.' });
+        }
+
+        // Проверка на попадание в заблокированный диапазон
+        for (const doc of blocksSnapshot.docs) {
+            const block = doc.data();
+            if (block.type === 'range' && time >= block.startTime && time < block.endTime) {
+                return res.status(400).json({ error: `Выбранное время (${time}) недоступно из-за блокировки с ${block.startTime} до ${block.endTime}.` });
+            }
+        }
+        
+        // Проверка рабочего времени по расписанию
+        if (!scheduleDoc.exists) {
+            return res.status(400).json({ error: 'Расписание для данного города не найдено.' });
+        }
+        const scheduleData = scheduleDoc.data();
+        const dayKey = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][new Date(date).getDay()];
+        const daySchedule = scheduleData[dayKey] || '';
+        const isTimeInSchedule = daySchedule.split(',').some(range => {
+            const [start, end] = range.trim().split('-');
+            return time >= start && time < end;
+        });
+
+        if (!isTimeInSchedule) {
+            return res.status(400).json({ error: `Выбранное время (${time}) не входит в рабочие часы.` });
+        }
+        
+        // --- Если все проверки пройдены, создаем заказ ---
+        const userRef = db.collection('users').doc(orderData.userId);
         await db.runTransaction(async (transaction) => {
             const userDoc = await transaction.get(userRef);
-            if (!userDoc.exists) {
-                throw new Error("Пользователь не найден");
-            }
+            if (!userDoc.exists) throw new Error("Пользователь не найден");
+            
             const userData = userDoc.data();
             const orderRef = db.collection('orders').doc(orderData.id);
-
             const userUpdates = {
-                orders: admin.firestore.FieldValue.arrayUnion({
-                    id: orderData.id,
-                    orderNumber: orderData.orderNumber,
-                    status: 'new',
-                    createdAt: orderData.createdAt
-                }),
-                tags: admin.firestore.FieldValue.arrayUnion(orderData.city.toLowerCase().replace(/\s/g, '-'))
+                orders: admin.firestore.FieldValue.arrayUnion({ id: orderData.id, orderNumber: orderData.orderNumber, status: 'new', createdAt: orderData.createdAt }),
+                tags: admin.firestore.FieldValue.arrayUnion(city.toLowerCase().replace(/\s/g, '-'))
             };
 
-            if (orderData.vcoin_cost && orderData.vcoin_cost > 0) {
+            if (orderData.vcoin_cost > 0) {
                 const budgetBeforeOrder = userData.vcoin_balance || 0;
                 const paidByVCoin = Math.min(orderData.vcoin_cost, budgetBeforeOrder);
                 userUpdates.vcoin_balance = budgetBeforeOrder - paidByVCoin;
@@ -297,11 +327,13 @@ app.post('/api/create-order', checkAuth, async (req, res) => {
         }
 
         res.status(201).json({ message: 'Заказ успешно создан' });
+
     } catch (error) {
         console.error('Ошибка при создании заказа на сервере:', error);
-        res.status(500).json({ error: 'Внутренняя ошибка сервера при создании заказа.' });
+        res.status(500).json({ error: error.message || 'Внутренняя ошибка сервера при создании заказа.' });
     }
 });
+// END: Обновленный маршрут создания заказа
 
 // Защищенный маршрут загрузки изображения для меню
 app.post('/api/upload-menu-image', checkAuth, async (req, res) => {
