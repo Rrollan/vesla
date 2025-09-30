@@ -945,24 +945,35 @@
         display: none;
     }
 
+    /* --- ИЗМЕНЕННЫЕ СТИЛИ ДЛЯ ТАЙМЛАЙНА --- */
     .time-slots {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
-        gap: 10px;
+        display: flex;
+        overflow-x: auto;
+        white-space: nowrap;
+        padding: 10px 0 20px 0;
+        gap: 15px;
         margin-top: 15px;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+    }
+    .time-slots::-webkit-scrollbar {
+        display: none;
     }
 
     .time-slot {
+        flex: 0 0 90px;
         background: #3a3a3a;
         border: 2px solid #4a4a4a;
-        border-radius: 8px;
-        padding: 10px;
+        border-radius: 12px;
+        padding: 15px 10px;
         text-align: center;
         cursor: pointer;
         transition: all 0.3s ease;
+        font-size: 16px;
+        font-weight: 500;
     }
 
-    .time-slot:hover {
+    .time-slot:hover:not(.disabled) {
         border-color: #00b4d8;
     }
 
@@ -974,9 +985,10 @@
     .time-slot.disabled {
         opacity: 0.5;
         cursor: not-allowed;
-        background: #555;
-        display: none; 
+        background: #4a4a4a;
+        border-color: #4a4a4a;
     }
+    /* --- КОНЕЦ ИЗМЕНЕННЫХ СТИЛЕЙ --- */
 
     .instructions {
         background: #3a3a3a;
@@ -3470,7 +3482,7 @@
             }
         }
 
-        // --- ИЗМЕНЕННАЯ ФУНКЦИЯ ---
+        // --- ОБНОВЛЕННАЯ ФУНКЦИЯ ---
         async function loadTodaysTimeSlots() {
             currentOrderData.time = '';
             const nextButton = document.getElementById('nextFromDateTime');
@@ -3507,20 +3519,26 @@
             let availableSlotsCount = 0;
 
             for (const time of timeSlots) {
-                // Фильтруем прошедшие слоты
-                if (parseInt(time) <= currentHour) continue;
-                if (await isSlotBlocked(city, dateValue, time)) continue;
+                const isPast = parseInt(time) <= currentHour;
+                const isBlocked = await isSlotBlocked(city, dateValue, time);
                 
                 const slot = document.createElement('div');
                 slot.className = 'time-slot';
                 slot.textContent = time;
-                slot.onclick = () => selectTimeSlot(slot, time);
+                
+                if(isPast || isBlocked) {
+                    slot.classList.add('disabled');
+                } else {
+                    slot.onclick = () => selectTimeSlot(slot, time);
+                    availableSlotsCount++;
+                }
                 timeSlotsContainer.appendChild(slot);
-                availableSlotsCount++;
             }
 
             if (availableSlotsCount === 0) {
-                timeSlotsContainer.innerHTML = '<p style="text-align:center;color:#999; padding: 20px 0;">На сегодня все слоты для доставки заняты. Загляните завтра!</p>';
+                if (timeSlots.length === 0) {
+                    timeSlotsContainer.innerHTML = '<p style="text-align:center;color:#999; padding: 20px 0;">На сегодня доставка недоступна. Загляните завтра!</p>';
+                }
                 nextButton.disabled = true;
             }
         }
