@@ -2067,8 +2067,20 @@
                         </div>
                     </div>
                 </div>
-                <button class="btn-primary" id="addVcoinsBtn" onclick="app.addVcoinsToUser()" style="margin-top: 10px;">+ Добавить V-Бонусы</button>
-                <button class="btn-secondary" id="resetCooldownBtn" onclick="app.resetOrderCooldown()" style="margin-top: 10px;">Сбросить ограничение заказа</button>
+                
+                <!-- START OF MODIFIED BLOCK: V-Coin Management -->
+                <hr style="border-color: #4a4a4a; margin: 20px 0;">
+                <div style="text-align: left;">
+                    <label for="vcoinManageAmount">Управление V-Бонусами</label>
+                    <div class="form-row" style="align-items: center; margin-top: 8px; gap: 8px;">
+                        <input type="number" id="vcoinManageAmount" placeholder="Сумма" style="flex-grow: 1; margin: 0;">
+                        <button class="btn-primary btn-small" onclick="app.manageVcoins('add')" style="margin: 0; flex-shrink: 0;">Начислить</button>
+                        <button class="btn-danger btn-small" onclick="app.manageVcoins('remove')" style="margin: 0; flex-shrink: 0;">Списать</button>
+                    </div>
+                </div>
+                <!-- END OF MODIFIED BLOCK -->
+                
+                <button class="btn-secondary" id="resetCooldownBtn" onclick="app.resetOrderCooldown()" style="margin-top: 20px;">Сбросить ограничение заказа</button>
                 <button class="btn-secondary" onclick="app.closeUserDetailModal()" style="margin-top: 10px;">Закрыть</button>
             </div>
         </div>
@@ -3895,30 +3907,41 @@
             renderTags(user.tags || []);
             document.getElementById('userDetailModal').style.display = 'flex';
         }
-
-        async function addVcoinsToUser() {
+        
+        // START: NEW/MODIFIED V-Coin management function
+        async function manageVcoins(action) {
             if (!currentUserDetailId) return;
-            const amountStr = prompt("Введите количество V-Бонусов для добавления:", "100");
-            if (amountStr === null) return; 
+            const amountInput = document.getElementById('vcoinManageAmount');
+            const amount = parseInt(amountInput.value);
 
-            const amountToAdd = parseInt(amountStr);
-            if (isNaN(amountToAdd) || amountToAdd <= 0) {
+            if (isNaN(amount) || amount <= 0) {
                 return showError("Ошибка ввода", "Пожалуйста, введите положительное число.");
+            }
+            
+            const actionText = action === 'add' ? 'начислить' : 'списать';
+            if (!confirm(`Вы уверены, что хотите ${actionText} ${amount} V-Бонусов?`)) {
+                return;
             }
 
             try {
-                const userRef = db.collection(COLLECTIONS.USERS).doc(currentUserDetailId);
-                await userRef.update({
-                    vcoin_balance: FieldValue.increment(amountToAdd)
+                const response = await apiFetch('/api/manage-vcoins', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        userId: currentUserDetailId,
+                        amount: amount,
+                        action: action
+                    })
                 });
-                showCrmSuccess("Баланс обновлен!", `${amountToAdd} V-Бонусов были успешно добавлены.`);
-                await showUserDetailModal(currentUserDetailId);
+                
+                showCrmSuccess("Баланс обновлен!", response.message);
+                amountInput.value = ''; // Clear input
+                await showUserDetailModal(currentUserDetailId); // Refresh the modal data
             } catch (error) {
-                console.error("Ошибка при добавлении V-Бонусов:", error);
-                showError("Ошибка", "Не удалось обновить баланс пользователя.");
+                console.error(`Ошибка при ${action === 'add' ? 'начислении' : 'списании'} V-Бонусов:`, error);
+                showError("Ошибка сервера", error.message);
             }
         }
-
+        // END: NEW/MODIFIED V-Coin management function
 
         function renderTags(tags) {
             const container = document.getElementById('userTagsContainer');
@@ -4395,19 +4418,22 @@
             if (count > 0) {
                 const budget = currentOrderData.budget || 0;
                 const summaryEl = document.getElementById('cart-summary-value');
-                summaryEl.innerHTML = `${formatVBonus(totalVCoins)} / ${formatVBonus(budget)}`;
+                let summaryHTML = `${formatVBonus(totalVCoins)} / ${formatVBonus(budget)}`;
                 
                 const progressBar = document.getElementById('cart-progress-bar');
                 const progressPercent = Math.min((totalVCoins / budget) * 100, 100);
                 progressBar.style.width = `${progressPercent}%`;
 
                 if (totalVCoins > budget) {
-                    summaryEl.style.color = '#dc3545';
+                    const overdraftTenge = (totalVCoins - budget) * VCOIN_RATE;
+                    summaryHTML += ` <strong style="color: #ff6b35; margin-left: 8px;">(+${overdraftTenge.toFixed(0)} ₸)</strong>`;
+                    summaryEl.style.color = '#fff';
                     progressBar.classList.add('overdraft');
                 } else {
                     summaryEl.style.color = '#fff';
                     progressBar.classList.remove('overdraft');
                 }
+                summaryEl.innerHTML = summaryHTML;
                 cartFab.style.display = 'block';
             } else {
                 cartFab.style.display = 'none';
@@ -4427,8 +4453,9 @@
                 const overdraftTenge = overdraftVCoins * VCOIN_RATE;
                 currentOrderData.payment_due_tenge = overdraftTenge;
 
+                const totalTenge = totalVCoins * VCOIN_RATE;
                 const message = `
-                    <strong>Сумма заказа:</strong> ${formatVBonus(totalVCoins)}<br>
+                    <strong>Сумма заказа:</strong> ${formatVBonus(totalVCoins)} (~${totalTenge.toLocaleString('ru-RU')} ₸)<br>
                     <strong>Ваш бюджет:</strong> ${formatVBonus(budget)}<br>
                     <hr style="border-color: #4a4a4a; margin: 10px 0;">
                     <strong>К доплате: ${overdraftTenge.toLocaleString('ru-RU')} ₸</strong><br><br>
@@ -4499,7 +4526,7 @@
             updateMenuItemsListCrm, showMenuItemModal, saveMenuItem, deleteMenuItem,
             showMenuScreen, addToCart, removeFromCart,
             triggerMenuImport, handleMenuFileSelect, toggleMenuItemVisibility,
-            addVcoinsToUser,
+            manageVcoins,
             checkBalanceAndProceed, proceedToDateTimeSelection
         };
     })();
