@@ -160,8 +160,9 @@ async function sendAdminNotification(orderData) {
 
     if (orderData.vcoin_cost) {
         const itemsList = orderData.items.map(item => `- ${item.name} (x${item.quantity})`).join('\n');
+        const totalTenge = orderData.vcoin_cost * 10; // Конвертация в тенге
         message += `\n\n🛍️ *Выбранные блюда:*\n${itemsList}\n` +
-                   `*Стоимость:* ${orderData.vcoin_cost.toFixed(1)} V-Бонусов\n` +
+                   `*Стоимость:* ${orderData.vcoin_cost.toFixed(1)} V-Бонусов (~${totalTenge.toFixed(0)} ₸)\n` +
                    `*К доплате:* *${(orderData.payment_due_tenge || 0).toFixed(0)} ₸*`;
     } else if (orderData.setName) {
         message += `\n🍱 *Выбранный набор:* ${orderData.setName}`;
@@ -241,14 +242,11 @@ app.post('/api/create-order', checkAuth, async (req, res) => {
         }
         
         const orderData = req.body.order;
-
-        // --- ДОБАВЛЕНА ВАЛИДАЦИЯ ДАТЫ ---
         const serverDate = new Date().toISOString().split('T')[0];
         if (orderData.date !== serverDate) {
             console.warn(`Попытка создать заказ на неверную дату. Клиент: ${orderData.date}, Сервер: ${serverDate}`);
             return res.status(400).json({ error: 'Заказы принимаются только на текущий день.' });
         }
-        // --- КОНЕЦ ВАЛИДАЦИИ ---
         
         const userRef = db.collection('users').doc(orderData.userId);
 
@@ -287,6 +285,18 @@ app.post('/api/create-order', checkAuth, async (req, res) => {
         });
         
         await sendAdminNotification(orderData);
+        
+        // --- START: Уведомление для клиента ---
+        try {
+            const userDoc = await db.collection('users').doc(orderData.userId).get();
+            if (userDoc.exists() && userDoc.data().telegramId) {
+                const clientMessage = `✅ Ваша заявка №${orderData.orderNumber} принята в обработку! Мы скоро свяжемся с вами для подтверждения.`;
+                await bot.sendMessage(userDoc.data().telegramId, clientMessage);
+            }
+        } catch (notificationError) {
+            console.error(`Ошибка отправки уведомления клиенту ${orderData.userId}:`, notificationError);
+        }
+        // --- END: Уведомление для клиента ---
 
         res.status(201).json({ message: 'Заказ успешно создан' });
     } catch (error) {
@@ -490,6 +500,64 @@ app.post('/api/broadcast', checkAuth, async (req, res) => {
         await bot.sendMessage(senderChatId, `❌ Произошла критическая ошибка во время рассылки. Проверьте логи сервера. \n\nОшибка: ${error.message}`);
     }
 });
+
+// --- START: Новый маршрут для управления V-Coin ---
+app.post('/api/manage-vcoins', checkAuth, async (req, res) => {
+    const { userId, amount, action } = req.body;
+
+    if (!userId || !amount || !action) {
+        return res.status(400).json({ error: 'Не все параметры были предоставлены (userId, amount, action).' });
+    }
+    if (typeof amount !== 'number' || amount <= 0) {
+        return res.status(400).json({ error: 'Сумма должна быть положительным числом.' });
+    }
+    if (action !== 'add' && action !== 'remove') {
+        return res.status(400).json({ error: 'Действие может быть только "add" или "remove".' });
+    }
+
+    const userRef = db.collection('users').doc(userId);
+
+    try {
+        let finalAmount;
+        const userData = await db.runTransaction(async (transaction) => {
+            const userDoc = await transaction.get(userRef);
+            if (!userDoc.exists) {
+                throw new Error("Пользователь не найден.");
+            }
+            const currentBalance = userDoc.data().vcoin_balance || 0;
+
+            if (action === 'add') {
+                finalAmount = amount;
+            } else { // action is 'remove'
+                if (currentBalance < amount) {
+                    throw new Error(`Недостаточно средств. Текущий баланс: ${currentBalance}, попытка списания: ${amount}.`);
+                }
+                finalAmount = -amount;
+            }
+            transaction.update(userRef, {
+                vcoin_balance: admin.firestore.FieldValue.increment(finalAmount)
+            });
+            return userDoc.data();
+        });
+
+        const actionTextPast = action === 'add' ? 'начислено' : 'списано';
+        const actionTextPresent = action === 'add' ? 'Начисление' : 'Списание';
+        
+        if (userData && userData.telegramId) {
+            const newBalance = (userData.vcoin_balance || 0) + finalAmount;
+            const clientMessage = `⚙️ Изменение баланса V-Бонусов!\n\n${actionTextPresent} от администратора: ${amount} V-Бонусов.\nВаш новый баланс: ${newBalance.toFixed(1)} V-Бонусов.`;
+            await bot.sendMessage(userData.telegramId, clientMessage);
+        }
+
+        res.status(200).json({ message: `Успешно ${actionTextPast} ${amount} V-Бонусов.` });
+
+    } catch (error) {
+        console.error('Ошибка при управлении балансом V-Coin:', error);
+        res.status(500).json({ error: error.message || 'Внутренняя ошибка сервера.' });
+    }
+});
+// --- END: Новый маршрут для управления V-Coin ---
+
 
 // ======================================================================
 // === CRON ЗАДАЧИ ===
