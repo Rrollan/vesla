@@ -160,9 +160,12 @@ async function sendAdminNotification(orderData) {
 
     if (orderData.vcoin_cost) {
         const itemsList = orderData.items.map(item => `- ${item.name} (x${item.quantity})`).join('\n');
-        const totalTenge = orderData.vcoin_cost * 10; // Конвертация в тенге
+        const totalCostInVcoins = orderData.vcoin_cost;
+        const paidByVCoin = Math.min(totalCostInVcoins, orderData.budget);
+
         message += `\n\n🛍️ *Выбранные блюда:*\n${itemsList}\n` +
-                   `*Стоимость:* ${orderData.vcoin_cost.toFixed(1)} V-Бонусов (~${totalTenge.toFixed(0)} ₸)\n` +
+                   `*Общая стоимость:* ${totalCostInVcoins.toFixed(1)} V-Бонусов\n` +
+                   `*Оплачено бонусами:* ${paidByVCoin.toFixed(1)} V-Бонусов\n` +
                    `*К доплате:* *${(orderData.payment_due_tenge || 0).toFixed(0)} ₸*`;
     } else if (orderData.setName) {
         message += `\n🍱 *Выбранный набор:* ${orderData.setName}`;
@@ -269,12 +272,9 @@ app.post('/api/create-order', checkAuth, async (req, res) => {
             };
 
             if (orderData.vcoin_cost && orderData.vcoin_cost > 0) {
-                const currentBalance = userData.vcoin_balance || 0;
-                if (currentBalance >= orderData.vcoin_cost) {
-                    userUpdates.vcoin_balance = currentBalance - orderData.vcoin_cost;
-                } else {
-                    userUpdates.vcoin_balance = 0;
-                }
+                const budgetBeforeOrder = userData.vcoin_balance || 0;
+                const paidByVCoin = Math.min(orderData.vcoin_cost, budgetBeforeOrder);
+                userUpdates.vcoin_balance = budgetBeforeOrder - paidByVCoin;
             } else {
                 userUpdates.lastOrderTimestamp = orderData.createdAt;
                 userUpdates.cooldownNotified = false;
@@ -286,7 +286,6 @@ app.post('/api/create-order', checkAuth, async (req, res) => {
         
         await sendAdminNotification(orderData);
         
-        // --- START: Уведомление для клиента ---
         try {
             const userDoc = await db.collection('users').doc(orderData.userId).get();
             if (userDoc.exists() && userDoc.data().telegramId) {
@@ -296,7 +295,6 @@ app.post('/api/create-order', checkAuth, async (req, res) => {
         } catch (notificationError) {
             console.error(`Ошибка отправки уведомления клиенту ${orderData.userId}:`, notificationError);
         }
-        // --- END: Уведомление для клиента ---
 
         res.status(201).json({ message: 'Заказ успешно создан' });
     } catch (error) {
@@ -501,7 +499,7 @@ app.post('/api/broadcast', checkAuth, async (req, res) => {
     }
 });
 
-// --- START: Новый маршрут для управления V-Coin ---
+// Защищенный маршрут для управления V-Coin
 app.post('/api/manage-vcoins', checkAuth, async (req, res) => {
     const { userId, amount, action } = req.body;
 
@@ -556,8 +554,6 @@ app.post('/api/manage-vcoins', checkAuth, async (req, res) => {
         res.status(500).json({ error: error.message || 'Внутренняя ошибка сервера.' });
     }
 });
-// --- END: Новый маршрут для управления V-Coin ---
-
 
 // ======================================================================
 // === CRON ЗАДАЧИ ===
