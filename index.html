@@ -945,51 +945,6 @@
         display: none;
     }
 
-    /* --- ИЗМЕНЕННЫЕ СТИЛИ ДЛЯ ТАЙМЛАЙНА --- */
-    .time-slots {
-        display: flex;
-        overflow-x: auto;
-        white-space: nowrap;
-        padding: 10px 0 20px 0;
-        gap: 15px;
-        margin-top: 15px;
-        -webkit-overflow-scrolling: touch;
-        scrollbar-width: none;
-    }
-    .time-slots::-webkit-scrollbar {
-        display: none;
-    }
-
-    .time-slot {
-        flex: 0 0 90px;
-        background: #3a3a3a;
-        border: 2px solid #4a4a4a;
-        border-radius: 12px;
-        padding: 15px 10px;
-        text-align: center;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        font-size: 16px;
-        font-weight: 500;
-    }
-
-    .time-slot:hover:not(.disabled) {
-        border-color: #00b4d8;
-    }
-
-    .time-slot.selected {
-        border-color: #ff6b35;
-        background: rgba(255, 107, 53, 0.1);
-    }
-
-    .time-slot.disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-        background: #4a4a4a;
-        border-color: #4a4a4a;
-    }
-    /* --- КОНЕЦ ИЗМЕНЕННЫХ СТИЛЕЙ --- */
-
     .instructions {
         background: #3a3a3a;
         padding: 20px;
@@ -1942,7 +1897,7 @@
             </div>
         </div>
 
-        <!-- ЭКРАН ВЫБОРА ВРЕМЕНИ (ИЗМЕНЕН) -->
+        <!-- START: Измененный блок выбора времени -->
         <div id="dateTimeScreen" class="form-screen datetime-selection" style="display: none;">
             <button class="btn-back" id="backFromDateTime">← Назад</button>
             <div class="form-header">
@@ -1950,11 +1905,13 @@
                 <h4 id="todaysDateHeader" style="color: #ccc; font-weight: 400; margin-top: -15px;"></h4>
             </div>
             <div class="form-group">
-                <label>Выберите доступное время</label>
-                <div class="time-slots" id="timeSlots"></div>
+                <label for="deliveryTime">Выберите удобное время</label>
+                <input type="time" id="deliveryTime" required onchange="app.validateTimeSelection()">
+                <div id="timeSelectionInfo" class="telegram-info" style="font-size: 14px; padding: 15px; margin-top: 15px; display: none;"></div>
             </div>
             <button type="button" id="nextFromDateTime" class="btn-primary" onclick="app.showInstructions()" disabled>Далее</button>
         </div>
+        <!-- END: Измененный блок выбора времени -->
 
         <div id="instructionsScreen" class="form-screen" style="display: none;">
             <button class="btn-back" onclick="app.showDateTimeSelection()">← Назад</button>
@@ -2819,7 +2776,7 @@
 
             const vcoinStatBlock = document.getElementById('vcoinStatItem');
             const userStatsGrid = document.querySelector('.user-stats');
-            const isMacroBlogger = userData.level && userData.level.startsWith('macro');
+            const isMacroBlogger = userData.vcoin_balance > 0;
 
             if (isMacroBlogger) {
                 vcoinStatBlock.style.display = 'block';
@@ -2867,7 +2824,7 @@
             newCollabCard.style.cursor = 'pointer';
             newCollabCard.onclick = () => app.startCollaboration();
             
-            if (!userData.vcoin_allowance || userData.vcoin_allowance === 0) {
+            if (!userData.vcoin_balance || userData.vcoin_balance < 1) { // Check for zero balance
                 if (userData.lastOrderTimestamp) {
                     const lastOrderDate = new Date(userData.lastOrderTimestamp);
                     const nextAvailableDate = new Date(lastOrderDate.setDate(lastOrderDate.getDate() + appSettings.orderCooldownDays));
@@ -3371,7 +3328,7 @@
             if (completedOrders >= LOYALTY_THRESHOLD) {
                 await userRef.update({ loyaltyStatus: 'premium' });
                 if (user.telegramId) {
-                    const message = `⭐ Поздравляем, ${user.registration.firstName}! Вы достигли премиум-статуса. Теперь вам доступно 2 заказа в неделю. Спасибо за ваше активное участие!`;
+                    const message = `⭐ Поздравляем, ${user.registration.firstName}! Вы достигли премиум-статуса. Спасибо за ваше активное участие!`;
                     await sendTelegramNotification(user.telegramId, message);
                 }
             }
@@ -3443,19 +3400,36 @@
             });
         }
 
+        // START: Переработанная логика доступа к заказам
         function startCollaboration() {
-            if(userData.isBlocked) return;
+            if (userData.isBlocked) return;
             currentOrderData = {};
             cart = {};
             
-            const isMacroBlogger = userData.level && userData.level.startsWith('macro');
-
-            if (isMacroBlogger) {
+            // Если у пользователя есть V-Бонусы, он может заказывать по меню
+            if (userData.vcoin_balance && userData.vcoin_balance > 0) {
                 showAddressForm();
-            } else {
+                // Настраиваем кнопку "Назад" на случай, если пользователь передумает
+                document.getElementById('backFromAddress').onclick = () => app.showDashboard();
+            } 
+            // Если бонусов нет, проверяем возможность заказать сет
+            else {
+                // Проверяем кулдаун (период ожидания)
+                if (userData.lastOrderTimestamp) {
+                    const lastOrderDate = new Date(userData.lastOrderTimestamp);
+                    const nextAvailableDate = new Date(lastOrderDate.setDate(lastOrderDate.getDate() + appSettings.orderCooldownDays));
+                    
+                    if (new Date() < nextAvailableDate) {
+                        showError("Заказ недоступен", `У вас недостаточно бонусов для заказа по меню, а следующий бесплатный сет будет доступен ${nextAvailableDate.toLocaleDateString('ru-RU')}.`);
+                        return;
+                    }
+                }
+                // Если кулдауна нет, показываем выбор сетов
                 showSetSelection();
             }
         }
+        // END: Переработанная логика доступа к заказам
+
         
         function proceedToAddressFromSet() {
             document.getElementById('backFromAddress').onclick = () => app.showSetSelection();
@@ -3482,85 +3456,89 @@
             currentOrderData.comment = document.getElementById('comment').value;
 
             const backButton = document.getElementById('backFromDateTime');
-            const isMacroBlogger = userData.level && userData.level.startsWith('macro');
-
-            if (isMacroBlogger) {
+            
+            // Если есть бонусы (значит, это заказ по меню)
+            if (userData.vcoin_balance && userData.vcoin_balance > 0) {
                 backButton.onclick = () => app.showAddressForm();
                 showMenuScreen();
-            } else {
+            } 
+            // Если бонусов нет (значит, это заказ сета)
+            else {
                 backButton.onclick = () => app.showAddressForm();
                 showDateTimeSelection();
-                loadTodaysTimeSlots();
+                setupTimeSelection();
             }
         }
 
-        // --- ОБНОВЛЕННАЯ ФУНКЦИЯ ---
-        async function loadTodaysTimeSlots() {
+        // START: Новая функция для настройки выбора времени
+        async function setupTimeSelection() {
             currentOrderData.time = '';
             const nextButton = document.getElementById('nextFromDateTime');
+            const timeInput = document.getElementById('deliveryTime');
+            const timeInfo = document.getElementById('timeSelectionInfo');
+            
             nextButton.disabled = true;
-
-            const timeSlotsContainer = document.getElementById('timeSlots');
-            timeSlotsContainer.innerHTML = '<div class="loading-indicator">Загрузка...</div>';
+            timeInput.value = '';
+            timeInfo.style.display = 'none';
 
             const today = new Date();
             const dateValue = today.toISOString().split('T')[0];
             const formattedDate = today.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
-            document.getElementById('todaysDateHeader').textContent = `Выберите время доставки на сегодня, ${formattedDate}`;
-            
+            document.getElementById('todaysDateHeader').textContent = `Доставка на сегодня, ${formattedDate}`;
             currentOrderData.date = dateValue;
             
             const city = currentOrderData.city;
-            const scheduleDoc = await db.collection(COLLECTIONS.SCHEDULES).doc(city).get();
-            const scheduleData = scheduleDoc.exists ? scheduleDoc.data() : {};
+            const scheduleDoc = await db.collection('schedules').doc(city).get();
+            if (!scheduleDoc.exists) {
+                timeInfo.innerHTML = 'На сегодня доставка в этом городе недоступна.';
+                timeInfo.style.display = 'block';
+                timeInput.disabled = true;
+                return;
+            }
+
+            const scheduleData = scheduleDoc.data();
             const dayKey = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][today.getDay()];
             const daySchedule = scheduleData[dayKey] || '';
             
-            const timeSlots = [];
-            if (daySchedule) {
-                daySchedule.split(',').forEach(range => {
-                    const [start, end] = range.trim().split('-');
-                    if (start && end) {
-                        for(let h = parseInt(start); h < parseInt(end); h++) timeSlots.push(`${String(h).padStart(2, '0')}:00`);
-                    }
-                });
+            if (!daySchedule) {
+                timeInfo.innerHTML = 'На сегодня доставка недоступна. Загляните завтра!';
+                timeInfo.style.display = 'block';
+                timeInput.disabled = true;
+                return;
             }
+
+            // Рассчитываем самое раннее доступное время
+            const now = new Date();
+            now.setMinutes(now.getMinutes() + 45); // Добавляем 45 минут на приготовление
+            const earliestTime = now.toTimeString().slice(0, 5);
             
-            const currentHour = today.getHours();
-            timeSlotsContainer.innerHTML = '';
-            let availableSlotsCount = 0;
+            // Берем время начала работы
+            const openTime = daySchedule.split(',')[0].split('-')[0].trim();
+            
+            const minTime = earliestTime > openTime ? earliestTime : openTime;
+            const maxTime = daySchedule.split(',').pop().split('-')[1].trim();
 
-            for (const time of timeSlots) {
-                const isPast = parseInt(time) <= currentHour;
-                const isBlocked = await isSlotBlocked(city, dateValue, time);
-                
-                const slot = document.createElement('div');
-                slot.className = 'time-slot';
-                slot.textContent = time;
-                
-                if(isPast || isBlocked) {
-                    slot.classList.add('disabled');
-                } else {
-                    slot.onclick = () => selectTimeSlot(slot, time);
-                    availableSlotsCount++;
-                }
-                timeSlotsContainer.appendChild(slot);
+            if (minTime >= maxTime) {
+                timeInfo.innerHTML = 'К сожалению, все слоты на сегодня уже прошли. Попробуйте завтра!';
+                timeInfo.style.display = 'block';
+                timeInput.disabled = true;
+                return;
             }
 
-            if (availableSlotsCount === 0) {
-                if (timeSlots.length === 0) {
-                    timeSlotsContainer.innerHTML = '<p style="text-align:center;color:#999; padding: 20px 0;">На сегодня доставка недоступна. Загляните завтра!</p>';
-                }
-                nextButton.disabled = true;
-            }
+            timeInput.min = minTime;
+            timeInput.max = maxTime;
+            timeInput.disabled = false;
+            timeInfo.innerHTML = `Время доставки доступно с ${minTime} до ${maxTime}.`;
+            timeInfo.style.display = 'block';
         }
 
-        function selectTimeSlot(element, time) {
-            document.querySelectorAll('.time-slot').forEach(item => item.classList.remove('selected'));
-            element.classList.add('selected');
-            currentOrderData.time = time;
-            document.getElementById('nextFromDateTime').disabled = false;
+        function validateTimeSelection() {
+            const timeInput = document.getElementById('deliveryTime');
+            currentOrderData.time = timeInput.value;
+            const nextButton = document.getElementById('nextFromDateTime');
+            nextButton.disabled = !timeInput.value;
         }
+        // END: Новая функция для настройки выбора времени
 
         function validateAddressForm() {
             const city = document.getElementById('city').value;
@@ -4471,7 +4449,7 @@
         function proceedToDateTimeSelection() {
             closeSimpleModal('overdraftModal');
             showDateTimeSelection();
-            loadTodaysTimeSlots();
+            setupTimeSelection();
         }
         
         const exportOrdersToExcel = (btn) => exportToExcel(btn, 'orders');
@@ -4514,7 +4492,7 @@
             filterUsers, filterAdminUsers, filterMenuItems, removeBlock, removeAdmin, removeUser, toggleUserBlock, 
             sendBroadcast, saveSettings, addBlock, addAdmin, selectSet, showSetSelection, 
             showAddressForm, showDateTimeSelection, showInstructions, handleCityChange, 
-            submitAddressAndShowDateTime, loadTodaysTimeSlots, submitOrder, saveProfile, closeModal, 
+            submitAddressAndShowDateTime, setupTimeSelection, validateTimeSelection, submitOrder, saveProfile, closeModal, 
             closeSimpleModal, closeErrorModal, closeRejectionModal, closeOrderHistory, 
             closeEditProfile, closeContactModal, showAddBlockModal, closeAddBlockModal, 
             showAddAdminModal, closeAddAdminModal, closeOrderDetailModal, toggleBlockTime, 
