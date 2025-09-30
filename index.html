@@ -945,6 +945,52 @@
         display: none;
     }
 
+    /* --- СТИЛИ ДЛЯ НОВОГО ВЫБОРА ВРЕМЕНИ --- */
+    .time-slots {
+        display: flex;
+        overflow-x: auto;
+        white-space: nowrap;
+        padding: 10px 0 20px 0;
+        gap: 15px;
+        margin-top: 15px;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+    }
+    .time-slots::-webkit-scrollbar {
+        display: none;
+    }
+
+    .time-slot {
+        flex: 0 0 90px;
+        background: #3a3a3a;
+        border: 2px solid #4a4a4a;
+        border-radius: 12px;
+        padding: 15px 10px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-size: 16px;
+        font-weight: 500;
+    }
+
+    .time-slot:hover:not(.disabled) {
+        border-color: #00b4d8;
+    }
+
+    .time-slot.selected {
+        border-color: #ff6b35;
+        background: rgba(255, 107, 53, 0.1);
+        transform: scale(1.05);
+    }
+
+    .time-slot.disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        background: #4a4a4a;
+        border-color: #4a4a4a;
+    }
+    /* --- КОНЕЦ СТИЛЕЙ ДЛЯ ВРЕМЕНИ --- */
+
     .instructions {
         background: #3a3a3a;
         padding: 20px;
@@ -1897,7 +1943,7 @@
             </div>
         </div>
 
-        <!-- START: Измененный блок выбора времени -->
+        <!-- START: Полностью переработанный блок выбора времени -->
         <div id="dateTimeScreen" class="form-screen datetime-selection" style="display: none;">
             <button class="btn-back" id="backFromDateTime">← Назад</button>
             <div class="form-header">
@@ -1905,13 +1951,14 @@
                 <h4 id="todaysDateHeader" style="color: #ccc; font-weight: 400; margin-top: -15px;"></h4>
             </div>
             <div class="form-group">
-                <label for="deliveryTime">Выберите удобное время</label>
-                <input type="time" id="deliveryTime" required onchange="app.validateTimeSelection()">
-                <div id="timeSelectionInfo" class="telegram-info" style="font-size: 14px; padding: 15px; margin-top: 15px; display: none;"></div>
+                <label>Выберите доступное время (интервал 10 мин)</label>
+                <div class="time-slots" id="timeSlots">
+                    <!-- Слоты будут генерироваться здесь -->
+                </div>
             </div>
             <button type="button" id="nextFromDateTime" class="btn-primary" onclick="app.showInstructions()" disabled>Далее</button>
         </div>
-        <!-- END: Измененный блок выбора времени -->
+        <!-- END: Полностью переработанный блок выбора времени -->
 
         <div id="instructionsScreen" class="form-screen" style="display: none;">
             <button class="btn-back" onclick="app.showDateTimeSelection()">← Назад</button>
@@ -2025,7 +2072,6 @@
                     </div>
                 </div>
                 
-                <!-- START OF MODIFIED BLOCK: V-Coin Management -->
                 <hr style="border-color: #4a4a4a; margin: 20px 0;">
                 <div style="text-align: left;">
                     <label for="vcoinManageAmount">Управление V-Бонусами</label>
@@ -2035,7 +2081,6 @@
                         <button class="btn-danger btn-small" onclick="app.manageVcoins('remove')" style="margin: 0; flex-shrink: 0;">Списать</button>
                     </div>
                 </div>
-                <!-- END OF MODIFIED BLOCK -->
                 
                 <button class="btn-secondary" id="resetCooldownBtn" onclick="app.resetOrderCooldown()" style="margin-top: 20px;">Сбросить ограничение заказа</button>
                 <button class="btn-secondary" onclick="app.closeUserDetailModal()" style="margin-top: 10px;">Закрыть</button>
@@ -2092,6 +2137,8 @@
                 </div>
             </div>
         </div>
+        
+        <!-- START: Измененная модалка блокировки -->
         <div id="addBlockModal" class="modal">
             <div class="modal-content" style="max-width: 400px;">
                 <h2>Добавить блокировку</h2>
@@ -2114,17 +2161,25 @@
                     <div class="form-group">
                         <label for="blockType">Тип блокировки *</label>
                         <select id="blockType" required onchange="app.toggleBlockTime()">
-                            <option value="time">Конкретное время</option>
+                            <option value="range">Диапазон времени</option>
                             <option value="fullday">Весь день</option>
                         </select>
                     </div>
-                    <div class="form-group" id="blockTimeGroup">
-                        <label for="blockTime">Время *</label>
-                        <input type="time" id="blockTime">
+                    <div id="blockTimeGroup">
+                        <div class="form-row">
+                             <div class="form-group">
+                                <label for="blockStartTime">С *</label>
+                                <input type="time" id="blockStartTime">
+                             </div>
+                             <div class="form-group">
+                                <label for="blockEndTime">До *</label>
+                                <input type="time" id="blockEndTime">
+                             </div>
+                        </div>
                     </div>
                     <div class="form-group">
                         <label for="blockReason">Причина</label>
-                        <input type="text" id="blockReason" placeholder="Причина блокировки">
+                        <input type="text" id="blockReason" placeholder="Причина блокировки (необязательно)">
                     </div>
                 </form>
                 <div style="display: flex; gap: 10px;">
@@ -2133,6 +2188,8 @@
                 </div>
             </div>
         </div>
+        <!-- END: Измененная модалка блокировки -->
+
         <div id="addAdminModal" class="modal">
             <div class="modal-content" style="max-width: 400px;">
                 <h2>Добавить сотрудника</h2>
@@ -2516,18 +2573,6 @@
             return { level: 'macro-b', text: 'Макроблогер тип B' };
         }
 
-        async function isSlotBlocked(city, date, time) {
-            try {
-                const timeBlockDoc = db.collection(COLLECTIONS.BLOCKED_SLOTS).doc(`${city}_${date}_${time}`).get();
-                const dayBlockDoc = db.collection(COLLECTIONS.BLOCKED_SLOTS).doc(`${city}_${date}_fullday`).get();
-                const [timeBlock, dayBlock] = await Promise.all([timeBlockDoc, dayBlockDoc]);
-                return timeBlock.exists || dayBlock.exists;
-            } catch (error) {
-                console.error("Error checking blocked slot:", error);
-                return true;
-            }
-        }
-
         function showScreen(screenId) {
             document.querySelectorAll('.form-screen, .dashboard, .welcome-screen, .crm-screen, #criticalErrorScreen').forEach(s => s.style.display = 'none');
             document.getElementById(screenId).style.display = (screenId === SCREENS.WELCOME || screenId === SCREENS.CRITICAL_ERROR) ? 'flex' : 'block';
@@ -2776,9 +2821,9 @@
 
             const vcoinStatBlock = document.getElementById('vcoinStatItem');
             const userStatsGrid = document.querySelector('.user-stats');
-            const isMacroBlogger = userData.vcoin_balance > 0;
+            const hasVCoinBalance = userData.vcoin_balance && userData.vcoin_balance > 0;
 
-            if (isMacroBlogger) {
+            if (hasVCoinBalance) {
                 vcoinStatBlock.style.display = 'block';
                 userStatsGrid.style.gridTemplateColumns = 'repeat(3, 1fr)';
             } else {
@@ -2817,14 +2862,13 @@
 
             const newCollabCard = document.getElementById('newCollaborationBtn');
             const cooldownPanel = document.getElementById('cooldownPanel');
-            const loyaltyPanel = document.getElementById('loyaltyPanel');
             cooldownPanel.style.display = 'none';
-            loyaltyPanel.style.display = 'none';
             newCollabCard.style.opacity = '1';
             newCollabCard.style.cursor = 'pointer';
             newCollabCard.onclick = () => app.startCollaboration();
             
-            if (!userData.vcoin_balance || userData.vcoin_balance < 1) { // Check for zero balance
+            // Если у пользователя нет V-Coins, проверяем кулдаун на заказ сета
+            if (!hasVCoinBalance) {
                 if (userData.lastOrderTimestamp) {
                     const lastOrderDate = new Date(userData.lastOrderTimestamp);
                     const nextAvailableDate = new Date(lastOrderDate.setDate(lastOrderDate.getDate() + appSettings.orderCooldownDays));
@@ -2833,7 +2877,7 @@
                         newCollabCard.style.opacity = '0.5';
                         newCollabCard.style.cursor = 'not-allowed';
                         newCollabCard.onclick = null;
-                        cooldownPanel.innerHTML = `⏳ Следующий заказ будет доступен: <strong>${nextAvailableDate.toLocaleDateString('ru-RU')}</strong>`;
+                        cooldownPanel.innerHTML = `⏳ Следующий бесплатный сет будет доступен: <strong>${nextAvailableDate.toLocaleDateString('ru-RU')}</strong>`;
                         cooldownPanel.style.display = 'block';
                     }
                 }
@@ -3044,12 +3088,17 @@
                 list.innerHTML = '';
                 snapshot.forEach(doc => {
                     const block = { id: doc.id, ...doc.data() };
+                    let timeInfo = 'Весь день';
+                    if (block.type === 'range') {
+                        timeInfo = `с ${block.startTime} до ${block.endTime}`;
+                    }
+
                     const el = document.createElement('div');
                     el.className = 'blocked-slot';
                     el.innerHTML = `
                         <div class="blocked-slot-info">
                             <div class="blocked-slot-city">${block.city}</div>
-                            <div class="blocked-slot-time">${block.date} (${block.type === 'fullday' ? 'Весь день' : block.time})</div>
+                            <div class="blocked-slot-time">${block.date} (${timeInfo})</div>
                         </div>
                         <button class="btn-danger-icon" onclick="app.removeBlock('${block.id}')">🗑️</button>`;
                     list.appendChild(el);
@@ -3144,22 +3193,42 @@
         function filterAdminUsers() { filter('adminUserSearch', '#adminUsersList', '.user-item'); }
         function filterMenuItems() { filter('menuSearch', '#menuItemsListCrm', '.user-item'); }
         
+        // START: Обновленная функция добавления блокировки
         async function addBlock(button) {
             await withLoading(button, async () => {
                 const city = document.getElementById('blockCity').value;
                 const date = document.getElementById('blockDate').value;
                 const type = document.getElementById('blockType').value;
-                const time = document.getElementById('blockTime').value;
                 const reason = document.getElementById('blockReason').value.trim();
-                if (!city || !date || (type === 'time' && !time)) return showError('Ошибка', 'Заполните все поля.');
-                const blockId = type === 'fullday' ? `${city}_${date}_fullday` : `${city}_${date}_${time}`;
-                const newBlock = { city, date, type, reason, time: type === 'time' ? time : null };
-                await db.collection(COLLECTIONS.BLOCKED_SLOTS).doc(blockId).set(newBlock);
+                
+                if (!city || !date) {
+                    return showError('Ошибка', 'Город и дата обязательны для заполнения.');
+                }
+
+                let blockData;
+                let blockId;
+
+                if (type === 'fullday') {
+                    blockId = `${city}_${date}_fullday`;
+                    blockData = { city, date, type, reason };
+                } else { // type is 'range'
+                    const startTime = document.getElementById('blockStartTime').value;
+                    const endTime = document.getElementById('blockEndTime').value;
+                    if (!startTime || !endTime || startTime >= endTime) {
+                        return showError('Ошибка', 'Укажите корректный диапазон времени (время начала должно быть раньше времени окончания).');
+                    }
+                    // Используем Firestore-совместимый ID
+                    blockId = db.collection('blockedSlots').doc().id;
+                    blockData = { city, date, type, reason, startTime, endTime };
+                }
+
+                await db.collection(COLLECTIONS.BLOCKED_SLOTS).doc(blockId).set(blockData);
                 closeAddBlockModal();
                 updateBlockedSlotsList();
                 showCrmSuccess('Блокировка добавлена!');
             });
         }
+        // END: Обновленная функция добавления блокировки
 
         async function removeBlock(blockId) {
             if (confirm('Удалить блокировку?')) {
@@ -3417,7 +3486,7 @@
                 // Проверяем кулдаун (период ожидания)
                 if (userData.lastOrderTimestamp) {
                     const lastOrderDate = new Date(userData.lastOrderTimestamp);
-                    const nextAvailableDate = new Date(lastOrderDate.setDate(lastOrderDate.getDate() + appSettings.orderCooldownDays));
+                    const nextAvailableDate = new Date(new Date(lastOrderDate).setDate(lastOrderDate.getDate() + appSettings.orderCooldownDays));
                     
                     if (new Date() < nextAvailableDate) {
                         showError("Заказ недоступен", `У вас недостаточно бонусов для заказа по меню, а следующий бесплатный сет будет доступен ${nextAvailableDate.toLocaleDateString('ru-RU')}.`);
@@ -3429,7 +3498,6 @@
             }
         }
         // END: Переработанная логика доступа к заказам
-
         
         function proceedToAddressFromSet() {
             document.getElementById('backFromAddress').onclick = () => app.showSetSelection();
@@ -3458,7 +3526,9 @@
             const backButton = document.getElementById('backFromDateTime');
             
             // Если есть бонусы (значит, это заказ по меню)
-            if (userData.vcoin_balance && userData.vcoin_balance > 0) {
+            const hasVCoinBalance = userData.vcoin_balance && userData.vcoin_balance > 0;
+
+            if (hasVCoinBalance) {
                 backButton.onclick = () => app.showAddressForm();
                 showMenuScreen();
             } 
@@ -3470,16 +3540,14 @@
             }
         }
 
-        // START: Новая функция для настройки выбора времени
+        // START: Полностью переработанная функция выбора времени
         async function setupTimeSelection() {
             currentOrderData.time = '';
             const nextButton = document.getElementById('nextFromDateTime');
-            const timeInput = document.getElementById('deliveryTime');
-            const timeInfo = document.getElementById('timeSelectionInfo');
-            
             nextButton.disabled = true;
-            timeInput.value = '';
-            timeInfo.style.display = 'none';
+
+            const timeSlotsContainer = document.getElementById('timeSlots');
+            timeSlotsContainer.innerHTML = '<div class="loading-indicator">Загрузка доступного времени...</div>';
 
             const today = new Date();
             const dateValue = today.toISOString().split('T')[0];
@@ -3488,11 +3556,26 @@
             currentOrderData.date = dateValue;
             
             const city = currentOrderData.city;
-            const scheduleDoc = await db.collection('schedules').doc(city).get();
+            
+            // 1. Получаем расписание и блокировки одновременно
+            const schedulePromise = db.collection(COLLECTIONS.SCHEDULES).doc(city).get();
+            const blocksPromise = db.collection(COLLECTIONS.BLOCKED_SLOTS).where('city', '==', city).where('date', '==', dateValue).get();
+            const [scheduleDoc, blocksSnapshot] = await Promise.all([schedulePromise, blocksPromise]);
+
+            const blockedRanges = [];
+            blocksSnapshot.forEach(doc => {
+                const data = doc.data();
+                if (data.type === 'fullday') {
+                    timeSlotsContainer.innerHTML = '<div class="empty-state">К сожалению, на сегодня доставка в этом городе полностью недоступна.</div>';
+                    return;
+                }
+                if (data.type === 'range') {
+                    blockedRanges.push({ start: data.startTime, end: data.endTime });
+                }
+            });
+
             if (!scheduleDoc.exists) {
-                timeInfo.innerHTML = 'На сегодня доставка в этом городе недоступна.';
-                timeInfo.style.display = 'block';
-                timeInput.disabled = true;
+                timeSlotsContainer.innerHTML = '<div class="empty-state">Расписание для этого города не настроено.</div>';
                 return;
             }
 
@@ -3501,44 +3584,69 @@
             const daySchedule = scheduleData[dayKey] || '';
             
             if (!daySchedule) {
-                timeInfo.innerHTML = 'На сегодня доставка недоступна. Загляните завтра!';
-                timeInfo.style.display = 'block';
-                timeInput.disabled = true;
+                timeSlotsContainer.innerHTML = '<div class="empty-state">Сегодня выходной. Доставка недоступна.</div>';
                 return;
             }
 
-            // Рассчитываем самое раннее доступное время
+            // 2. Генерируем все возможные слоты
+            const allTimeSlots = [];
+            daySchedule.split(',').forEach(range => {
+                const [start, end] = range.trim().split('-');
+                if (start && end) {
+                    let currentTime = new Date(`1970-01-01T${start}:00`);
+                    const endTime = new Date(`1970-01-01T${end}:00`);
+                    while (currentTime < endTime) {
+                        allTimeSlots.push(currentTime.toTimeString().slice(0, 5));
+                        currentTime.setMinutes(currentTime.getMinutes() + 10); // Интервал 10 минут
+                    }
+                }
+            });
+
+            // 3. Определяем самое раннее доступное время (сейчас + 45 минут)
             const now = new Date();
-            now.setMinutes(now.getMinutes() + 45); // Добавляем 45 минут на приготовление
+            now.setMinutes(now.getMinutes() + 45);
             const earliestTime = now.toTimeString().slice(0, 5);
-            
-            // Берем время начала работы
-            const openTime = daySchedule.split(',')[0].split('-')[0].trim();
-            
-            const minTime = earliestTime > openTime ? earliestTime : openTime;
-            const maxTime = daySchedule.split(',').pop().split('-')[1].trim();
 
-            if (minTime >= maxTime) {
-                timeInfo.innerHTML = 'К сожалению, все слоты на сегодня уже прошли. Попробуйте завтра!';
-                timeInfo.style.display = 'block';
-                timeInput.disabled = true;
-                return;
+            timeSlotsContainer.innerHTML = '';
+            let availableSlotsCount = 0;
+
+            // 4. Фильтруем и отображаем слоты
+            allTimeSlots.forEach(time => {
+                const isPast = time < earliestTime;
+                
+                let isBlocked = false;
+                for (const range of blockedRanges) {
+                    if (time >= range.start && time < range.end) {
+                        isBlocked = true;
+                        break;
+                    }
+                }
+
+                const slot = document.createElement('div');
+                slot.className = 'time-slot';
+                slot.textContent = time;
+                
+                if(isPast || isBlocked) {
+                    slot.classList.add('disabled');
+                } else {
+                    slot.onclick = () => selectTimeSlot(slot, time);
+                    availableSlotsCount++;
+                }
+                timeSlotsContainer.appendChild(slot);
+            });
+
+            if (availableSlotsCount === 0) {
+                timeSlotsContainer.innerHTML = '<div class="empty-state">На сегодня нет доступного времени для доставки.</div>';
             }
-
-            timeInput.min = minTime;
-            timeInput.max = maxTime;
-            timeInput.disabled = false;
-            timeInfo.innerHTML = `Время доставки доступно с ${minTime} до ${maxTime}.`;
-            timeInfo.style.display = 'block';
         }
-
-        function validateTimeSelection() {
-            const timeInput = document.getElementById('deliveryTime');
-            currentOrderData.time = timeInput.value;
-            const nextButton = document.getElementById('nextFromDateTime');
-            nextButton.disabled = !timeInput.value;
+        
+        function selectTimeSlot(element, time) {
+            document.querySelectorAll('.time-slot').forEach(item => item.classList.remove('selected'));
+            element.classList.add('selected');
+            currentOrderData.time = time;
+            document.getElementById('nextFromDateTime').disabled = false;
         }
-        // END: Новая функция для настройки выбора времени
+        // END: Полностью переработанная функция выбора времени
 
         function validateAddressForm() {
             const city = document.getElementById('city').value;
@@ -3568,15 +3676,17 @@
                     followersCount: dataSource.followersCount, 
                     createdAt: new Date().toISOString(),
                     reminderSent: false,
-                    reportMissed: false
+                    reportMissed: false,
+                    budget: currentOrderData.budget // Сохраняем бюджет на момент заказа
                 };
                 
+                // Клиентская часть завершена, отправляем на сервер для финальной проверки и сохранения
                 await apiFetch('/api/create-order', {
                     method: 'POST',
                     body: JSON.stringify({ order: newOrder })
                 });
                 
-                showSuccessMessage("Ваш заказ успешно оформлен!");
+                showSuccessMessage("Ваш заказ успешно оформлен!", "Вам придет уведомление в Telegram. Ожидайте подтверждения от оператора.");
             });
         }
         
@@ -3659,8 +3769,8 @@
             window.location.reload();
         }
         
-        function showSuccessMessage(message) {
-            document.getElementById('successTitle').textContent = 'Успешно!';
+        function showSuccessMessage(title, message) {
+            document.getElementById('successTitle').textContent = title;
             document.getElementById('successMessage').textContent = message;
             document.getElementById('successModalCloseBtn').onclick = () => app.closeModal();
             document.getElementById('successModal').style.display = 'flex';
@@ -3770,8 +3880,12 @@
         function closeOrderDetailModal() { document.getElementById('orderDetailModal').style.display = 'none'; }
         function closeReportModal() { document.getElementById('reportModal').style.display = 'none'; }
         function closeUserDetailModal() { document.getElementById('userDetailModal').style.display = 'none'; }
-        function toggleBlockTime() { document.getElementById('blockTimeGroup').style.display = document.getElementById('blockType').value === 'time' ? 'block' : 'none'; }
-        function showAddBlockModal() { document.getElementById('addBlockModal').style.display = 'flex'; }
+        
+        function toggleBlockTime() { 
+            document.getElementById('blockTimeGroup').style.display = document.getElementById('blockType').value === 'range' ? 'block' : 'none';
+        }
+        
+        function showAddBlockModal() { document.getElementById('addBlockModal').style.display = 'flex'; toggleBlockTime(); }
         function closeAddBlockModal() { document.getElementById('addBlockModal').style.display = 'none'; }
         function closeAddAdminModal() { document.getElementById('addAdminModal').style.display = 'none'; }
         
@@ -3886,7 +4000,6 @@
             document.getElementById('userDetailModal').style.display = 'flex';
         }
         
-        // START: NEW/MODIFIED V-Coin management function
         async function manageVcoins(action) {
             if (!currentUserDetailId) return;
             const amountInput = document.getElementById('vcoinManageAmount');
@@ -3919,7 +4032,6 @@
                 showError("Ошибка сервера", error.message);
             }
         }
-        // END: NEW/MODIFIED V-Coin management function
 
         function renderTags(tags) {
             const container = document.getElementById('userTagsContainer');
@@ -4492,7 +4604,7 @@
             filterUsers, filterAdminUsers, filterMenuItems, removeBlock, removeAdmin, removeUser, toggleUserBlock, 
             sendBroadcast, saveSettings, addBlock, addAdmin, selectSet, showSetSelection, 
             showAddressForm, showDateTimeSelection, showInstructions, handleCityChange, 
-            submitAddressAndShowDateTime, setupTimeSelection, validateTimeSelection, submitOrder, saveProfile, closeModal, 
+            submitAddressAndShowDateTime, setupTimeSelection, selectTimeSlot, submitOrder, saveProfile, closeModal, 
             closeSimpleModal, closeErrorModal, closeRejectionModal, closeOrderHistory, 
             closeEditProfile, closeContactModal, showAddBlockModal, closeAddBlockModal, 
             showAddAdminModal, closeAddAdminModal, closeOrderDetailModal, toggleBlockTime, 
