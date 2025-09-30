@@ -1930,18 +1930,15 @@
             </div>
         </div>
 
-
+        <!-- ЭКРАН ВЫБОРА ВРЕМЕНИ (ИЗМЕНЕН) -->
         <div id="dateTimeScreen" class="form-screen datetime-selection" style="display: none;">
             <button class="btn-back" id="backFromDateTime">← Назад</button>
             <div class="form-header">
-                <h2>Дата и время доставки</h2>
+                <h2>Время доставки</h2>
+                <h4 id="todaysDateHeader" style="color: #ccc; font-weight: 400; margin-top: -15px;"></h4>
             </div>
             <div class="form-group">
-                <label for="deliveryDate">Выберите дату</label>
-                <input type="date" id="deliveryDate" required onchange="app.updateTimeSlots()">
-            </div>
-            <div class="form-group">
-                <label>Выберите время</label>
+                <label>Выберите доступное время</label>
                 <div class="time-slots" id="timeSlots"></div>
             </div>
             <button type="button" id="nextFromDateTime" class="btn-primary" onclick="app.showInstructions()" disabled>Далее</button>
@@ -3469,33 +3466,32 @@
             } else {
                 backButton.onclick = () => app.showAddressForm();
                 showDateTimeSelection();
-                setupDateInput();
+                loadTodaysTimeSlots();
             }
         }
 
-        function setupDateInput() {
-            const dateInput = document.getElementById('deliveryDate');
-            const today = new Date();
-            dateInput.min = today.toISOString().split('T')[0];
-            dateInput.value = '';
-            document.getElementById('timeSlots').innerHTML = '';
-            document.getElementById('nextFromDateTime').disabled = true;
-        }
-
-        async function updateTimeSlots() {
-            const dateValue = document.getElementById('deliveryDate').value;
+        // --- ИЗМЕНЕННАЯ ФУНКЦИЯ ---
+        async function loadTodaysTimeSlots() {
             currentOrderData.time = '';
-            document.getElementById('nextFromDateTime').disabled = true;
+            const nextButton = document.getElementById('nextFromDateTime');
+            nextButton.disabled = true;
+
             const timeSlotsContainer = document.getElementById('timeSlots');
             timeSlotsContainer.innerHTML = '<div class="loading-indicator">Загрузка...</div>';
-            if (!dateValue) { timeSlotsContainer.innerHTML = ''; return; }
+
+            const today = new Date();
+            const dateValue = today.toISOString().split('T')[0];
+            const formattedDate = today.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
+            document.getElementById('todaysDateHeader').textContent = `Выберите время доставки на сегодня, ${formattedDate}`;
+            
             currentOrderData.date = dateValue;
             
             const city = currentOrderData.city;
             const scheduleDoc = await db.collection(COLLECTIONS.SCHEDULES).doc(city).get();
             const scheduleData = scheduleDoc.exists ? scheduleDoc.data() : {};
-            const dayKey = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][new Date(dateValue).getDay()];
+            const dayKey = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][today.getDay()];
             const daySchedule = scheduleData[dayKey] || '';
+            
             const timeSlots = [];
             if (daySchedule) {
                 daySchedule.split(',').forEach(range => {
@@ -3506,18 +3502,27 @@
                 });
             }
             
-            const now = new Date();
+            const currentHour = today.getHours();
             timeSlotsContainer.innerHTML = '';
+            let availableSlotsCount = 0;
+
             for (const time of timeSlots) {
-                if (dateValue === now.toISOString().split('T')[0] && parseInt(time) <= now.getHours()) continue;
+                // Фильтруем прошедшие слоты
+                if (parseInt(time) <= currentHour) continue;
                 if (await isSlotBlocked(city, dateValue, time)) continue;
+                
                 const slot = document.createElement('div');
                 slot.className = 'time-slot';
                 slot.textContent = time;
                 slot.onclick = () => selectTimeSlot(slot, time);
                 timeSlotsContainer.appendChild(slot);
+                availableSlotsCount++;
             }
-            if (timeSlotsContainer.innerHTML === '') timeSlotsContainer.innerHTML = '<p style="text-align:center;color:#999;">Нет доступного времени.</p>';
+
+            if (availableSlotsCount === 0) {
+                timeSlotsContainer.innerHTML = '<p style="text-align:center;color:#999; padding: 20px 0;">На сегодня все слоты для доставки заняты. Загляните завтра!</p>';
+                nextButton.disabled = true;
+            }
         }
 
         function selectTimeSlot(element, time) {
@@ -3560,7 +3565,7 @@
                 
                 await apiFetch('/api/create-order', {
                     method: 'POST',
-                    body: JSON.stringify({ order: newOrder }) // ИСПРАВЛЕНА ОТПРАВКА
+                    body: JSON.stringify({ order: newOrder })
                 });
                 
                 showSuccessMessage("Ваш заказ успешно оформлен!");
@@ -4421,7 +4426,7 @@
         function proceedToDateTimeSelection() {
             closeSimpleModal('overdraftModal');
             showDateTimeSelection();
-            setupDateInput();
+            loadTodaysTimeSlots();
         }
         
         const exportOrdersToExcel = (btn) => exportToExcel(btn, 'orders');
@@ -4464,7 +4469,7 @@
             filterUsers, filterAdminUsers, filterMenuItems, removeBlock, removeAdmin, removeUser, toggleUserBlock, 
             sendBroadcast, saveSettings, addBlock, addAdmin, selectSet, showSetSelection, 
             showAddressForm, showDateTimeSelection, showInstructions, handleCityChange, 
-            submitAddressAndShowDateTime, updateTimeSlots, submitOrder, saveProfile, closeModal, 
+            submitAddressAndShowDateTime, loadTodaysTimeSlots, submitOrder, saveProfile, closeModal, 
             closeSimpleModal, closeErrorModal, closeRejectionModal, closeOrderHistory, 
             closeEditProfile, closeContactModal, showAddBlockModal, closeAddBlockModal, 
             showAddAdminModal, closeAddAdminModal, closeOrderDetailModal, toggleBlockTime, 
