@@ -240,9 +240,15 @@ app.post('/api/create-order', checkAuth, async (req, res) => {
             return res.status(400).json({ error: 'Данные заказа отсутствуют.' });
         }
         
-        // --- ИСПРАВЛЕНИЕ ЗДЕСЬ ---
-        // Данные уже являются объектом благодаря middleware express.json(), поэтому JSON.parse не нужен.
         const orderData = req.body.order;
+
+        // --- ДОБАВЛЕНА ВАЛИДАЦИЯ ДАТЫ ---
+        const serverDate = new Date().toISOString().split('T')[0];
+        if (orderData.date !== serverDate) {
+            console.warn(`Попытка создать заказ на неверную дату. Клиент: ${orderData.date}, Сервер: ${serverDate}`);
+            return res.status(400).json({ error: 'Заказы принимаются только на текущий день.' });
+        }
+        // --- КОНЕЦ ВАЛИДАЦИИ ---
         
         const userRef = db.collection('users').doc(orderData.userId);
 
