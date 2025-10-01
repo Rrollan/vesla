@@ -237,7 +237,6 @@ async function sendExcelFile(chatId, data, fileNamePrefix, sheetName) {
 // === API МАРШРУТЫ ===
 // ======================================================================
 
-// START: Обновленный маршрут создания заказа с надежной проверкой времени
 app.post('/api/create-order', checkAuth, async (req, res) => {
     try {
         const { order: orderData } = req.body;
@@ -277,7 +276,7 @@ app.post('/api/create-order', checkAuth, async (req, res) => {
             return res.status(400).json({ error: 'Расписание для данного города не найдено.' });
         }
         const scheduleData = scheduleDoc.data();
-        const dayKey = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][new Date(date).getDay()];
+        const dayKey = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][new Date(date).getUTCDay()];
         const daySchedule = scheduleData[dayKey] || '';
         const isTimeInSchedule = daySchedule.split(',').some(range => {
             const [start, end] = range.trim().split('-');
@@ -333,7 +332,6 @@ app.post('/api/create-order', checkAuth, async (req, res) => {
         res.status(500).json({ error: error.message || 'Внутренняя ошибка сервера при создании заказа.' });
     }
 });
-// END: Обновленный маршрут создания заказа
 
 // Защищенный маршрут загрузки изображения для меню
 app.post('/api/upload-menu-image', checkAuth, async (req, res) => {
