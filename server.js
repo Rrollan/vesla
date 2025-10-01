@@ -13,19 +13,25 @@ const sharp = require('sharp');
 const axios = require('axios');
 const FormData = require('form-data');
 
+console.log("--- Запуск сервера ---");
+
 // --- ИНИЦИАЛИЗАЦИЯ ---
 const app = express();
 const PORT = process.env.PORT || 10000;
 
-// ВАЖНО: Храните токен в переменных окружения, а не в коде!
-const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '8227812944:AAFy8ydOkUeCj3Qkjg7_Xsq6zyQpcUyMShY';
-const IMGBB_API_KEY = process.env.IMGBB_API_KEY || '5148efee12c90f87021e50e0155d17a0';
+const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+const IMGBB_API_KEY = process.env.IMGBB_API_KEY;
+const FIREBASE_KEY = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+
+// --- ПРОВЕРКА ПЕРЕМЕННЫХ ОКРУЖЕНИЯ ---
+if (!TELEGRAM_BOT_TOKEN || !IMGBB_API_KEY || !FIREBASE_KEY) {
+    console.error("КРИТИЧЕСКАЯ ОШИБКА: Одна или несколько переменных окружения не установлены (TELEGRAM_BOT_TOKEN, IMGBB_API_KEY, FIREBASE_SERVICE_ACCOUNT_KEY).");
+    process.exit(1); // Завершаем процесс, если нет ключей
+}
 
 // --- ИНИЦИАЛИЗАЦИЯ FIREBASE ADMIN SDK ---
 try {
-  const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT_KEY 
-    ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY)
-    : require('./serviceAccountKey.json');
+  const serviceAccount = JSON.parse(FIREBASE_KEY);
   
   if (!admin.apps.length) {
     admin.initializeApp({
@@ -34,11 +40,14 @@ try {
      console.log("Firebase Admin SDK успешно инициализирован.");
   }
 } catch (error) {
-  console.error("КРИТИЧЕСКАЯ ОШИБКА: Ключ сервисного аккаунта Firebase не найден. Убедитесь, что переменная окружения FIREBASE_SERVICE_ACCOUNT_KEY установлена.");
+  console.error("КРИТИЧЕСКАЯ ОШИБКА при инициализации Firebase:", error.message);
+  console.error("Убедитесь, что FIREBASE_SERVICE_ACCOUNT_KEY в Render скопирован правильно и является валидным JSON.");
+  process.exit(1);
 }
 
 const db = admin.firestore();
 const bot = new TelegramBot(TELEGRAM_BOT_TOKEN);
+console.log("Telegram бот успешно создан.");
 
 // --- MIDDLEWARE ---
 app.use(express.static(path.join(__dirname, '/')));
@@ -85,6 +94,7 @@ const checkAuth = (req, res, next) => {
             req.user = JSON.parse(params.get('user'));
             next();
         } else {
+            console.warn("Попытка неавторизованного доступа: неверный hash.");
             return res.status(403).json({ error: 'Неверная подпись данных. Запрос отклонен.' });
         }
     } catch (error) {
@@ -238,6 +248,7 @@ async function sendExcelFile(chatId, data, fileNamePrefix, sheetName) {
 // ======================================================================
 
 app.post('/api/create-order', checkAuth, async (req, res) => {
+    console.log("Получен запрос на /api/create-order");
     try {
         const { order: orderData } = req.body;
         if (!orderData || !orderData.city || !orderData.date || !orderData.time) {
@@ -245,12 +256,14 @@ app.post('/api/create-order', checkAuth, async (req, res) => {
         }
 
         const { city, date, time } = orderData;
+        console.log(`Проверка заказа для: Город=${city}, Дата=${date}, Время=${time}`);
 
         // --- 1. Проверка на прошедшее время ---
         const now = new Date();
         now.setMinutes(now.getMinutes() + 45); // Буфер на приготовление 45 минут
         const earliestAllowedTime = now.toTimeString().slice(0, 5);
         if (date === new Date().toISOString().split('T')[0] && time < earliestAllowedTime) {
+            console.warn(`Отказ: время ${time} уже прошло. Минимальное: ${earliestAllowedTime}`);
             return res.status(400).json({ error: `Выбранное время (${time}) уже прошло или слишком близко. Минимальное время заказа: ${earliestAllowedTime}.` });
         }
 
@@ -258,21 +271,21 @@ app.post('/api/create-order', checkAuth, async (req, res) => {
         const scheduleDoc = await db.collection('schedules').doc(city).get();
         const blocksSnapshot = await db.collection('blockedSlots').where('city', '==', city).where('date', '==', date).get();
 
-        // Проверка на блокировку всего дня
         if (blocksSnapshot.docs.some(doc => doc.data().type === 'fullday')) {
+            console.warn(`Отказ: на дату ${date} установлена блокировка на весь день.`);
             return res.status(400).json({ error: 'На сегодня доставка в этом городе полностью заблокирована.' });
         }
 
-        // Проверка на попадание в заблокированный диапазон
         for (const doc of blocksSnapshot.docs) {
             const block = doc.data();
             if (block.type === 'range' && time >= block.startTime && time < block.endTime) {
+                console.warn(`Отказ: время ${time} попадает в диапазон блокировки ${block.startTime}-${block.endTime}.`);
                 return res.status(400).json({ error: `Выбранное время (${time}) недоступно из-за блокировки с ${block.startTime} до ${block.endTime}.` });
             }
         }
         
-        // Проверка рабочего времени по расписанию
         if (!scheduleDoc.exists) {
+            console.warn(`Отказ: не найдено расписание для города ${city}.`);
             return res.status(400).json({ error: 'Расписание для данного города не найдено.' });
         }
         const scheduleData = scheduleDoc.data();
@@ -284,10 +297,11 @@ app.post('/api/create-order', checkAuth, async (req, res) => {
         });
 
         if (!isTimeInSchedule) {
+            console.warn(`Отказ: время ${time} не входит в рабочие часы ${daySchedule}.`);
             return res.status(400).json({ error: `Выбранное время (${time}) не входит в рабочие часы.` });
         }
         
-        // --- Если все проверки пройдены, создаем заказ ---
+        console.log("Все проверки времени пройдены. Создание заказа...");
         const userRef = db.collection('users').doc(orderData.userId);
         await db.runTransaction(async (transaction) => {
             const userDoc = await transaction.get(userRef);
@@ -325,6 +339,7 @@ app.post('/api/create-order', checkAuth, async (req, res) => {
             console.error(`Ошибка отправки уведомления клиенту ${orderData.userId}:`, notificationError);
         }
 
+        console.log(`Заказ ${orderData.orderNumber} успешно создан.`);
         res.status(201).json({ message: 'Заказ успешно создан' });
 
     } catch (error) {
@@ -335,9 +350,6 @@ app.post('/api/create-order', checkAuth, async (req, res) => {
 
 // Защищенный маршрут загрузки изображения для меню
 app.post('/api/upload-menu-image', checkAuth, async (req, res) => {
-    if (!IMGBB_API_KEY) {
-        return res.status(500).json({ error: 'API ключ для ImgBB не настроен на сервере.' });
-    }
     if (!req.files || !req.files.image) {
         return res.status(400).json({ error: 'Файл изображения не был загружен.' });
     }
