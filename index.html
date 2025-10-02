@@ -695,7 +695,8 @@
         background: var(--surface-color);
         border: 1px solid var(--border-color);
         border-radius: var(--border-radius-small);
-        padding: 15px;
+        /* === ИЗМЕНЕНИЕ №2: Увеличены боковые отступы === */
+        padding: 15px 20px;
         margin-bottom: 10px;
         display: flex;
         justify-content: space-between;
@@ -1136,8 +1137,8 @@
         flex-grow: 1;
         display: flex;
         flex-direction: column;
-        justify-content: flex-start;
-        height: 120px;
+        /* === ИЗМЕНЕНИЕ №4: Убрана фиксированная высота для гибкости === */
+        min-height: 120px; 
     }
     .menu-item-content-wrapper { flex-grow: 1; }
 
@@ -1157,6 +1158,8 @@
         -webkit-box-orient: vertical;
         overflow: hidden;
         text-overflow: ellipsis;
+        /* === ИЗМЕНЕНИЕ №4: Добавлена минимальная высота для стабильности верстки === */
+        min-height: 34px; /* 1.4 * 12px * 2 строки */
     }
 
     .menu-item-footer {
@@ -1164,6 +1167,8 @@
         justify-content: space-between;
         align-items: center;
         margin-top: auto;
+        /* === ИЗМЕНЕНИЕ №4: Добавлен отступ сверху для отделения от описания === */
+        padding-top: 8px;
     }
 
     .menu-item-price {
@@ -1228,6 +1233,15 @@
         color: var(--text-primary);
         display: flex;
         align-items: center;
+        flex-wrap: wrap; /* Позволяет переносить на новую строку при необходимости */
+        justify-content: flex-end; /* Выравнивание по правому краю */
+    }
+    
+    /* === ИЗМЕНЕНИЕ №4: Стили для текста о доплате === */
+    .cart-overdraft-text {
+        color: var(--accent-secondary);
+        font-weight: bold;
+        margin-left: 8px;
     }
 
     .cart-progress-bar-container {
@@ -1370,6 +1384,27 @@
         transition: background 0.2s;
     }
     .placeholder-tag:hover { background: #5a5a5a; }
+
+    /* === ИЗМЕНЕНИЕ №3: Стили для нового блока управления бонусами === */
+    .vcoin-management-block {
+        text-align: left;
+    }
+    .vcoin-management-block input {
+        text-align: center;
+        font-size: 20px;
+        font-weight: bold;
+        padding: 12px;
+    }
+    .vcoin-management-block .button-group {
+        display: flex;
+        gap: 10px;
+        margin-top: 10px;
+    }
+    .vcoin-management-block .button-group .btn-small {
+        flex: 1;
+        margin: 0;
+        padding: 12px;
+    }
 
     </style>
 </head>
@@ -1942,12 +1977,16 @@
                 </div>
                 
                 <hr style="border-color: var(--border-color); margin: 20px 0;">
-                <div id="vcoinManagementBlock" style="text-align: left; display: none;">
+                
+                <!-- === ИЗМЕНЕНИЕ №3: Обновленный блок управления бонусами === -->
+                <div id="vcoinManagementBlock" class="vcoin-management-block" style="display: none;">
                     <label for="vcoinManageAmount">Управление V-Бонусами</label>
-                    <div class="form-row" style="align-items: center; margin-top: 8px; gap: 8px;">
-                        <input type="number" id="vcoinManageAmount" placeholder="Сумма" style="flex-grow: 1; margin: 0;">
-                        <button class="btn-primary btn-small" onclick="app.manageVcoins('add')" style="margin: 0; flex-shrink: 0;">Начислить</button>
-                        <button class="btn-danger btn-small" onclick="app.manageVcoins('remove')" style="margin: 0; flex-shrink: 0;">Списать</button>
+                    <div class="form-group" style="margin-top: 8px;">
+                        <input type="number" id="vcoinManageAmount" placeholder="0">
+                    </div>
+                    <div class="button-group">
+                        <button class="btn-primary btn-small" onclick="app.manageVcoins('add')">Начислить</button>
+                        <button class="btn-danger btn-small" onclick="app.manageVcoins('remove')">Списать</button>
                     </div>
                 </div>
                 
@@ -3020,36 +3059,20 @@
         }
 
         async function updateOrderStatus(button) {
+            // === ИЗМЕНЕНИЕ №1: Логика перенесена на сервер ===
             await withLoading(button, async () => {
                 if (!currentEditingOrderId) return;
                 const newStatus = document.getElementById('orderStatusSelect').value;
-                const orderRef = db.collection(COLLECTIONS.ORDERS).doc(currentEditingOrderId);
-                const orderDoc = await orderRef.get();
-                if (!orderDoc.exists) throw new Error("Заказ не найден");
-                const orderData = orderDoc.data();
-                const userRef = db.collection(COLLECTIONS.USERS).doc(orderData.userId);
-                const batch = db.batch();
-                batch.update(orderRef, { status: newStatus });
-                const userDoc = await userRef.get();
-                if (userDoc.exists) {
-                    const orders = userDoc.data().orders || [];
-                    const orderIndex = orders.findIndex(o => o.id === currentEditingOrderId);
-                    if (orderIndex > -1) {
-                        orders[orderIndex].status = newStatus;
-                        batch.update(userRef, { orders: orders });
-                    }
-                    if (userDoc.data().telegramId) {
-                        if (newStatus === 'confirmed') await sendTelegramNotification(userDoc.data().telegramId, `✅ Ваш заказ №${orderData.orderNumber} подтвержден!`);
-                        if (newStatus === 'delivered') await sendTelegramNotification(userDoc.data().telegramId, `🚚 Ваш заказ №${orderData.orderNumber} доставлен! Скоро мы будем ждать от вас отчет.`);
-                        if (newStatus === 'completed') await sendTelegramNotification(userDoc.data().telegramId, `🎉 Сотрудничество по заказу №${orderData.orderNumber} завершено.`);
-                    }
-                }
-                await batch.commit();
-
-                if (newStatus === 'completed') {
-                    await checkAndUpgradeLoyaltyStatus(orderData.userId);
-                }
                 
+                // Вызываем новый API endpoint
+                await apiFetch('/api/update-order-status', {
+                    method: 'POST',
+                    body: JSON.stringify({ 
+                        orderId: currentEditingOrderId, 
+                        newStatus: newStatus 
+                    })
+                });
+
                 closeOrderDetailModal();
                 showCrmSuccess('Статус обновлен!');
                 updateOrdersList();
@@ -4438,11 +4461,10 @@
 
                 if (totalVCoins > budget) {
                     const overdraftTenge = (totalVCoins - budget) * VCOIN_RATE;
-                    summaryHTML += ` <strong style="color: #ff6b35; margin-left: 8px;">(+${overdraftTenge.toFixed(0)} ₸)</strong>`;
-                    summaryEl.style.color = '#fff';
+                    // === ИЗМЕНЕНИЕ №4: Использование класса для стилизации доплаты ===
+                    summaryHTML += `<span class="cart-overdraft-text">(+${overdraftTenge.toFixed(0)} ₸)</span>`;
                     progressBar.classList.add('overdraft');
                 } else {
-                    summaryEl.style.color = '#fff';
                     progressBar.classList.remove('overdraft');
                 }
                 summaryEl.innerHTML = summaryHTML;
