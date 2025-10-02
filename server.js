@@ -22,6 +22,7 @@ const PORT = process.env.PORT || 10000;
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const IMGBB_API_KEY = process.env.IMGBB_API_KEY;
 const FIREBASE_KEY = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+const LOYALTY_THRESHOLD = 5; // Порог для премиум-статуса
 
 // --- ПРОВЕРКА ПЕРЕМЕННЫХ ОКРУЖЕНИЯ ---
 if (!TELEGRAM_BOT_TOKEN || !IMGBB_API_KEY || !FIREBASE_KEY) {
@@ -243,6 +244,31 @@ async function sendExcelFile(chatId, data, fileNamePrefix, sheetName) {
     });
 }
 
+// === НОВАЯ ФУНКЦИЯ ПРОВЕРКИ СТАТУСА ЛОЯЛЬНОСТИ (СЕРВЕРНАЯ) ===
+async function checkAndUpgradeLoyaltyStatus(userId) {
+    const userRef = db.collection('users').doc(userId);
+    const userDoc = await userRef.get();
+    if (!userDoc.exists) return;
+
+    const user = userDoc.data();
+    if (user.loyaltyStatus === 'premium') return;
+
+    const completedOrdersCount = (user.orders || []).filter(o => o.status === 'completed' || o.reportAccepted === true).length;
+    
+    if (completedOrdersCount >= LOYALTY_THRESHOLD) {
+        await userRef.update({ loyaltyStatus: 'premium' });
+        if (user.telegramId) {
+            const message = `⭐ Поздравляем, ${user.registration.firstName}! Вы достигли премиум-статуса. Спасибо за ваше активное участие!`;
+            try {
+                await bot.sendMessage(user.telegramId, message);
+            } catch (e) {
+                console.error(`Не удалось отправить уведомление о премиуме пользователю ${user.telegramId}: ${e.message}`);
+            }
+        }
+    }
+}
+
+
 // ======================================================================
 // === API МАРШРУТЫ ===
 // ======================================================================
@@ -345,6 +371,67 @@ app.post('/api/create-order', checkAuth, async (req, res) => {
     } catch (error) {
         console.error('Ошибка при создании заказа на сервере:', error);
         res.status(500).json({ error: error.message || 'Внутренняя ошибка сервера при создании заказа.' });
+    }
+});
+
+// === НОВЫЙ МАРШРУТ ДЛЯ ОБНОВЛЕНИЯ СТАТУСА ЗАКАЗА ===
+app.post('/api/update-order-status', checkAuth, async (req, res) => {
+    try {
+        const { orderId, newStatus } = req.body;
+        if (!orderId || !newStatus) {
+            return res.status(400).json({ error: 'Необходим ID заказа и новый статус.' });
+        }
+
+        const orderRef = db.collection('orders').doc(orderId);
+        let orderData;
+        let userData;
+
+        await db.runTransaction(async (transaction) => {
+            const orderDoc = await transaction.get(orderRef);
+            if (!orderDoc.exists) throw new Error("Заказ не найден");
+            
+            orderData = orderDoc.data();
+            const userRef = db.collection('users').doc(orderData.userId);
+            const userDoc = await transaction.get(userRef);
+            if (!userDoc.exists) throw new Error("Пользователь не найден");
+
+            userData = userDoc.data();
+            const orders = userData.orders || [];
+            const orderIndex = orders.findIndex(o => o.id === orderId);
+            
+            if (orderIndex > -1) {
+                orders[orderIndex].status = newStatus;
+                transaction.update(userRef, { orders: orders });
+            }
+            transaction.update(orderRef, { status: newStatus });
+        });
+
+        // Отправка уведомления пользователю после успешной транзакции
+        if (userData && userData.telegramId) {
+            let message = null;
+            if (newStatus === 'confirmed') message = `✅ Ваш заказ №${orderData.orderNumber} подтвержден!`;
+            if (newStatus === 'delivered') message = `🚚 Ваш заказ №${orderData.orderNumber} доставлен! Скоро мы будем ждать от вас отчет.`;
+            if (newStatus === 'completed') message = `🎉 Сотрудничество по заказу №${orderData.orderNumber} завершено.`;
+            
+            if (message) {
+                try {
+                    await bot.sendMessage(userData.telegramId, message);
+                } catch (e) {
+                    console.error(`Не удалось отправить уведомление о статусе ${newStatus} пользователю ${userData.telegramId}: ${e.message}`);
+                }
+            }
+        }
+        
+        // Проверка на повышение статуса лояльности
+        if (newStatus === 'completed') {
+            await checkAndUpgradeLoyaltyStatus(orderData.userId);
+        }
+
+        res.status(200).json({ message: "Статус заказа успешно обновлен." });
+
+    } catch (error) {
+        console.error("Ошибка при обновлении статуса заказа:", error);
+        res.status(500).json({ error: error.message || 'Внутренняя ошибка сервера.' });
     }
 });
 
@@ -560,91 +647,4 @@ app.post('/api/manage-vcoins', checkAuth, async (req, res) => {
     try {
         let finalAmount;
         const userData = await db.runTransaction(async (transaction) => {
-            const userDoc = await transaction.get(userRef);
-            if (!userDoc.exists) {
-                throw new Error("Пользователь не найден.");
-            }
-            const currentBalance = userDoc.data().vcoin_balance || 0;
-
-            if (action === 'add') {
-                finalAmount = amount;
-            } else { // action is 'remove'
-                if (currentBalance < amount) {
-                    throw new Error(`Недостаточно средств. Текущий баланс: ${currentBalance}, попытка списания: ${amount}.`);
-                }
-                finalAmount = -amount;
-            }
-            transaction.update(userRef, {
-                vcoin_balance: admin.firestore.FieldValue.increment(finalAmount)
-            });
-            return userDoc.data();
-        });
-
-        const actionTextPast = action === 'add' ? 'начислено' : 'списано';
-        const actionTextPresent = action === 'add' ? 'Начисление' : 'Списание';
-        
-        if (userData && userData.telegramId) {
-            const newBalance = (userData.vcoin_balance || 0) + finalAmount;
-            const clientMessage = `⚙️ Изменение баланса V-Бонусов!\n\n${actionTextPresent} от администратора: ${amount} V-Бонусов.\nВаш новый баланс: ${newBalance.toFixed(1)} V-Бонусов.`;
-            await bot.sendMessage(userData.telegramId, clientMessage);
-        }
-
-        res.status(200).json({ message: `Успешно ${actionTextPast} ${amount} V-Бонусов.` });
-
-    } catch (error) {
-        console.error('Ошибка при управлении балансом V-Coin:', error);
-        res.status(500).json({ error: error.message || 'Внутренняя ошибка сервера.' });
-    }
-});
-
-// ======================================================================
-// === CRON ЗАДАЧИ ===
-// ======================================================================
-cron.schedule('*/30 * * * *', async () => {
-    console.log('CRON: Запуск проверки напоминаний об отчетах...');
-    try {
-        const now = new Date();
-        const twentyFourHoursAgo = new Date(now.getTime() - (24 * 60 * 60 * 1000));
-
-        const ordersSnapshot = await db.collection('orders')
-            .where('status', '==', 'delivered')
-            .where('reminderSent', '==', false)
-            .get();
-
-        if (ordersSnapshot.empty) {
-            return;
-        }
-
-        for (const doc of ordersSnapshot.docs) {
-            const order = doc.data();
-            const deliveryDate = new Date(order.createdAt); 
-
-            if (deliveryDate <= twentyFourHoursAgo) {
-                const userDoc = await db.collection('users').doc(order.userId).get();
-                if (userDoc.exists) {
-                    const user = userDoc.data();
-                    if (user.telegramId) {
-                        const message = `👋 Привет, ${user.registration.firstName}! Напоминаем, что мы ждем отчет по вашему заказу \`${order.orderNumber}\`. Пожалуйста, сдайте его в личном кабинете.`;
-                        try {
-                            await bot.sendMessage(user.telegramId, message, { parse_mode: 'Markdown' });
-                            await doc.ref.update({ reminderSent: true });
-                            console.log(`CRON: Напоминание отправлено пользователю ${user.telegramId} по заказу ${order.orderNumber}`);
-                        } catch (error) {
-                            console.error(`CRON: Ошибка отправки напоминания пользователю ${user.telegramId}:`, error.response?.body?.description || error.message);
-                        }
-                    }
-                }
-            }
-        }
-    } catch (error) {
-        console.error('CRON: Критическая ошибка при проверке напоминаний:', error);
-    }
-});
-
-
-// ======================================================================
-// === ЗАПУСК СЕРВЕРА ===
-// ======================================================================
-app.listen(PORT, () => {
-    console.log(`Сервер успешно запущен на порту ${PORT}`);
-});
+            const userDoc = await transaction.get(userRe
