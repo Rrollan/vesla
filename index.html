@@ -695,7 +695,6 @@
         background: var(--surface-color);
         border: 1px solid var(--border-color);
         border-radius: var(--border-radius-small);
-        /* === ИЗМЕНЕНИЕ №2: Увеличены боковые отступы === */
         padding: 15px 20px;
         margin-bottom: 10px;
         display: flex;
@@ -780,6 +779,17 @@
     }
     .modal-body strong {
         color: var(--text-primary);
+    }
+
+    .modal-button-group {
+        display: flex;
+        gap: 10px;
+        margin-top: 20px;
+    }
+    .modal-button-group > .btn-primary,
+    .modal-button-group > .btn-secondary {
+        flex: 1;
+        margin-top: 0;
     }
     
     .tags-container {
@@ -1123,6 +1133,7 @@
         overflow: hidden;
         display: flex;
         border: 1px solid var(--border-color);
+        align-items: center;
     }
 
     .menu-item-image {
@@ -1137,8 +1148,7 @@
         flex-grow: 1;
         display: flex;
         flex-direction: column;
-        /* === ИЗМЕНЕНИЕ №4: Убрана фиксированная высота для гибкости === */
-        min-height: 120px; 
+        min-height: 120px;
     }
     .menu-item-content-wrapper { flex-grow: 1; }
 
@@ -1158,8 +1168,7 @@
         -webkit-box-orient: vertical;
         overflow: hidden;
         text-overflow: ellipsis;
-        /* === ИЗМЕНЕНИЕ №4: Добавлена минимальная высота для стабильности верстки === */
-        min-height: 34px; /* 1.4 * 12px * 2 строки */
+        min-height: 34px; 
     }
 
     .menu-item-footer {
@@ -1167,7 +1176,6 @@
         justify-content: space-between;
         align-items: center;
         margin-top: auto;
-        /* === ИЗМЕНЕНИЕ №4: Добавлен отступ сверху для отделения от описания === */
         padding-top: 8px;
     }
 
@@ -1223,7 +1231,7 @@
     .cart-summary {
         display: flex;
         justify-content: space-between;
-        align-items: center;
+        align-items: baseline;
         font-size: 14px;
         color: var(--text-secondary);
     }
@@ -1232,12 +1240,11 @@
         font-size: 16px;
         color: var(--text-primary);
         display: flex;
-        align-items: center;
-        flex-wrap: wrap; /* Позволяет переносить на новую строку при необходимости */
-        justify-content: flex-end; /* Выравнивание по правому краю */
+        align-items: baseline;
+        flex-wrap: wrap; 
+        justify-content: flex-end;
     }
     
-    /* === ИЗМЕНЕНИЕ №4: Стили для текста о доплате === */
     .cart-overdraft-text {
         color: var(--accent-secondary);
         font-weight: bold;
@@ -1385,7 +1392,6 @@
     }
     .placeholder-tag:hover { background: #5a5a5a; }
 
-    /* === ИЗМЕНЕНИЕ №3: Стили для нового блока управления бонусами === */
     .vcoin-management-block {
         text-align: left;
     }
@@ -1910,9 +1916,9 @@
                 <div class="warning-icon">⚠️</div>
                 <h2 id="overdraftTitle">Требуется доплата</h2>
                 <p class="subtitle" id="overdraftMessage" style="text-align: left; line-height: 1.6;"></p>
-                <div style="display: flex; gap: 10px; margin-top: 20px;">
-                    <button class="btn-primary" onclick="app.proceedToDateTimeSelection()" style="flex: 1;">Продолжить</button>
-                    <button class="btn-secondary" onclick="app.closeSimpleModal('overdraftModal')" style="flex: 1;">Отмена</button>
+                <div class="modal-button-group">
+                    <button class="btn-primary" onclick="app.proceedToDateTimeSelection()">Продолжить</button>
+                    <button class="btn-secondary" onclick="app.closeSimpleModal('overdraftModal')">Отмена</button>
                 </div>
             </div>
         </div>
@@ -1978,7 +1984,6 @@
                 
                 <hr style="border-color: var(--border-color); margin: 20px 0;">
                 
-                <!-- === ИЗМЕНЕНИЕ №3: Обновленный блок управления бонусами === -->
                 <div id="vcoinManagementBlock" class="vcoin-management-block" style="display: none;">
                     <label for="vcoinManageAmount">Управление V-Бонусами</label>
                     <div class="form-group" style="margin-top: 8px;">
@@ -2039,9 +2044,9 @@
                         <input type="number" id="editVcoinAllowance" min="0">
                     </div>
                 </form>
-                <div style="display: flex; gap: 10px;">
-                    <button class="btn-primary" onclick="app.saveProfile(this)" style="flex: 1;">Сохранить</button>
-                    <button class="btn-secondary" onclick="app.closeEditProfile()" style="flex: 1;">Отмена</button>
+                <div class="modal-button-group">
+                    <button class="btn-primary" onclick="app.saveProfile(this)">Сохранить</button>
+                    <button class="btn-secondary" onclick="app.closeEditProfile()">Отмена</button>
                 </div>
             </div>
         </div>
@@ -2089,9 +2094,9 @@
                         <input type="text" id="blockReason" placeholder="Причина блокировки (необязательно)">
                     </div>
                 </form>
-                <div style="display: flex; gap: 10px;">
-                    <button class="btn-primary" onclick="app.addBlock(this)" style="flex: 1;">Добавить</button>
-                    <button class="btn-secondary" onclick="app.closeAddBlockModal()" style="flex: 1;">Отмена</button>
+                <div class="modal-button-group">
+                    <button class="btn-primary" onclick="app.addBlock(this)">Добавить</button>
+                    <button class="btn-secondary" onclick="app.closeAddBlockModal()">Отмена</button>
                 </div>
             </div>
         </div>
@@ -2159,9 +2164,9 @@
                         <input type="file" id="menuItemImage" accept="image/*">
                     </div>
                 </form>
-                <div style="display: flex; gap: 10px;">
-                    <button class="btn-primary" onclick="app.saveMenuItem(this)" style="flex: 1;">Сохранить</button>
-                    <button class="btn-secondary" onclick="app.closeSimpleModal('menuItemModal')" style="flex: 1;">Отмена</button>
+                <div class="modal-button-group">
+                    <button class="btn-primary" onclick="app.saveMenuItem(this)">Сохранить</button>
+                    <button class="btn-secondary" onclick="app.closeSimpleModal('menuItemModal')">Отмена</button>
                 </div>
             </div>
         </div>
@@ -3059,12 +3064,10 @@
         }
 
         async function updateOrderStatus(button) {
-            // === ИЗМЕНЕНИЕ №1: Логика перенесена на сервер ===
             await withLoading(button, async () => {
                 if (!currentEditingOrderId) return;
                 const newStatus = document.getElementById('orderStatusSelect').value;
                 
-                // Вызываем новый API endpoint
                 await apiFetch('/api/update-order-status', {
                     method: 'POST',
                     body: JSON.stringify({ 
@@ -3113,7 +3116,6 @@
                     if (!startTime || !endTime || startTime >= endTime) {
                         return showError('Ошибка', 'Укажите корректный диапазон времени (время начала должно быть раньше времени окончания).');
                     }
-                    // Используем Firestore-совместимый ID
                     blockId = db.collection('blockedSlots').doc().id;
                     blockData = { city, date, type, reason, startTime, endTime };
                 }
@@ -3434,7 +3436,6 @@
             }
         }
 
-        // START: ИСПРАВЛЕННАЯ ФУНКЦИЯ ВЫБОРА ВРЕМЕНИ
         async function setupTimeSelection() {
             currentOrderData.time = '';
             const nextButton = document.getElementById('nextFromDateTime');
@@ -3542,7 +3543,6 @@
 
             if (!selectedTime) return;
 
-            // Проверка 1: Попадает ли время в один из разрешенных интервалов
             const isInSchedule = currentOrderData.availableRanges.some(range => {
                 return selectedTime >= range.start && selectedTime < range.end;
             });
@@ -3554,7 +3554,6 @@
                 return;
             }
             
-            // Проверка 2: Не заблокировано ли это время
             for (const range of currentOrderData.blockedRanges) {
                 if (selectedTime >= range.start && selectedTime < range.end) {
                     timeInfo.innerHTML = `Выбранное время (${selectedTime}) временно недоступно.`;
@@ -3564,7 +3563,6 @@
                 }
             }
             
-            // Проверка 3: Не находится ли время в прошлом (с учетом буфера)
             const now = new Date();
             now.setMinutes(now.getMinutes() + 45);
             const earliestTime = now.toTimeString().slice(0, 5);
@@ -3575,11 +3573,9 @@
                 return;
             }
 
-            // Все проверки пройдены
             currentOrderData.time = selectedTime;
             nextButton.disabled = false;
         }
-        // END: ИСПРАВЛЕННАЯ ФУНКЦИЯ ВЫБОРА ВРЕМЕНИ
 
         function validateAddressForm() {
             const city = document.getElementById('city').value;
@@ -3610,10 +3606,9 @@
                     createdAt: new Date().toISOString(),
                     reminderSent: false,
                     reportMissed: false,
-                    budget: currentOrderData.budget // Сохраняем бюджет на момент заказа
+                    budget: currentOrderData.budget 
                 };
                 
-                // Клиентская часть завершена, отправляем на сервер для финальной проверки и сохранения
                 await apiFetch('/api/create-order', {
                     method: 'POST',
                     body: JSON.stringify({ order: newOrder })
@@ -3972,8 +3967,8 @@
                 });
                 
                 showCrmSuccess("Баланс обновлен!", response.message);
-                amountInput.value = ''; // Clear input
-                await showUserDetailModal(currentUserDetailId); // Refresh the modal data
+                amountInput.value = ''; 
+                await showUserDetailModal(currentUserDetailId); 
             } catch (error) {
                 console.error(`Ошибка при ${action === 'add' ? 'начислении' : 'списании'} V-Бонусов:`, error);
                 showError("Ошибка сервера", error.message);
@@ -4461,7 +4456,6 @@
 
                 if (totalVCoins > budget) {
                     const overdraftTenge = (totalVCoins - budget) * VCOIN_RATE;
-                    // === ИЗМЕНЕНИЕ №4: Использование класса для стилизации доплаты ===
                     summaryHTML += `<span class="cart-overdraft-text">(+${overdraftTenge.toFixed(0)} ₸)</span>`;
                     progressBar.classList.add('overdraft');
                 } else {
