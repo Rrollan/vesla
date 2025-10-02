@@ -2023,7 +2023,7 @@
                 </div>
                 
                 <hr style="border-color: #4a4a4a; margin: 20px 0;">
-                <div style="text-align: left;">
+                <div id="vcoinManagementBlock" style="text-align: left; display: none;">
                     <label for="vcoinManageAmount">Управление V-Бонусами</label>
                     <div class="form-row" style="align-items: center; margin-top: 8px; gap: 8px;">
                         <input type="number" id="vcoinManageAmount" placeholder="Сумма" style="flex-grow: 1; margin: 0;">
@@ -2032,7 +2032,7 @@
                     </div>
                 </div>
                 
-                <button class="btn-secondary" id="resetCooldownBtn" onclick="app.resetOrderCooldown()" style="margin-top: 20px;">Сбросить ограничение заказа</button>
+                <button class="btn-secondary" id="resetCooldownBtn" onclick="app.resetOrderCooldown()" style="margin-top: 20px; display: none;">Сбросить ограничение заказа</button>
                 <button class="btn-secondary" onclick="app.closeUserDetailModal()" style="margin-top: 10px;">Закрыть</button>
             </div>
         </div>
@@ -2769,9 +2769,9 @@
 
             const vcoinStatBlock = document.getElementById('vcoinStatItem');
             const userStatsGrid = document.querySelector('.user-stats');
-            const hasVCoinBalance = userData.vcoin_balance && userData.vcoin_balance > 0;
+            const isMacro = userData.level && userData.level.startsWith('macro');
 
-            if (hasVCoinBalance) {
+            if (isMacro) {
                 vcoinStatBlock.style.display = 'block';
                 userStatsGrid.style.gridTemplateColumns = 'repeat(3, 1fr)';
             } else {
@@ -2813,10 +2813,9 @@
             cooldownPanel.style.display = 'none';
             newCollabCard.style.opacity = '1';
             newCollabCard.style.cursor = 'pointer';
-            newCollabCard.onclick = () => app.startCollaboration();
-            
-            // Если у пользователя нет V-Coins, проверяем кулдаун на заказ сета
-            if (!hasVCoinBalance) {
+            newCollabCard.onclick = () => app.startCollaboration(); // Reset onclick handler
+
+            if (userData.level === 'micro') {
                 if (userData.lastOrderTimestamp) {
                     const lastOrderDate = new Date(userData.lastOrderTimestamp);
                     const nextAvailableDate = new Date(new Date(lastOrderDate).setDate(lastOrderDate.getDate() + appSettings.orderCooldownDays));
@@ -2824,10 +2823,18 @@
                     if (new Date() < nextAvailableDate) {
                         newCollabCard.style.opacity = '0.5';
                         newCollabCard.style.cursor = 'not-allowed';
-                        newCollabCard.onclick = null;
-                        cooldownPanel.innerHTML = `⏳ Следующий бесплатный сет будет доступен: <strong>${nextAvailableDate.toLocaleDateString('ru-RU')}</strong>`;
+                        newCollabCard.onclick = null; // Prevent click
+                        cooldownPanel.innerHTML = `⏳ Следующий заказ будет доступен: <strong>${nextAvailableDate.toLocaleDateString('ru-RU')}</strong>`;
                         cooldownPanel.style.display = 'block';
                     }
+                }
+            } else if (userData.level && userData.level.startsWith('macro')) {
+                if (!userData.vcoin_balance || userData.vcoin_balance <= 0) {
+                    newCollabCard.style.opacity = '0.5';
+                    newCollabCard.style.cursor = 'not-allowed';
+                    newCollabCard.onclick = null; // Prevent click
+                    cooldownPanel.innerHTML = `💰 Для оформления заказа пополните ваш баланс V-Coin.`;
+                    cooldownPanel.style.display = 'block';
                 }
             }
         }
@@ -3419,22 +3426,30 @@
             if (userData.isBlocked) return;
             currentOrderData = {};
             cart = {};
-            
-            if (userData.vcoin_balance && userData.vcoin_balance > 0) {
-                showAddressForm();
-                document.getElementById('backFromAddress').onclick = () => app.showDashboard();
-            } 
-            else {
+
+            // === ЛОГИКА РАЗДЕЛЕНИЯ ПО УРОВНЮ ПОЛЬЗОВАТЕЛЯ ===
+            if (userData.level === 'micro') {
                 if (userData.lastOrderTimestamp) {
                     const lastOrderDate = new Date(userData.lastOrderTimestamp);
                     const nextAvailableDate = new Date(new Date(lastOrderDate).setDate(lastOrderDate.getDate() + appSettings.orderCooldownDays));
-                    
                     if (new Date() < nextAvailableDate) {
-                        showError("Заказ недоступен", `У вас недостаточно бонусов для заказа по меню, а следующий бесплатный сет будет доступен ${nextAvailableDate.toLocaleDateString('ru-RU')}.`);
+                        showError("Заказ недоступен", `Следующий заказ будет доступен ${nextAvailableDate.toLocaleDateString('ru-RU')}.`);
                         return;
                     }
                 }
                 showSetSelection();
+            } 
+            else if (userData.level && userData.level.startsWith('macro')) {
+                if (!userData.vcoin_balance || userData.vcoin_balance <= 0) {
+                    showError("Нет бонусов", "Для оформления заказа пополните ваш баланс V-Coin.");
+                    return;
+                }
+                showAddressForm();
+                document.getElementById('backFromAddress').onclick = () => app.showDashboard();
+            }
+            else {
+                // Фоллбэк для старых пользователей без уровня
+                showError("Ошибка", "Не удалось определить ваш уровень. Свяжитесь с поддержкой.");
             }
         }
         
@@ -3464,13 +3479,13 @@
 
             const backButton = document.getElementById('backFromDateTime');
             
-            const hasVCoinBalance = userData.vcoin_balance && userData.vcoin_balance > 0;
+            const isMacro = userData.level && userData.level.startsWith('macro');
 
-            if (hasVCoinBalance) {
+            if (isMacro) {
                 backButton.onclick = () => app.showMenuScreen();
                 showMenuScreen();
             } 
-            else {
+            else { // isMicro
                 backButton.onclick = () => app.showAddressForm();
                 showDateTimeSelection();
                 setupTimeSelection();
@@ -3931,6 +3946,20 @@
             const reg = user.registration || user;
             document.getElementById('userDetailTitle').textContent = reg.firstName;
             document.getElementById('userDetailBody').innerHTML = `<strong>Телефон:</strong> ${reg.phone}<br><strong>Instagram:</strong> <a href="https://www.instagram.com/${reg.instagramLogin.replace('@','')}" target="_blank" style="color: #00b4d8; text-decoration: none;">@${reg.instagramLogin}</a><br><strong>Подписчики:</strong> ${reg.followersCount}<br><strong>Просмотры:</strong> ${reg.avgViews}<br><strong>Рейтинг:</strong> ⭐ ${calculateBloggerRating(user)}<br><strong>Баланс V-Бонусов:</strong> ${formatVBonus(user.vcoin_balance || 0)}<br><strong>Лимит V-Бонусов:</strong> ${formatVBonus(user.vcoin_allowance || 0)}`;
+            
+            const resetCooldownBtn = document.getElementById('resetCooldownBtn');
+            const vcoinManagementBlock = document.getElementById('vcoinManagementBlock');
+            if (user.level === 'micro') {
+                resetCooldownBtn.style.display = 'block';
+                vcoinManagementBlock.style.display = 'none';
+            } else if (user.level && user.level.startsWith('macro')) {
+                resetCooldownBtn.style.display = 'none';
+                vcoinManagementBlock.style.display = 'block';
+            } else {
+                resetCooldownBtn.style.display = 'none';
+                vcoinManagementBlock.style.display = 'none';
+            }
+
             renderTags(user.tags || []);
             document.getElementById('userDetailModal').style.display = 'flex';
         }
