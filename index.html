@@ -3492,7 +3492,7 @@
             }
         }
 
-        // START: Переработанная функция выбора времени
+        // START: ИСПРАВЛЕННАЯ ФУНКЦИЯ ВЫБОРА ВРЕМЕНИ
         async function setupTimeSelection() {
             currentOrderData.time = '';
             const nextButton = document.getElementById('nextFromDateTime');
@@ -3549,26 +3549,41 @@
                 return;
             }
 
+            const availableRanges = daySchedule.split(',').map(rangeStr => {
+                const [start, end] = rangeStr.trim().split('-');
+                return { start, end };
+            }).filter(range => range.start && range.end);
+
+            if (availableRanges.length === 0) {
+                timeInfo.innerHTML = 'Сегодня нет доступных слотов для доставки.';
+                timeInfo.style.display = 'block';
+                timeInput.disabled = true;
+                return;
+            }
+            
+            currentOrderData.availableRanges = availableRanges;
+
             const now = new Date();
-            now.setMinutes(now.getMinutes() + 45); // Буфер на приготовление
+            now.setMinutes(now.getMinutes() + 45); // Буфер
             const earliestTime = now.toTimeString().slice(0, 5);
             
-            const openTime = daySchedule.split(',')[0].split('-')[0].trim();
+            const firstAvailableSlotStart = availableRanges[0].start;
+            const lastAvailableSlotEnd = availableRanges[availableRanges.length - 1].end;
             
-            const minTime = earliestTime > openTime ? earliestTime : openTime;
-            const maxTime = daySchedule.split(',').pop().split('-')[1].trim();
+            const effectiveMinTime = earliestTime > firstAvailableSlotStart ? earliestTime : firstAvailableSlotStart;
 
-            if (minTime >= maxTime) {
+            if (effectiveMinTime >= lastAvailableSlotEnd) {
                 timeInfo.innerHTML = 'К сожалению, все слоты на сегодня уже прошли. Попробуйте завтра!';
                 timeInfo.style.display = 'block';
                 timeInput.disabled = true;
                 return;
             }
 
-            timeInput.min = minTime;
-            timeInput.max = maxTime;
+            timeInput.min = effectiveMinTime;
+            timeInput.max = lastAvailableSlotEnd;
             timeInput.disabled = false;
-            timeInfo.innerHTML = `Время доставки доступно с ${minTime} до ${maxTime}.`;
+            
+            timeInfo.innerHTML = `Доступное время: <strong>${daySchedule}</strong>.`;
             timeInfo.style.display = 'block';
         }
 
@@ -3580,23 +3595,49 @@
 
             nextButton.disabled = true;
             timeInfo.style.color = '#ccc';
-            timeInfo.innerHTML = `Время доставки доступно с ${timeInput.min} до ${timeInput.max}.`;
+            const scheduleText = currentOrderData.availableRanges.map(r => `${r.start}-${r.end}`).join(', ');
+            timeInfo.innerHTML = `Доступное время: <strong>${scheduleText}</strong>.`;
 
             if (!selectedTime) return;
 
+            // Проверка 1: Попадает ли время в один из разрешенных интервалов
+            const isInSchedule = currentOrderData.availableRanges.some(range => {
+                return selectedTime >= range.start && selectedTime < range.end;
+            });
+
+            if (!isInSchedule) {
+                timeInfo.innerHTML = `Выбранное время (${selectedTime}) не входит в рабочие часы.`;
+                timeInfo.style.color = '#dc3545';
+                timeInput.value = '';
+                return;
+            }
+            
+            // Проверка 2: Не заблокировано ли это время
             for (const range of currentOrderData.blockedRanges) {
                 if (selectedTime >= range.start && selectedTime < range.end) {
-                    timeInfo.innerHTML = `Выбранное время (${selectedTime}) недоступно из-за блокировки.`;
+                    timeInfo.innerHTML = `Выбранное время (${selectedTime}) временно недоступно.`;
                     timeInfo.style.color = '#dc3545';
                     timeInput.value = '';
                     return;
                 }
             }
             
+            // Проверка 3: Не находится ли время в прошлом (с учетом буфера)
+            const now = new Date();
+            now.setMinutes(now.getMinutes() + 45);
+            const earliestTime = now.toTimeString().slice(0, 5);
+            if (selectedTime < earliestTime) {
+                timeInfo.innerHTML = `Минимальное время для заказа — ${earliestTime}.`;
+                timeInfo.style.color = '#dc3545';
+                timeInput.value = '';
+                return;
+            }
+
+            // Все проверки пройдены
             currentOrderData.time = selectedTime;
             nextButton.disabled = false;
         }
-        // END: Переработанная функция выбора времени
+        // END: ИСПРАВЛЕННАЯ ФУНКЦИЯ ВЫБОРА ВРЕМЕНИ
 
         function validateAddressForm() {
             const city = document.getElementById('city').value;
