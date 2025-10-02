@@ -647,4 +647,91 @@ app.post('/api/manage-vcoins', checkAuth, async (req, res) => {
     try {
         let finalAmount;
         const userData = await db.runTransaction(async (transaction) => {
-            const userDoc = await transaction.get(userRe
+            const userDoc = await transaction.get(userRef);
+            if (!userDoc.exists) {
+                throw new Error("Пользователь не найден.");
+            }
+            const currentBalance = userDoc.data().vcoin_balance || 0;
+
+            if (action === 'add') {
+                finalAmount = amount;
+            } else { // action is 'remove'
+                if (currentBalance < amount) {
+                    throw new Error(`Недостаточно средств. Текущий баланс: ${currentBalance}, попытка списания: ${amount}.`);
+                }
+                finalAmount = -amount;
+            }
+            transaction.update(userRef, {
+                vcoin_balance: admin.firestore.FieldValue.increment(finalAmount)
+            });
+            return userDoc.data();
+        });
+
+        const actionTextPast = action === 'add' ? 'начислено' : 'списано';
+        const actionTextPresent = action === 'add' ? 'Начисление' : 'Списание';
+        
+        if (userData && userData.telegramId) {
+            const newBalance = (userData.vcoin_balance || 0) + finalAmount;
+            const clientMessage = `⚙️ Изменение баланса V-Бонусов!\n\n${actionTextPresent} от администратора: ${amount} V-Бонусов.\nВаш новый баланс: ${newBalance.toFixed(1)} V-Бонусов.`;
+            await bot.sendMessage(userData.telegramId, clientMessage);
+        }
+
+        res.status(200).json({ message: `Успешно ${actionTextPast} ${amount} V-Бонусов.` });
+
+    } catch (error) {
+        console.error('Ошибка при управлении балансом V-Coin:', error);
+        res.status(500).json({ error: error.message || 'Внутренняя ошибка сервера.' });
+    }
+});
+
+// ======================================================================
+// === CRON ЗАДАЧИ ===
+// ======================================================================
+cron.schedule('*/30 * * * *', async () => {
+    console.log('CRON: Запуск проверки напоминаний об отчетах...');
+    try {
+        const now = new Date();
+        const twentyFourHoursAgo = new Date(now.getTime() - (24 * 60 * 60 * 1000));
+
+        const ordersSnapshot = await db.collection('orders')
+            .where('status', '==', 'delivered')
+            .where('reminderSent', '==', false)
+            .get();
+
+        if (ordersSnapshot.empty) {
+            return;
+        }
+
+        for (const doc of ordersSnapshot.docs) {
+            const order = doc.data();
+            const deliveryDate = new Date(order.createdAt); 
+
+            if (deliveryDate <= twentyFourHoursAgo) {
+                const userDoc = await db.collection('users').doc(order.userId).get();
+                if (userDoc.exists) {
+                    const user = userDoc.data();
+                    if (user.telegramId) {
+                        const message = `👋 Привет, ${user.registration.firstName}! Напоминаем, что мы ждем отчет по вашему заказу \`${order.orderNumber}\`. Пожалуйста, сдайте его в личном кабинете.`;
+                        try {
+                            await bot.sendMessage(user.telegramId, message, { parse_mode: 'Markdown' });
+                            await doc.ref.update({ reminderSent: true });
+                            console.log(`CRON: Напоминание отправлено пользователю ${user.telegramId} по заказу ${order.orderNumber}`);
+                        } catch (error) {
+                            console.error(`CRON: Ошибка отправки напоминания пользователю ${user.telegramId}:`, error.response?.body?.description || error.message);
+                        }
+                    }
+                }
+            }
+        }
+    } catch (error) {
+        console.error('CRON: Критическая ошибка при проверке напоминаний:', error);
+    }
+});
+
+
+// ======================================================================
+// === ЗАПУСК СЕРВЕРА ===
+// ======================================================================
+app.listen(PORT, () => {
+    console.log(`Сервер успешно запущен на порту ${PORT}`);
+});
