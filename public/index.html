@@ -1,0 +1,1809 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Бартер для блогеров</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- ЭКРАН: Для критических ошибок -->
+        <div id="criticalErrorScreen" class="welcome-screen" style="display: none;">
+            <div class="logo-container" style="background: var(--accent-danger);">
+                <div class="logo-icon" style="font-size: 50px;">🔌</div>
+            </div>
+            <h1>Ошибка подключения</h1>
+            <p class="subtitle" id="criticalErrorMessage">Потеряна связь с Telegram.<br>Пожалуйста, перезагрузите приложение.</p>
+            <button class="btn-primary" onclick="window.location.reload()">Перезагрузить</button>
+        </div>
+
+        <!-- ЭКРАН: Приветственный -->
+        <div id="welcomeScreen" class="welcome-screen">
+            <div class="logo-container">
+                <div class="logo-icon">
+                    <img src="logo.jpg" alt="logo">
+                </div>
+            </div>
+            <h1>Бартер для блогеров</h1>
+            <p class="subtitle">Эксклюзивное предложение<br>для блогеров и инфлюенсеров</p>
+            <div class="welcome-buttons">
+                 <button class="btn-primary" onclick="app.showRegistration()">Начать</button>
+                 <button class="btn-secondary" onclick="app.showLogin()">У меня уже есть аккаунт</button>
+            </div>
+            <div class="auto-login-info" id="autoLoginInfo" style="display: none;">
+                <div class="loading-indicator">
+                    🔄 Выполняется автоматический вход через Telegram...
+                </div>
+            </div>
+        </div>
+
+        <!-- ЭКРАН: Вход -->
+        <div id="loginScreen" class="form-screen" style="display: none;">
+            <div class="form-header">
+                <h2>Вход в аккаунт</h2>
+                <p class="subtitle">Для старых аккаунтов с паролем</p>
+            </div>
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="loginPhone">Номер телефона *</label>
+                    <input type="tel" id="loginPhone" required placeholder="+7 (___) ___-__-__">
+                </div>
+                <div class="form-group">
+                    <label for="loginInstagram">Логин Instagram *</label>
+                    <input type="text" id="loginInstagram" required placeholder="@username">
+                </div>
+                <div class="form-group">
+                    <label for="loginPassword">Пароль *</label>
+                    <input type="password" id="loginPassword" required placeholder="Введите пароль">
+                </div>
+                <button type="button" class="btn-primary" onclick="app.submitLogin(this)">Войти</button>
+                <button type="button" class="btn-secondary" onclick="app.showWelcomeScreen()">← Назад</button>
+            </form>
+            <div class="telegram-info">
+                <h4 style="color: var(--accent-primary); margin-bottom: 10px;">💡 Автоматический вход</h4>
+                <p style="color: var(--text-secondary); font-size: 14px; line-height: 1.5;">
+                    Если вы открыли приложение через Telegram бот, система попытается найти ваш аккаунт автоматически. 
+                    Эта форма входа нужна только для аккаунтов, у которых был установлен пароль.
+                </p>
+            </div>
+        </div>
+
+        <!-- ЭКРАН: Регистрация -->
+        <div id="registrationScreen" class="form-screen" style="display: none;">
+            <div class="form-header">
+                <h2>Регистрация</h2>
+                <p class="subtitle">Заполните информацию о себе</p>
+            </div>
+            <form id="registrationForm">
+                <div class="form-group">
+                    <label for="firstName">Имя *</label>
+                    <input type="text" id="firstName" required placeholder="Ваше имя">
+                </div>
+                <div class="form-group">
+                    <label for="phone">Номер телефона *</label>
+                    <input type="tel" id="phone" required placeholder="+7 (___) ___-__-__">
+                </div>
+                <div class="form-group">
+                    <label for="instagramLogin">Логин Instagram *</label>
+                    <input type="text" id="instagramLogin" required placeholder="@username">
+                </div>
+                <div class="form-group">
+                    <label for="followersCount">Количество подписчиков *</label>
+                    <input type="number" id="followersCount" required placeholder="Например: 5000" min="1" max="10000000">
+                </div>
+                <div class="form-group">
+                    <label for="avgViews">Среднее количество просмотров сторис *</label>
+                    <input type="number" id="avgViews" required placeholder="Например: 500" min="1" max="10000000">
+                </div>
+                 <div class="form-group">
+                    <label for="regPassword">Пароль *</label>
+                    <input type="password" id="regPassword" required placeholder="Придумайте пароль (минимум 6 символов)">
+                </div>
+                <div class="form-group">
+                    <label for="regPasswordConfirm">Повторите пароль *</label>
+                    <input type="password" id="regPasswordConfirm" required placeholder="Повторите пароль">
+                </div>
+                <button type="button" class="btn-primary" onclick="app.submitRegistration(this)">Зарегистрироваться</button>
+                <button type="button" class="btn-secondary" onclick="app.showWelcomeScreen()">← Назад</button>
+            </form>
+        </div>
+
+        <!-- ЭКРАН: Миграция (установка пароля) -->
+        <div id="migrationScreen" class="form-screen" style="display: none;">
+            <div class="form-header">
+                <h2>Установка пароля</h2>
+                <p class="subtitle">Для вашего старого аккаунта нужно установить пароль</p>
+            </div>
+            <div class="migration-info">
+                <p>Мы нашли ваш аккаунт, но у него нет пароля. Пожалуйста, установите новый пароль для безопасности.</p>
+            </div>
+            <form id="migrationForm">
+                <div class="form-group">
+                    <label for="migrationPassword">Новый пароль *</label>
+                    <input type="password" id="migrationPassword" required placeholder="Придумайте пароль (минимум 6 символов)">
+                </div>
+                <div class="form-group">
+                    <label for="migrationPasswordConfirm">Повторите пароль *</label>
+                    <input type="password" id="migrationPasswordConfirm" required placeholder="Повторите пароль">
+                </div>
+                <button type="button" class="btn-primary" onclick="app.submitMigration(this)">Установить пароль</button>
+                <button type="button" class="btn-secondary" onclick="app.showWelcomeScreen()">← Назад</button>
+            </form>
+        </div>
+
+        <!-- ЭКРАН: Личный кабинет -->
+        <div id="dashboardScreen" class="dashboard" style="display: none;">
+            <div class="user-card">
+                <div class="user-avatar" id="userAvatar">👤</div>
+                <div class="user-name" id="userName"></div>
+                <div id="userLevel" class="user-level"></div>
+                <div class="user-stats">
+                    <div class="stat-item" id="vcoinStatItem" style="display: none;">
+                        <div class="stat-number" id="vcoinBalanceDisplay">0</div>
+                        <div class="stat-label">V-Бонусы</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number" id="followersDisplay">0</div>
+                        <div class="stat-label">Подписчики</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number" id="viewsDisplay">0</div>
+                        <div class="stat-label">Просмотры</div>
+                    </div>
+                </div>
+            </div>
+             <div id="blockedPanel" class="blocked-message" style="display: none;"></div>
+             <div id="strikesPanel" class="strikes-panel" style="display: none;"></div>
+             <div id="statusPanel" class="action-card" style="display: none; border-color: var(--accent-primary); text-align: left;"></div>
+             <div id="cooldownPanel" class="action-card" style="display: none; background: var(--surface-light-color); border-color: var(--border-color); text-align: center; cursor: default;"></div>
+             <div id="loyaltyPanel" class="action-card" style="display: none; border-color: var(--accent-warning); text-align: center; cursor: default;"></div>
+             <div id="reportActionsPanel" class="dashboard-actions" style="margin-top: 20px;"></div>
+            <div class="dashboard-actions">
+                <div id="newCollaborationBtn" class="action-card" onclick="app.startCollaboration()">
+                    <div class="action-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>
+                    </div>
+                    <div class="action-title">Новое сотрудничество</div>
+                    <div class="action-desc">Оформить заказ на бартер</div>
+                </div>
+                <div class="action-card" onclick="app.showOrderHistory()">
+                    <div class="action-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path><polyline points="13 2 13 9 20 9"></polyline></svg>
+                    </div>
+                    <div class="action-title">История заказов</div>
+                    <div class="action-desc">Просмотреть предыдущие заказы</div>
+                </div>
+                <div class="action-card" onclick="app.editProfile()">
+                    <div class="action-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                    </div>
+                    <div class="action-title">Редактировать профиль</div>
+                    <div class="action-desc">Изменить данные аккаунта</div>
+                </div>
+                <div class="action-card" onclick="app.contactAdmin()">
+                    <div class="action-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+                    </div>
+                    <div class="action-title">Связаться с администратором</div>
+                    <div class="action-desc">Задать вопрос или получить помощь</div>
+                </div>
+            </div>
+            <button class="btn-secondary" onclick="app.logout()">Выйти из аккаунта</button>
+        </div>
+
+        <!-- ЭКРАН: CRM -->
+        <div id="crmScreen" class="crm-screen" style="display: none;">
+            <div class="crm-header">
+                <h2>🔧 Панель управления</h2>
+                <button class="btn-back" onclick="app.showDashboard()">← В личный кабинет</button>
+            </div>
+            <div class="crm-tabs">
+                <button class="crm-tab active" data-tab="overview" onclick="app.showCrmTab('overview', this)">Обзор</button>
+                <button class="crm-tab" data-tab="analytics" onclick="app.showCrmTab('analytics', this)">Аналитика</button>
+                <button class="crm-tab" data-tab="orders" onclick="app.showCrmTab('orders', this)">Заказы</button>
+                <button class="crm-tab" data-tab="users" onclick="app.showCrmTab('users', this)">Пользователи</button>
+                <button class="crm-tab" data-tab="schedule" onclick="app.showCrmTab('schedule', this)">Расписание</button>
+                <button class="crm-tab" data-tab="blocks" onclick="app.showCrmTab('blocks', this)">Блокировки</button>
+                <button class="crm-tab" data-tab="broadcast" onclick="app.showCrmTab('broadcast', this)">Рассылка</button>
+                <button class="crm-tab" data-tab="menu" onclick="app.showCrmTab('menu', this)">Меню</button>
+                <button class="crm-tab" data-tab="admins" onclick="app.showCrmTab('admins', this)">Админы</button>
+            </div>
+            <div id="crmOverview" class="crm-content active">
+                <div class="crm-stats">
+                    <div class="crm-stat-card">
+                        <div class="crm-stat-number" id="totalUsers">0</div>
+                        <div class="stat-label">Пользователи</div>
+                    </div>
+                    <div class="crm-stat-card">
+                        <div class="crm-stat-number" id="totalOrders">0</div>
+                        <div class="stat-label">Заказы</div>
+                    </div>
+                    <div class="crm-stat-card">
+                        <div class="crm-stat-number" id="newOrders">0</div>
+                        <div class="stat-label">Новые</div>
+                    </div>
+                    <div class="crm-stat-card">
+                        <div class="crm-stat-number" id="blockedSlots">0</div>
+                        <div class="stat-label">Блокировки</div>
+                    </div>
+                </div>
+                <div class="admin-contact">
+                    <h3>Контакты для пользователей</h3>
+                    <a href="https://t.me/oderefyu" class="contact-link" target="_blank">💬 Telegram поддержка</a>
+                </div>
+                <div style="background: var(--surface-color); padding: 20px; border-radius: var(--border-radius); margin-top: 20px; border: 1px solid var(--border-color);">
+                    <h3>Общие настройки</h3>
+                    <div class="form-group" style="margin-top: 15px;">
+                        <label for="cooldownSetting">Период ожидания между заказами (в днях, для микроблогеров)</label>
+                        <input type="number" id="cooldownSetting" min="0" placeholder="Например: 7">
+                        <button class="btn-primary" onclick="app.saveSettings(this)" style="margin-top: 15px;">Сохранить настройку</button>
+                    </div>
+                </div>
+            </div>
+            <div id="crmAnalytics" class="crm-content">
+                 <div class="analytics-filters">
+                    <div class="form-group">
+                        <label>Период:</label>
+                        <div class="form-row">
+                            <input type="date" id="analyticsStartDate">
+                            <input type="date" id="analyticsEndDate">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="analyticsCity">Город:</label>
+                        <select id="analyticsCity" onchange="app.applyAnalyticsFilters()">
+                            <option value="all">Все города</option>
+                            <option value="Павлодар">Павлодар</option>
+                            <option value="Петропавловск">Петропавловск</option>
+                            <option value="Кокшетау">Кокшетау</option>
+                            <option value="Костанай">Костанай</option>
+                            <option value="Усть-Каменогорск">Усть-Каменогорск</option>
+                        </select>
+                    </div>
+                    <button class="btn-primary" onclick="app.applyAnalyticsFilters()">Применить</button>
+                </div>
+                <div class="analytics-grid">
+                    <div class="chart-container">
+                        <h3>Динамика заказов</h3>
+                        <canvas id="ordersTrendChart"></canvas>
+                    </div>
+                    <div class="chart-container" id="cityChartContainer">
+                        <h3>Заказы по городам</h3>
+                        <canvas id="cityChart"></canvas>
+                    </div>
+                     <div class="chart-container">
+                        <h3>Уровни блогеров</h3>
+                        <canvas id="bloggerLevelChart"></canvas>
+                    </div>
+                    <div class="chart-container">
+                        <h3>Распределение подписчиков</h3>
+                        <canvas id="followersDistributionChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div id="crmOrders" class="crm-content">
+                <div class="search-container">
+                    <input type="text" id="orderSearch" class="search-input" placeholder="Поиск по имени, телефону, Instagram или номеру заказа..." onkeyup="app.filterOrders()">
+                    <button id="exportOrdersBtn" class="btn-secondary" onclick="app.exportOrdersToExcel(this)">Экспорт в Excel</button>
+                </div>
+                <div class="orders-list" id="ordersList"></div>
+            </div>
+            <div id="crmUsers" class="crm-content">
+                <div class="search-container">
+                    <input type="text" id="userSearch" class="search-input" placeholder="Поиск пользователей..." onkeyup="app.filterUsers()">
+                    <button id="exportUsersBtn" class="btn-secondary" onclick="app.exportUsersToExcel(this)">Экспорт в Excel</button>
+                </div>
+                <div id="usersList"></div>
+            </div>
+             <div id="crmSchedule" class="crm-content">
+                 <div class="form-header">
+                    <h2>Управление расписанием</h2>
+                    <p class="subtitle">Укажите доступные часы для доставки в формате "10:00-14:00" или "10:00-12:00, 14:00-18:00".<br>Оставьте поле пустым, чтобы сделать день недоступным.</p>
+                </div>
+                <div id="scheduleCityTabs" class="schedule-city-tabs"></div>
+                <div id="scheduleFormsContainer"></div>
+                <button class="btn-primary" onclick="app.saveSchedule(this)">Сохранить расписание</button>
+            </div>
+            <div id="crmBlocks" class="crm-content">
+                <button class="btn-primary" onclick="app.showAddBlockModal()" style="margin-bottom: 20px;">+ Добавить блокировку</button>
+                <div id="blockedSlotsList"></div>
+            </div>
+             <div id="crmBroadcast" class="crm-content">
+                <div class="form-header">
+                    <h2>Массовая рассылка</h2>
+                    <p class="subtitle">Отправьте сообщение пользователям бота</p>
+                </div>
+                <div class="form-group">
+                    <label>Фильтр по тегам (рассылка будет отправлена пользователям, имеющим хотя бы один из выбранных тегов)</label>
+                    <div id="broadcastTagsContainer" class="tags-container" style="min-height: 40px; background: var(--surface-color); padding: 5px; border-radius: var(--border-radius-small); border: 1px solid var(--border-color);">
+                    </div>
+                    <div style="position: relative;">
+                         <input type="text" id="broadcastTagInput" placeholder="Добавьте тег для рассылки..." style="margin-top: 10px;">
+                         <div id="tagSuggestions" class="tag-suggestions-container"></div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="broadcastMessage">Текст сообщения</label>
+                    <textarea id="broadcastMessage" rows="6" placeholder="Введите ваше сообщение здесь..."></textarea>
+                </div>
+                <div class="telegram-info" style="margin-top: -10px; margin-bottom: 20px; font-size: 13px; padding: 15px; border-left-color: var(--accent-warning);">
+                    <h4 style="color: var(--accent-primary); margin-bottom: 10px;">✨ Персонализация (нажмите, чтобы скопировать)</h4>
+                    <p style="color: var(--text-secondary); line-height: 1.8;">
+                        Используйте плейсхолдеры, и система автоматически подставит данные пользователя.
+                        <br><strong>Доступные плейсхолдеры:</strong><br>
+                        <code class="placeholder-tag" onclick="app.copyPlaceholder(this)">{firstName}</code>, 
+                        <code class="placeholder-tag" onclick="app.copyPlaceholder(this)">{instagramLogin}</code>, 
+                        <code class="placeholder-tag" onclick="app.copyPlaceholder(this)">{followersCount}</code>, 
+                        <code class="placeholder-tag" onclick="app.copyPlaceholder(this)">{level}</code>, 
+                        <code class="placeholder-tag" onclick="app.copyPlaceholder(this)">{rating}</code>
+                    </p>
+                </div>
+                <button class="btn-primary" onclick="app.sendBroadcast(this)">Отправить рассылку</button>
+                <div class="telegram-info" style="margin-top: 20px;">
+                     <h4 style="color: var(--accent-warning); margin-bottom: 10px;">⚠️ Внимание!</h4>
+                     <p style="color: var(--text-secondary); font-size: 14px; line-height: 1.5;">
+                         Эта функция запускает рассылку на сервере. Вы можете закрыть окно после нажатия кнопки. Отчет придет в личные сообщения.
+                     </p>
+                </div>
+            </div>
+            <div id="crmAdmins" class="crm-content">
+                <button class="btn-primary" onclick="app.showAddAdminModal()" style="margin-bottom: 20px;">+ Добавить сотрудника</button>
+                <div id="adminsList"></div>
+            </div>
+            <div id="crmMenu" class="crm-content">
+                <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                    <button class="btn-primary" onclick="app.showMenuItemModal()" style="flex: 1;">+ Добавить блюдо</button>
+                    <input type="file" id="menuFileInput" onchange="app.handleMenuFileSelect(event)" accept=".xlsx, .xls" style="display: none;" />
+                    <button id="importMenuBtn" class="btn-secondary" onclick="app.triggerMenuImport()" style="flex: 1;">Импорт из файла</button>
+                </div>
+                <div class="search-container" style="margin-bottom: 20px;">
+                    <input type="text" id="menuSearch" class="search-input" placeholder="Поиск по названию блюда..." onkeyup="app.filterMenuItems()">
+                </div>
+                <div id="menuItemsListCrm"></div>
+            </div>
+        </div>
+        
+        <!-- ЭКРАНЫ Процесса заказа -->
+        <div id="setSelectionScreen" class="form-screen set-selection" style="display: none;">
+            <button class="btn-back" onclick="app.showDashboard()">← Назад</button>
+            <div class="form-header">
+                <h2>Выберите набор</h2>
+            </div>
+            <div class="set-item" data-set-name="Сет 1" onclick="app.selectSet(this, 'set1')">
+                <div class="set-title">Сет 1</div>
+                <div class="set-description">Филадельфия с огурцом, Гейша, Лосось с чукой и миндалём</div>
+            </div>
+            <div class="set-item" data-set-name="Сет 2" onclick="app.selectSet(this, 'set2')">
+                <div class="set-title">Сет 2</div>
+                <div class="set-description">Классическая Фила, Запечённый с креветкой, Сэндвич с курицей</div>
+            </div>
+            <button type="button" id="nextFromSet" class="btn-primary" onclick="app.proceedToAddressFromSet()" disabled>Далее</button>
+        </div>
+
+        <div id="addressScreen" class="form-screen" style="display: none;">
+            <button class="btn-back" id="backFromAddress" onclick="app.showDashboard()">← В главное меню</button>
+            <div class="form-header">
+                <h2>Адрес доставки</h2>
+            </div>
+            <form id="addressForm">
+                <div class="form-group">
+                    <label for="city">Город *</label>
+                    <select id="city" required onchange="app.handleCityChange()">
+                        <option value="">Выберите город</option>
+                        <option value="Павлодар">Павлодар</option>
+                        <option value="Петропавловск">Петропавловск</option>
+                        <option value="Кокшетау">Кокшетау</option>
+                        <option value="Костанай">Костанай</option>
+                        <option value="Усть-Каменогорск">Усть-Каменогорск</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="street">Улица, дом *</label>
+                    <input type="text" id="street" required placeholder="ул. Пушкина, д. 10">
+                </div>
+                <div class="form-group">
+                    <label for="entrance">Подъезд</label>
+                    <input type="text" id="entrance" placeholder="1">
+                </div>
+                <div class="form-group">
+                    <label for="floor">Этаж</label>
+                    <input type="text" id="floor" placeholder="5">
+                </div>
+                <div class="form-group">
+                    <label for="recipientPhone">Телефон получателя *</label>
+                    <input type="tel" id="recipientPhone" required placeholder="+7 (___) ___-__-__">
+                </div>
+                <div class="form-group">
+                    <label for="comment">Дополнительный комментарий</label>
+                    <textarea id="comment" rows="3" placeholder="Особые пожелания или комментарии"></textarea>
+                </div>
+                <button type="button" class="btn-primary" onclick="app.submitAddressAndShowDateTime()">Далее</button>
+            </form>
+        </div>
+
+        <div id="menuSelectionScreen" class="form-screen menu-screen" style="display: none;">
+            <div class="menu-header-sticky">
+                <div class="menu-top-bar">
+                    <button class="btn-back" onclick="app.showAddressForm()">←</button>
+                    <div class="menu-info-bar">
+                        <h2>Соберите ваш заказ</h2>
+                        <div id="menuBudgetDisplay" class="menu-budget-display">Ваш бюджет: 0</div>
+                    </div>
+                </div>
+                <div id="menu-categories" class="menu-categories"></div>
+            </div>
+            <div id="menu-items-container"></div>
+            <div id="cart-fab" class="cart-fab" style="display: none;">
+                <div class="cart-fab-content">
+                    <div class="cart-summary">
+                        <span class="cart-summary-label">Итого / Бюджет</span>
+                        <span id="cart-summary-value" class="cart-summary-value"></span>
+                    </div>
+                    <div class="cart-progress-bar-container">
+                        <div id="cart-progress-bar" class="cart-progress-bar"></div>
+                    </div>
+                    <button class="btn-primary" onclick="app.checkBalanceAndProceed()">Далее</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="dateTimeScreen" class="form-screen datetime-selection" style="display: none;">
+            <button class="btn-back" id="backFromDateTime">← Назад</button>
+            <div class="form-header">
+                <h2>Время доставки</h2>
+                <h4 id="todaysDateHeader" style="color: var(--text-secondary); font-weight: 400; margin-top: -15px;"></h4>
+            </div>
+            <div class="form-group">
+                <label for="deliveryTime">Выберите удобное время</label>
+                <input type="time" id="deliveryTime" required onchange="app.validateTimeSelection()">
+                <div id="timeSelectionInfo" class="telegram-info" style="font-size: 14px; padding: 15px; margin-top: 15px; display: none;"></div>
+            </div>
+            <button type="button" id="nextFromDateTime" class="btn-primary" onclick="app.showInstructions()" disabled>Далее</button>
+        </div>
+
+        <div id="instructionsScreen" class="form-screen" style="display: none;">
+            <button class="btn-back" onclick="app.showDateTimeSelection()">← Назад</button>
+            <div class="form-header">
+                <h2>Инструкция для сторис</h2>
+            </div>
+            <div class="instructions">
+                <h3>Чек-лист для сторис:</h3>
+                <ul class="checklist">
+                    <li>Упомянуть бренд в сторис</li>
+                    <li>Отметить наш Instagram @vesla.kz</li>
+                    <li>Показывать упаковку и еду</li>
+                    <li>Разместить пост до указанного времени</li>
+                </ul>
+                <div style="margin-top: 20px;">
+                    <strong>Пример тезиса:</strong><br>
+                    <em>"Я заказала у @vesla.kz — это просто космос! Очень вкусно и качественно!"</em>
+                </div>
+            </div>
+            <div class="warning-message" id="warningMessage">
+                ⚠️ Пожалуйста, помните: 3 несданных отчета — и вы будете исключены из программы. Мы уверены, до этого не дойдет! 😊
+            </div>
+            <button type="button" class="btn-primary" onclick="app.submitOrder(this)">Оформить заказ</button>
+        </div>
+        
+        <!-- Модальные окна -->
+        <div id="successModal" class="modal">
+            <div class="modal-content">
+                <div class="success-icon">✅</div>
+                <h2 id="successTitle">Заказ оформлен!</h2>
+                <p class="subtitle" id="successMessage">Через 24 часа после доставки вам придет напоминание об отчете</p>
+                <button id="successModalCloseBtn" class="btn-primary" onclick="app.closeModal()">Закрыть</button>
+            </div>
+        </div>
+        <div id="errorModal" class="modal">
+            <div class="modal-content">
+                <div class="error-icon">❌</div>
+                <h2 id="errorTitle">Ошибка</h2>
+                <p class="subtitle" id="errorMessage"></p>
+                <button class="btn-primary" onclick="app.closeErrorModal()">Понятно</button>
+            </div>
+        </div>
+        <div id="overdraftModal" class="modal">
+            <div class="modal-content">
+                <div class="warning-icon">⚠️</div>
+                <h2 id="overdraftTitle">Требуется доплата</h2>
+                <p class="subtitle" id="overdraftMessage" style="text-align: left; line-height: 1.6;"></p>
+                <div class="modal-button-group">
+                    <button class="btn-primary" onclick="app.proceedToDateTimeSelection()">Продолжить</button>
+                    <button class="btn-secondary" onclick="app.closeSimpleModal('overdraftModal')">Отмена</button>
+                </div>
+            </div>
+        </div>
+        <div id="rejectionModal" class="modal">
+            <div class="modal-content">
+                <div class="error-icon">😔</div>
+                <h2>Спасибо за интерес!</h2>
+                <p class="subtitle">На данный момент сотрудничество доступно для блогеров со средней аудиторией от 300 просмотров сторис. Следите за нашими обновлениями — возможно, скоро это изменится!</p>
+                <button class="btn-primary" onclick="app.closeRejectionModal()">Понятно</button>
+            </div>
+        </div>
+        <div id="orderHistoryModal" class="modal">
+            <div class="modal-content" style="max-width: 400px;">
+                <h2>История заказов</h2>
+                <div id="orderHistoryList" style="text-align: left; max-height: 40vh; overflow-y: auto; margin: 20px 0;"></div>
+                <button class="btn-primary" onclick="app.closeOrderHistory()">Закрыть</button>
+            </div>
+        </div>
+        <div id="orderDetailModal" class="modal">
+            <div class="modal-content" style="max-width: 400px;">
+                <div class="modal-header">
+                     <h2 id="orderDetailTitle">Детали заказа</h2>
+                     <div style="display: flex; gap: 10px; align-items: center;">
+                        <button id="markReportAcceptedBtn" class="btn-icon btn-icon-unblock" title="Отчет сдан и принят">✔️</button>
+                        <button id="markNoReportBtn" class="btn-icon btn-icon-block" title="Отчет не сдан">🚩</button>
+                        <button class="btn-danger-icon" id="deleteOrderBtn" title="Удалить заказ">🗑️</button>
+                     </div>
+                </div>
+                <div id="orderDetailBody" class="modal-body"></div>
+                <div class="form-group" style="margin-top: 20px; text-align: left;">
+                    <label for="orderStatusSelect">Изменить статус:</label>
+                    <select id="orderStatusSelect" style="width: 100%;">
+                         <option value="new">Новый</option>
+                         <option value="confirmed">Подтвержден</option>
+                         <option value="delivered">Доставлен</option>
+                         <option value="awaiting_review">Отчет на проверке</option>
+                         <option value="completed">Завершен</option>
+                         <option value="rejected">Отчет отклонен</option>
+                    </select>
+                </div>
+                <button class="btn-primary" onclick="app.updateOrderStatus(this)">Сохранить статус</button>
+                <button class="btn-secondary" onclick="app.closeOrderDetailModal()" style="margin-top: 10px;">Закрыть</button>
+            </div>
+        </div>
+        <div id="userDetailModal" class="modal">
+            <div class="modal-content" style="max-width: 400px;">
+                <div class="modal-header">
+                     <h2 id="userDetailTitle">Карточка пользователя</h2>
+                </div>
+                <div id="userDetailBody" class="modal-body"></div>
+                <hr style="border-color: var(--border-color); margin: 20px 0;">
+                <div style="text-align: left;">
+                    <label>Добавленные теги:</label>
+                    <div id="userTagsContainer" class="tags-container"></div>
+                    <div class="form-group">
+                        <label for="newTagInput" style="margin-top: 15px;">Добавить тег вручную</label>
+                        <div class="input-with-button">
+                            <input type="text" id="newTagInput" placeholder="Название тега">
+                            <button onclick="app.addUserTag()">+</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <hr style="border-color: var(--border-color); margin: 20px 0;">
+                
+                <div id="vcoinManagementBlock" class="vcoin-management-block" style="display: none;">
+                    <label for="vcoinManageAmount">Управление V-Бонусами</label>
+                    <div class="form-group" style="margin-top: 8px;">
+                        <input type="number" id="vcoinManageAmount" placeholder="0">
+                    </div>
+                    <div class="button-group">
+                        <button class="btn-primary btn-small" onclick="app.manageVcoins('add')">Начислить</button>
+                        <button class="btn-danger btn-small" onclick="app.manageVcoins('remove')">Списать</button>
+                    </div>
+                </div>
+                
+                <button class="btn-secondary" id="resetCooldownBtn" onclick="app.resetOrderCooldown()" style="margin-top: 20px; display: none;">Сбросить ограничение заказа</button>
+                <button class="btn-secondary" onclick="app.closeUserDetailModal()" style="margin-top: 10px;">Закрыть</button>
+            </div>
+        </div>
+        <div id="reportModal" class="modal">
+            <div class="modal-content">
+                <h2 id="reportModalTitle">Сдать отчет</h2>
+                <p class="subtitle">Вставьте ссылку на сторис или пост</p>
+                <div class="form-group" style="text-align: left;">
+                    <label for="reportLink">Ссылка на отчет *</label>
+                    <input type="text" id="reportLink" placeholder="https://instagram.com/stories/...">
+                </div>
+                <button class="btn-primary" onclick="app.submitReport(this)">Отправить</button>
+                <button class="btn-secondary" onclick="app.closeReportModal()">Отмена</button>
+            </div>
+        </div>
+        <div id="editProfileModal" class="modal">
+            <div class="modal-content" style="max-width: 400px;">
+                <h2>Редактировать профиль</h2>
+                <form id="editProfileForm" style="margin: 20px 0; text-align: left;">
+                    <div class="form-group">
+                        <label for="editFirstName">Имя *</label>
+                        <input type="text" id="editFirstName" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="editPhone">Телефон *</label>
+                        <input type="tel" id="editPhone" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="editInstagram">Instagram *</label>
+                        <input type="text" id="editInstagram" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="editFollowers">Подписчики *</label>
+                        <input type="number" id="editFollowers" required min="1" max="10000000">
+                    </div>
+                    <div class="form-group">
+                        <label for="editViews">Просмотры *</label>
+                        <input type="number" id="editViews" required min="1" max="10000000">
+                    </div>
+                    <div class="form-group">
+                        <label for="editPassword">Новый пароль (оставьте пустым, если не меняете)</label>
+                        <input type="password" id="editPassword" placeholder="Новый пароль">
+                    </div>
+                    <div class="form-group">
+                        <label for="editVcoinAllowance">Еженедельный лимит V-Бонусов (только для админов)</label>
+                        <input type="number" id="editVcoinAllowance" min="0">
+                    </div>
+                </form>
+                <div class="modal-button-group">
+                    <button class="btn-primary" onclick="app.saveProfile(this)">Сохранить</button>
+                    <button class="btn-secondary" onclick="app.closeEditProfile()">Отмена</button>
+                </div>
+            </div>
+        </div>
+        
+        <div id="addBlockModal" class="modal">
+            <div class="modal-content" style="max-width: 400px;">
+                <h2>Добавить блокировку</h2>
+                <form id="addBlockForm" style="margin: 20px 0; text-align: left;">
+                    <div class="form-group">
+                        <label for="blockCity">Город *</label>
+                        <select id="blockCity" required>
+                            <option value="">Выберите город</option>
+                            <option value="Павлодар">Павлодар</option>
+                            <option value="Петропавловск">Петропавловск</option>
+                            <option value="Кокшетау">Кокшетау</option>
+                            <option value="Костанай">Костанай</option>
+                            <option value="Усть-Каменогорск">Усть-Каменогорск</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="blockDate">Дата *</label>
+                        <input type="date" id="blockDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="blockType">Тип блокировки *</label>
+                        <select id="blockType" required onchange="app.toggleBlockTime()">
+                            <option value="range">Диапазон времени</option>
+                            <option value="fullday">Весь день</option>
+                        </select>
+                    </div>
+                    <div id="blockTimeGroup">
+                        <div class="form-row">
+                             <div class="form-group">
+                                <label for="blockStartTime">С *</label>
+                                <input type="time" id="blockStartTime">
+                             </div>
+                             <div class="form-group">
+                                <label for="blockEndTime">До *</label>
+                                <input type="time" id="blockEndTime">
+                             </div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="blockReason">Причина</label>
+                        <input type="text" id="blockReason" placeholder="Причина блокировки (необязательно)">
+                    </div>
+                </form>
+                <div class="modal-button-group">
+                    <button class="btn-primary" onclick="app.addBlock(this)">Добавить</button>
+                    <button class="btn-secondary" onclick="app.closeAddBlockModal()">Отмена</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="addAdminModal" class="modal">
+            <div class="modal-content" style="max-width: 400px;">
+                <h2>Добавить сотрудника</h2>
+                <div class="form-group" style="text-align: left;">
+                    <label for="adminRoleSelect">Роль</label>
+                    <select id="adminRoleSelect">
+                        <option value="operator">Оператор</option>
+                        <option value="admin">Администратор</option>
+                    </select>
+                </div>
+                <input type="text" id="adminUserSearch" class="search-input" placeholder="Поиск пользователя для назначения..." onkeyup="app.filterAdminUsers()">
+                <div id="adminUsersList" style="text-align: left; max-height: 40vh; overflow-y: auto;"></div>
+                <button class="btn-secondary" onclick="app.closeAddAdminModal()" style="margin-top: 20px;">Закрыть</button>
+            </div>
+        </div>
+        <div id="contactModal" class="modal">
+            <div class="modal-content">
+                <h2>Связаться с администратором</h2>
+                <p class="subtitle">Напишите нам в Telegram</p>
+                <a href="https://t.me/oderefyu" class="contact-link" target="_blank">💬 Telegram поддержка</a>
+                <button class="btn-secondary" onclick="app.closeContactModal()">Закрыть</button>
+            </div>
+        </div>
+
+        <div id="menuItemModal" class="modal">
+            <div class="modal-content" style="max-width: 400px;">
+                <h2 id="menuItemModalTitle">Добавить блюдо</h2>
+                <form id="menuItemForm" style="margin: 20px 0; text-align: left;">
+                    <input type="hidden" id="menuItemEditId">
+                    <input type="hidden" id="menuItemOldImageUrl">
+                    <div class="form-group">
+                        <label for="menuItemName">Название</label>
+                        <input type="text" id="menuItemName" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="menuItemDesc">Описание</label>
+                        <textarea id="menuItemDesc" rows="3"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="menuItemPrice">Цена (в тенге)</label>
+                        <input type="number" id="menuItemPrice" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="menuItemCategory">Категория</label>
+                        <select id="menuItemCategory" required>
+                            <option value="Сеты">Сеты</option>
+                            <option value="Роллы">Роллы</option>
+                            <option value="Пицца">Пицца</option>
+                            <option value="ВОК / ТОМ-ЯМ">ВОК / ТОМ-ЯМ</option>
+                            <option value="Закуски">Закуски</option>
+                            <option value="Напитки">Напитки</option>
+                            <option value="Дополнительно">Дополнительно</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                         <label for="menuItemSubcategory">Подкатегория (например, для роллов)</label>
+                         <input type="text" id="menuItemSubcategory" placeholder="Например: Филадельфия, Запечённые">
+                     </div>
+                     <div class="form-group">
+                        <label for="menuItemImage">Изображение (будет обрезано до квадрата)</label>
+                        <input type="file" id="menuItemImage" accept="image/*">
+                    </div>
+                </form>
+                <div class="modal-button-group">
+                    <button class="btn-primary" onclick="app.saveMenuItem(this)">Сохранить</button>
+                    <button class="btn-secondary" onclick="app.closeSimpleModal('menuItemModal')">Отмена</button>
+                </div>
+            </div>
+        </div>
+        
+    </div>
+
+    <div class="admin-panel" id="adminPanel" style="display: none;">
+        <button class="admin-btn" onclick="app.showCRM()" title="Панель управления">⚙️</button>
+    </div>
+
+   <!-- В конце body, перед закрывающим тегом </body> -->
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+<!-- Подключение модулей -->
+<script type="module">
+    import * as Main from './js/main.js';
+    import * as UI from './js/ui.js';
+    import * as API from './js/api.js';
+
+    // Создаем глобальный объект app для доступа из inline обработчиков
+    window.app = {
+        // Навигация
+        showRegistration: () => {
+            if (!Main.appState.telegramUser) {
+                return UI.showCriticalError("Не удалось получить данные Telegram для регистрации. Пожалуйста, перезапустите приложение.");
+            }
+            UI.showScreen('registrationScreen');
+            fillTelegramData();
+        },
+        showLogin: () => UI.showScreen('loginScreen'),
+        showWelcomeScreen: () => UI.showScreen('welcomeScreen'),
+        showDashboard: () => UI.showDashboard(Main.appState),
+        showCRM: async () => {
+            if (!Main.ensureAuthenticated()) return;
+            if (!Main.appState.currentUserRole) {
+                UI.showError('Доступ запрещен', 'У вас нет прав для доступа к CRM.');
+                return;
+            }
+            UI.showScreen('crmScreen');
+            setupCRMTabs();
+            await Main.updateCRMStats();
+        },
+        showSetSelection: () => UI.showScreen('setSelectionScreen'),
+        showAddressForm: () => UI.showScreen('addressScreen'),
+        showDateTimeSelection: () => UI.showScreen('dateTimeScreen'),
+        showInstructions: () => UI.showScreen('instructionsScreen'),
+        showMenuScreen: () => {
+            UI.showScreen('menuSelectionScreen');
+            UI.loadAndRenderMenu(Main.appState, Main.VCOIN_RATE);
+        },
+
+        // Авторизация и регистрация
+        submitLogin: async (button) => await withLoading(button, () => Main.submitLogin()),
+        submitMigration: async (button) => await withLoading(button, () => Main.submitMigration()),
+        submitRegistration: async (button) => await withLoading(button, () => Main.submitRegistration()),
+        logout: () => Main.logout(),
+
+        // Заказы
+        startCollaboration: () => Main.startCollaboration(),
+        submitOrder: async (button) => await withLoading(button, () => Main.submitOrder()),
+        submitAddressAndShowDateTime: () => submitAddressAndShowDateTime(),
+        validateTimeSelection: () => Main.validateTimeSelection(),
+        selectSet: (element, setId) => selectSet(element, setId),
+        proceedToAddressFromSet: () => proceedToAddressFromSet(),
+
+        // Корзина
+        addToCart: (item) => Main.addToCart(item),
+        removeFromCart: (itemId) => Main.removeFromCart(itemId),
+        checkBalanceAndProceed: () => Main.checkBalanceAndProceed(),
+        proceedToDateTimeSelection: () => Main.proceedToDateTimeSelection(),
+
+        // Профиль
+        editProfile: () => editProfile(),
+        saveProfile: async (button) => await withLoading(button, () => Main.saveProfile()),
+        showOrderHistory: () => showOrderHistory(),
+
+        // Отчеты
+        showReportModal: (orderId, orderNumber) => showReportModal(orderId, orderNumber),
+        submitReport: async (button) => await withLoading(button, () => Main.submitReport()),
+        closeReportModal: () => UI.closeModal('reportModal'),
+
+        // CRM - Заказы
+        showCrmTab: (tabName, element) => showCrmTab(tabName, element),
+        filterOrders: () => UI.filterList('orderSearch', '#ordersList', '.order-item'),
+        showOrderDetailModal: async (orderId) => await showOrderDetailModal(orderId),
+        closeOrderDetailModal: () => UI.closeModal('orderDetailModal'),
+        updateOrderStatus: async (button) => {
+            await withLoading(button, async () => {
+                const newStatus = document.getElementById('orderStatusSelect').value;
+                await Main.updateOrderStatus(newStatus);
+                await UI.updateOrdersList(Main.getStatusInfo);
+            });
+        },
+        removeOrder: async (orderId) => await removeOrder(orderId),
+        markReportAccepted: async (button) => await markReportAccepted(button),
+        markNoReport: async (button, orderId, orderNumber) => await markNoReport(button, orderId, orderNumber),
+
+        // CRM - Пользователи
+        filterUsers: () => UI.filterList('userSearch', '#usersList', '.user-item'),
+        showUserDetailModal: async (userId) => await showUserDetailModal(userId),
+        closeUserDetailModal: () => UI.closeModal('userDetailModal'),
+        toggleUserBlock: async (userId, shouldBlock) => {
+            await Main.toggleUserBlock(userId, shouldBlock);
+            await UI.updateUsersList(Main.calculateBloggerRating);
+        },
+        removeUser: async (userId, userName) => {
+            await Main.removeUser(userId, userName);
+            await UI.updateUsersList(Main.calculateBloggerRating);
+        },
+        addUserTag: async () => await addUserTag(),
+        removeUserTag: async (tag) => await removeUserTag(tag),
+        resetOrderCooldown: async () => await resetOrderCooldown(),
+        manageVcoins: async (action) => await manageVcoins(action),
+
+        // CRM - Блокировки
+        showAddBlockModal: () => {
+            document.getElementById('addBlockModal').style.display = 'flex';
+            toggleBlockTime();
+        },
+        closeAddBlockModal: () => UI.closeModal('addBlockModal'),
+        toggleBlockTime: () => toggleBlockTime(),
+        addBlock: async (button) => await addBlock(button),
+        removeBlock: async (blockId) => {
+            if (confirm('Удалить блокировку?')) {
+                await API.removeBlockedSlot(blockId);
+                await UI.updateBlockedSlotsList();
+            }
+        },
+
+        // CRM - Админы
+        showAddAdminModal: async () => await showAddAdminModal(),
+        closeAddAdminModal: () => UI.closeModal('addAdminModal'),
+        filterAdminUsers: () => UI.filterList('adminUserSearch', '#adminUsersList', '.user-item'),
+        addAdmin: async (userId, userName, role) => await addAdmin(userId, userName, role),
+        removeAdmin: async (adminId) => await removeAdmin(adminId),
+        toggleAdminNotifications: async (adminId, currentState) => {
+            await API.toggleAdminNotifications(adminId, currentState);
+            UI.showCrmSuccess('Настройки уведомлений обновлены.');
+            await UI.updateAdminsList();
+        },
+
+        // CRM - Расписание
+        loadSchedule: async () => await loadSchedule(),
+        saveSchedule: async (button) => await withLoading(button, () => saveSchedule()),
+        showScheduleForCity: (city, element) => showScheduleForCity(city, element),
+
+        // CRM - Меню
+        filterMenuItems: () => UI.filterList('menuSearch', '#menuItemsListCrm', '.user-item'),
+        updateMenuItemsListCrm: () => UI.updateMenuItemsListCrm(),
+        showMenuItemModal: async (itemId = null) => await showMenuItemModal(itemId),
+        saveMenuItem: async (button) => await saveMenuItem(button),
+        deleteMenuItem: async (itemId) => {
+            if (confirm('Вы уверены, что хотите удалить это блюдо?')) {
+                await API.deleteMenuItem(itemId);
+                UI.showCrmSuccess("Блюдо удалено.");
+                await UI.updateMenuItemsListCrm();
+            }
+        },
+        toggleMenuItemVisibility: async (itemId, currentVisibility) => {
+            await API.toggleMenuItemVisibility(itemId, currentVisibility);
+            await UI.updateMenuItemsListCrm();
+        },
+        triggerMenuImport: () => document.getElementById('menuFileInput').click(),
+        handleMenuFileSelect: async (event) => await handleMenuFileSelect(event),
+
+        // CRM - Настройки
+        saveSettings: async (button) => await saveSettings(button),
+        applyAnalyticsFilters: async () => {
+            const startDate = document.getElementById('analyticsStartDate').value;
+            const endDate = document.getElementById('analyticsEndDate').value;
+            const city = document.getElementById('analyticsCity').value;
+            document.getElementById('cityChartContainer').style.display = 
+                (city && city !== 'all') ? 'none' : 'flex';
+            await UI.updateAllAnalytics({ startDate, endDate, city });
+        },
+
+        // CRM - Рассылка
+        sendBroadcast: async (button) => await sendBroadcast(button),
+
+        // CRM - Экспорт
+        exportOrdersToExcel: async (btn) => await exportToExcel(btn, 'orders'),
+        exportUsersToExcel: async (btn) => await exportToExcel(btn, 'users'),
+
+        // Модальные окна
+        closeModal: () => {
+            UI.closeModal('successModal');
+            UI.showDashboard(Main.appState);
+        },
+        closeSimpleModal: (modalId) => UI.closeModal(modalId),
+        closeErrorModal: () => UI.closeModal('errorModal'),
+        closeRejectionModal: () => UI.closeModal('rejectionModal'),
+        closeOrderHistory: () => UI.closeModal('orderHistoryModal'),
+        closeEditProfile: () => UI.closeModal('editProfileModal'),
+        contactAdmin: () => document.getElementById('contactModal').style.display = 'flex',
+        closeContactModal: () => UI.closeModal('contactModal'),
+
+        // Утилиты
+        copyPlaceholder: (element) => copyPlaceholder(element)
+    };
+
+    // Вспомогательные функции
+    async function withLoading(button, asyncFunction) {
+        if (!button || button.disabled) return;
+        const originalText = button.innerHTML;
+        button.disabled = true;
+        button.innerHTML = 'Загрузка...';
+        try {
+            await asyncFunction();
+        } catch (error) {
+            console.error("Operation failed:", error);
+            UI.showError("Произошла ошибка", error.message);
+        } finally {
+            button.disabled = false;
+            button.innerHTML = originalText;
+        }
+    }
+
+    function fillTelegramData() {
+        if (Main.appState.telegramUser && Main.appState.telegramUser.first_name) {
+            document.getElementById('firstName').value = Main.appState.telegramUser.first_name;
+        }
+    }
+
+    function selectSet(element, setId) {
+        document.querySelectorAll('.set-item').forEach(item => item.classList.remove('selected'));
+        element.classList.add('selected');
+        Main.appState.currentOrderData.set = setId;
+        Main.appState.currentOrderData.setName = element.dataset.setName;
+        document.getElementById('nextFromSet').disabled = false;
+    }
+
+    function proceedToAddressFromSet() {
+        document.getElementById('backFromAddress').onclick = () => app.showSetSelection();
+        UI.showScreen('addressScreen');
+    }
+
+    function submitAddressAndShowDateTime() {
+        if (!validateAddressForm()) return;
+        Main.appState.currentOrderData.city = document.getElementById('city').value;
+        Main.appState.currentOrderData.street = document.getElementById('street').value;
+        Main.appState.currentOrderData.entrance = document.getElementById('entrance').value;
+        Main.appState.currentOrderData.floor = document.getElementById('floor').value;
+        Main.appState.currentOrderData.recipientPhone = document.getElementById('recipientPhone').value;
+        Main.appState.currentOrderData.comment = document.getElementById('comment').value;
+
+        const backButton = document.getElementById('backFromDateTime');
+        const isMacro = Main.appState.userData.level && Main.appState.userData.level.startsWith('macro');
+
+        if (isMacro) {
+            backButton.onclick = () => app.showMenuScreen();
+            app.showMenuScreen();
+        } else {
+            backButton.onclick = () => app.showAddressForm();
+            UI.showScreen('dateTimeScreen');
+            Main.setupTimeSelection();
+        }
+    }
+
+    function validateAddressForm() {
+        const city = document.getElementById('city').value;
+        const street = document.getElementById('street').value;
+        const phone = document.getElementById('recipientPhone').value;
+        if (!city || !street || !phone) {
+            UI.showError('Ошибка', 'Заполните: город, улица, телефон.');
+            return false;
+        }
+        return true;
+    }
+
+    function editProfile() {
+        const reg = Main.appState.userData.registration || Main.appState.userData;
+        document.getElementById('editFirstName').value = reg.firstName;
+        document.getElementById('editPhone').value = reg.phone;
+        document.getElementById('editInstagram').value = reg.instagramLogin;
+        document.getElementById('editFollowers').value = reg.followersCount;
+        document.getElementById('editViews').value = reg.avgViews;
+        document.getElementById('editPassword').value = '';
+        
+        const vcoinInput = document.getElementById('editVcoinAllowance');
+        vcoinInput.value = Main.appState.userData.vcoin_allowance || 0;
+        vcoinInput.parentElement.style.display = Main.appState.currentUserRole === 'admin' ? 'block' : 'none';
+
+        document.getElementById('editProfileModal').style.display = 'flex';
+    }
+
+    function showOrderHistory() {
+        const list = document.getElementById('orderHistoryList');
+        const sortedOrders = (Main.appState.userData.orders || [])
+            .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        
+        if (sortedOrders.length === 0) {
+            list.innerHTML = '<div class="empty-state">Нет заказов.</div>';
+        } else {
+            list.innerHTML = sortedOrders.map(order => {
+                const statusInfo = Main.getStatusInfo(order.status);
+                return `<div class="order-item">
+                    <div class="order-header">
+                        <span class="order-id">${order.orderNumber}</span>
+                        <span class="order-status ${statusInfo.className}">${statusInfo.text}</span>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+        document.getElementById('orderHistoryModal').style.display = 'flex';
+    }
+
+    function showReportModal(orderId, orderNumber) {
+        Main.appState.currentReportingOrderId = orderId;
+        document.getElementById('reportModalTitle').textContent = `Отчет по заказу ${orderNumber}`;
+        document.getElementById('reportModal').style.display = 'flex';
+    }
+
+    // CRM функции
+    function setupCRMTabs() {
+        document.querySelectorAll('.crm-tab').forEach(tab => {
+            const tabName = tab.dataset.tab;
+            let isVisible = false;
+            if (Main.appState.currentUserRole === 'admin') {
+                isVisible = true;
+            } else if (Main.appState.currentUserRole === 'operator') {
+                const operatorTabs = ['overview', 'orders', 'users', 'schedule', 'blocks'];
+                isVisible = operatorTabs.includes(tabName);
+            }
+            tab.style.display = isVisible ? 'flex' : 'none';
+        });
+
+        const firstVisibleTab = document.querySelector('.crm-tab[style*="display: flex"]');
+        if (firstVisibleTab) {
+            showCrmTab(firstVisibleTab.dataset.tab, firstVisibleTab);
+        }
+    }
+
+    function showCrmTab(tabName, element) {
+        if (!Main.ensureAuthenticated()) return;
+        document.querySelectorAll('.crm-content').forEach(c => c.classList.remove('active'));
+        document.querySelectorAll('.crm-tab').forEach(t => t.classList.remove('active'));
+        document.getElementById('crm' + tabName.charAt(0).toUpperCase() + tabName.slice(1)).classList.add('active');
+        element.classList.add('active');
+        
+        switch(tabName) {
+            case 'overview':
+                Main.updateCRMStats();
+                document.getElementById('cooldownSetting').value = Main.appState.appSettings.orderCooldownDays;
+                break;
+            case 'analytics':
+                app.applyAnalyticsFilters();
+                break;
+            case 'orders':
+                UI.updateOrdersList(Main.getStatusInfo);
+                break;
+            case 'users':
+                UI.updateUsersList(Main.calculateBloggerRating);
+                break;
+            case 'schedule':
+                app.loadSchedule();
+                break;
+            case 'blocks':
+                UI.updateBlockedSlotsList();
+                break;
+            case 'admins':
+                UI.updateAdminsList();
+                break;
+            case 'broadcast':
+                setupBroadcastTagInput();
+                break;
+            case 'menu':
+                UI.updateMenuItemsListCrm();
+                break;
+        }
+    }
+
+    async function showOrderDetailModal(orderId) {
+        Main.appState.currentEditingOrderId = orderId;
+        const orderDoc = await API.db.collection(API.COLLECTIONS.ORDERS).doc(orderId).get();
+        if(!orderDoc.exists) return;
+        const order = orderDoc.data();
+        
+        let itemsHtml = '';
+        if (order.vcoin_cost) {
+            const itemsList = order.items.map(item => 
+                `<li>${item.name} (x${item.quantity}) - ${UI.formatVBonus((item.price / Main.VCOIN_RATE) * item.quantity)}</li>`
+            ).join('');
+            itemsHtml = `<strong>Заказ:</strong><ul>${itemsList}</ul>`
+                + `<strong>Итого:</strong> ${UI.formatVBonus(order.vcoin_cost)}<br>`
+                + `<strong>К доплате:</strong> ${(order.payment_due_tenge || 0).toFixed(0)} ₸<br>`;
+        } else if (order.setName) {
+            itemsHtml = `<strong>Выбранный набор:</strong> ${order.setName}<br>`;
+        }
+
+        document.getElementById('orderDetailTitle').textContent = `Заказ ${order.orderNumber}`;
+        document.getElementById('orderDetailBody').innerHTML = 
+            `<strong>Блогер:</strong> ${order.userName}<br>`
+            + `<strong>Instagram:</strong> <a href="https://www.instagram.com/${order.instagram.replace('@','')}" target="_blank" style="color: #00b4d8; text-decoration: none;">@${order.instagram}</a><br>`
+            + `<strong>Телефон:</strong> ${order.phone}<br>`
+            + `<strong>Город:</strong> ${order.city}<br>`
+            + `<strong>Адрес:</strong> ${order.street}<br>`
+            + itemsHtml
+            + `<strong>Комментарий:</strong> ${order.comment || '-'}<br>`
+            + `<strong>Ссылка на отчет:</strong> ${order.reportLink ? `<a href="${order.reportLink}" target="_blank" class="report-link">${order.reportLink}</a>` : '-'}`;
+        
+        document.getElementById('orderStatusSelect').value = order.status;
+        
+        const markNoReportBtn = document.getElementById('markNoReportBtn');
+        const markReportAcceptedBtn = document.getElementById('markReportAcceptedBtn');
+        const isActionable = !order.reportMissed && order.status !== 'completed';
+        
+        markNoReportBtn.disabled = !isActionable;
+        markReportAcceptedBtn.disabled = !isActionable;
+
+        document.getElementById('deleteOrderBtn').onclick = () => app.removeOrder(order.id);
+        markNoReportBtn.onclick = () => app.markNoReport(markNoReportBtn, order.id, order.orderNumber);
+        markReportAcceptedBtn.onclick = () => app.markReportAccepted(markReportAcceptedBtn);
+        
+        document.getElementById('orderDetailModal').style.display = 'flex';
+    }
+
+    async function removeOrder(orderId) {
+        if (confirm('Удалить этот заказ? Действие необратимо.')) {
+            await withLoading(document.getElementById('deleteOrderBtn'), async () => {
+                const orderRef = API.db.collection(API.COLLECTIONS.ORDERS).doc(orderId);
+                const orderDoc = await orderRef.get();
+                if (!orderDoc.exists) return;
+                
+                const userId = orderDoc.data().userId;
+                const userRef = API.db.collection(API.COLLECTIONS.USERS).doc(userId);
+                const batch = API.db.batch();
+                
+                batch.delete(orderRef);
+                const userDoc = await userRef.get();
+                if (userDoc.exists) {
+                    const updatedOrders = (userDoc.data().orders || []).filter(o => o.id !== orderId);
+                    batch.update(userRef, { orders: updatedOrders });
+                }
+                
+                await batch.commit();
+                UI.closeModal('orderDetailModal');
+                UI.updateOrdersList(Main.getStatusInfo);
+                UI.showCrmSuccess('Заказ удален.');
+            });
+        }
+    }
+
+    async function markReportAccepted(button) {
+        if (button.disabled || !confirm('Отчет принят? Это засчитает заказ в программе лояльности.')) return;
+        
+        await withLoading(button, async () => {
+            const orderRef = API.db.collection(API.COLLECTIONS.ORDERS).doc(Main.appState.currentEditingOrderId);
+            const orderDoc = await orderRef.get();
+            if (!orderDoc.exists) return;
+            
+            const orderData = orderDoc.data();
+            const userRef = API.db.collection(API.COLLECTIONS.USERS).doc(orderData.userId);
+            const batch = API.db.batch();
+            
+            batch.update(orderRef, { status: 'completed', reportAccepted: true });
+            const userDoc = await userRef.get();
+            if(userDoc.exists) {
+                const orders = (userDoc.data().orders || []).map(o => 
+                    o.id === Main.appState.currentEditingOrderId ? {...o, status: 'completed'} : o
+                );
+                batch.update(userRef, { orders: orders });
+            }
+            
+            await batch.commit();
+            await Main.checkAndUpgradeLoyaltyStatus(orderData.userId);
+            
+            UI.showCrmSuccess('Отчет принят, заказ завершен.');
+            UI.closeModal('orderDetailModal');
+            UI.updateOrdersList(Main.getStatusInfo);
+            UI.updateUsersList(Main.calculateBloggerRating);
+        });
+    }
+
+    async function markNoReport(button, orderId, orderNumber) {
+        if (button.disabled) return;
+        
+        const orderRef = API.db.collection(API.COLLECTIONS.ORDERS).doc(orderId);
+        const orderDoc = await orderRef.get();
+        if (orderDoc.exists && orderDoc.data().reportMissed) {
+            UI.showError('Ошибка', 'На этот заказ уже был наложен штраф.');
+            return;
+        }
+
+        if (!confirm('Отчет по заказу не сдан? Это добавит штрафной балл.')) return;
+        
+        await withLoading(button, async () => {
+            const orderData = orderDoc.data();
+            const userRef = API.db.collection(API.COLLECTIONS.USERS).doc(orderData.userId);
+            const userDoc = await userRef.get();
+            if(!userDoc.exists) throw new Error("User not found!");
+
+            const newStrikes = (userDoc.data().strikes || 0) + 1;
+            const updates = { strikes: newStrikes };
+            
+            if (newStrikes >= 3) {
+                updates.isBlocked = true;
+                updates.blockReason = `Автоматическая блокировка: ${newStrikes} несданных отчета.`;
+            }
+            
+            const batch = API.db.batch();
+            batch.update(userRef, updates);
+            const orders = (userDoc.data().orders || []).map(o => 
+                o.id === orderId ? {...o, status: 'completed'} : o
+            );
+            batch.update(userRef, { orders: orders });
+            batch.update(orderRef, { reportMissed: true, status: 'completed' });
+            
+            await batch.commit();
+            UI.showCrmSuccess('Штрафной балл добавлен, заказ закрыт.');
+            UI.closeModal('orderDetailModal');
+            UI.updateUsersList(Main.calculateBloggerRating);
+        });
+    }
+
+    async function showUserDetailModal(userId) {
+        Main.appState.currentUserDetailId = userId;
+        const userDoc = await API.db.collection(API.COLLECTIONS.USERS).doc(userId).get();
+        if (!userDoc.exists) return;
+        
+        const user = userDoc.data();
+        const reg = user.registration || user;
+        
+        document.getElementById('userDetailTitle').textContent = reg.firstName;
+        document.getElementById('userDetailBody').innerHTML = 
+            `<strong>Телефон:</strong> ${reg.phone}<br>`
+            + `<strong>Instagram:</strong> <a href="https://www.instagram.com/${reg.instagramLogin.replace('@','')}" target="_blank" style="color: #00b4d8; text-decoration: none;">@${reg.instagramLogin}</a><br>`
+            + `<strong>Подписчики:</strong> ${reg.followersCount}<br>`
+            + `<strong>Просмотры:</strong> ${reg.avgViews}<br>`
+            + `<strong>Рейтинг:</strong> ⭐ ${Main.calculateBloggerRating(user)}<br>`
+            + `<strong>Баланс V-Бонусов:</strong> ${UI.formatVBonus(user.vcoin_balance || 0)}<br>`
+            + `<strong>Лимит V-Бонусов:</strong> ${UI.formatVBonus(user.vcoin_allowance || 0)}`;
+        
+        const resetCooldownBtn = document.getElementById('resetCooldownBtn');
+        const vcoinManagementBlock = document.getElementById('vcoinManagementBlock');
+        
+        if (user.level === 'micro') {
+            resetCooldownBtn.style.display = 'block';
+            vcoinManagementBlock.style.display = 'none';
+        } else if (user.level && user.level.startsWith('macro')) {
+            resetCooldownBtn.style.display = 'none';
+            vcoinManagementBlock.style.display = 'block';
+        } else {
+            resetCooldownBtn.style.display = 'none';
+            vcoinManagementBlock.style.display = 'none';
+        }
+
+        renderTags(user.tags || []);
+        document.getElementById('userDetailModal').style.display = 'flex';
+    }
+
+    function renderTags(tags) {
+        const container = document.getElementById('userTagsContainer');
+        container.innerHTML = tags.length 
+            ? tags.map(tag => `<span class="tag">${tag} <span class="remove-tag" onclick="app.removeUserTag('${tag}')">×</span></span>`).join('') 
+            : `<p style="font-size: 12px; color: #999;">Тегов нет.</p>`;
+    }
+
+    async function addUserTag() {
+        const input = document.getElementById('newTagInput');
+        const newTag = input.value.trim().toLowerCase();
+        if (!newTag || !Main.appState.currentUserDetailId) return;
+
+        const userRef = API.db.collection(API.COLLECTIONS.USERS).doc(Main.appState.currentUserDetailId);
+        await API.db.runTransaction(async (transaction) => {
+            const userDoc = await transaction.get(userRef);
+            if (!userDoc.exists) throw "User not found";
+            const tags = userDoc.data().tags || [];
+            if (!tags.includes(newTag)) {
+                tags.push(newTag);
+                transaction.update(userRef, { tags: tags });
+                renderTags(tags);
+            }
+        });
+        input.value = '';
+    }
+
+    async function removeUserTag(tagToRemove) {
+        if (!tagToRemove || !Main.appState.currentUserDetailId) return;
+        const userRef = API.db.collection(API.COLLECTIONS.USERS).doc(Main.appState.currentUserDetailId);
+        await API.db.runTransaction(async (transaction) => {
+            const userDoc = await transaction.get(userRef);
+            if (!userDoc.exists) throw "User not found";
+            const tags = userDoc.data().tags || [];
+            const updatedTags = tags.filter(t => t !== tagToRemove);
+            transaction.update(userRef, { tags: updatedTags });
+            renderTags(updatedTags);
+        });
+    }
+
+    async function resetOrderCooldown() {
+        if (!Main.appState.currentUserDetailId || !confirm("Вы уверены, что хотите сбросить ограничение на следующий заказ для этого пользователя?")) return;
+        
+        const userRef = API.db.collection(API.COLLECTIONS.USERS).doc(Main.appState.currentUserDetailId);
+        const userDoc = await userRef.get();
+        if (userDoc.exists) {
+            await userRef.update({ lastOrderTimestamp: API.FieldValue.delete() });
+            UI.showCrmSuccess("Ограничение сброшено.");
+        } else {
+            UI.showError("Ошибка", "Пользователь не найден.");
+        }
+        UI.closeModal('userDetailModal');
+    }
+
+    async function manageVcoins(action) {
+        if (!Main.appState.currentUserDetailId) return;
+        const amountInput = document.getElementById('vcoinManageAmount');
+        const amount = parseInt(amountInput.value);
+
+        if (isNaN(amount) || amount <= 0) {
+            return UI.showError("Ошибка ввода", "Пожалуйста, введите положительное число.");
+        }
+        
+        const actionText = action === 'add' ? 'начислить' : 'списать';
+        if (!confirm(`Вы уверены, что хотите ${actionText} ${amount} V-Бонусов?`)) return;
+
+        try {
+            const response = await API.apiFetch('/api/manage-vcoins', {
+                method: 'POST',
+                body: JSON.stringify({
+                    userId: Main.appState.currentUserDetailId,
+                    amount: amount,
+                    action: action
+                })
+            }, Main.appState.tg);
+            
+            UI.showCrmSuccess("Баланс обновлен!", response.message);
+            amountInput.value = '';
+            await app.showUserDetailModal(Main.appState.currentUserDetailId);
+        } catch (error) {
+            console.error(`Ошибка при ${action === 'add' ? 'начислении' : 'списании'} V-Бонусов:`, error);
+            UI.showError("Ошибка сервера", error.message);
+        }
+    }
+
+    function toggleBlockTime() {
+        document.getElementById('blockTimeGroup').style.display = 
+            document.getElementById('blockType').value === 'range' ? 'block' : 'none';
+    }
+
+    async function addBlock(button) {
+        await withLoading(button, async () => {
+            const city = document.getElementById('blockCity').value;
+            const date = document.getElementById('blockDate').value;
+            const type = document.getElementById('blockType').value;
+            const reason = document.getElementById('blockReason').value.trim();
+            
+            if (!city || !date) {
+                return UI.showError('Ошибка', 'Город и дата обязательны для заполнения.');
+            }
+
+            const blockData = { city, date, type, reason };
+
+            if (type === 'range') {
+                const startTime = document.getElementById('blockStartTime').value;
+                const endTime = document.getElementById('blockEndTime').value;
+                if (!startTime || !endTime || startTime >= endTime) {
+                    return UI.showError('Ошибка', 'Укажите корректный диапазон времени.');
+                }
+                blockData.startTime = startTime;
+                blockData.endTime = endTime;
+            }
+
+            await API.addBlockedSlot(blockData);
+            UI.closeModal('addBlockModal');
+            await UI.updateBlockedSlotsList();
+            UI.showCrmSuccess('Блокировка добавлена!');
+        });
+    }
+
+    async function showAddAdminModal() {
+        document.getElementById('addAdminModal').style.display = 'flex';
+        const list = document.getElementById('adminUsersList');
+        list.innerHTML = '<div class="loading-indicator">Загрузка...</div>';
+        
+        const [usersSnapshot, adminsSnapshot] = await Promise.all([
+            API.db.collection(API.COLLECTIONS.USERS).get(),
+            API.db.collection(API.COLLECTIONS.ADMINS).get()
+        ]);
+        
+        const adminIds = new Set(adminsSnapshot.docs.map(doc => doc.id));
+        list.innerHTML = '';
+        
+        usersSnapshot.forEach(doc => {
+            const user = { userId: doc.id, ...doc.data() };
+            const reg = user.registration || user;
+            if (!reg.firstName || !user.telegramId) return;
+            
+            const isAlreadyAdmin = adminIds.has(String(user.telegramId));
+            const el = document.createElement('div');
+            el.className = 'user-item';
+            el.dataset.search = `${reg.firstName} ${reg.instagramLogin}`.toLowerCase();
+            el.innerHTML = `
+                <div>
+                    <strong>${reg.firstName}</strong>
+                    <div style="font-size: 12px; color: #999;">@${reg.instagramLogin}</div>
+                </div>
+                ${isAlreadyAdmin 
+                    ? '<span class="user-admin-badge">Сотрудник</span>' 
+                    : `<button class="btn-primary btn-small" onclick="app.addAdmin('${user.userId}', '${reg.firstName}', document.getElementById('adminRoleSelect').value)">Назначить</button>`
+                }`;
+            list.appendChild(el);
+        });
+    }
+
+    async function addAdmin(userId, userName, role) {
+        if (!userId) return;
+        const userDoc = await API.loadUser(userId);
+        const telegramId = userDoc?.telegramId;
+        if(!telegramId) return UI.showError("Ошибка", "У пользователя нет Telegram ID.");
+        
+        const newAdmin = {
+            name: userName,
+            role: role,
+            addedAt: new Date().toISOString(),
+            receivesNotifications: true
+        };
+        await API.addAdmin(telegramId, newAdmin);
+
+        const userRef = API.db.collection(API.COLLECTIONS.USERS).doc(userId);
+        const tags = userDoc.tags || [];
+        if (!tags.includes(role)) tags.push(role);
+        await userRef.update({ tags: tags });
+
+        UI.closeModal('addAdminModal');
+        await UI.updateAdminsList();
+        UI.showCrmSuccess(`${userName} назначен на роль: ${role}!`);
+    }
+
+    async function removeAdmin(adminId) {
+        if (adminId === '1345815453') {
+            return UI.showError('Ошибка', 'Нельзя удалить главного администратора');
+        }
+        
+        if (!confirm(`Удалить сотрудника?`)) return;
+        
+        const adminRef = API.db.collection(API.COLLECTIONS.ADMINS).doc(adminId);
+        const adminDoc = await adminRef.get();
+        if (!adminDoc.exists) return;
+        
+        const role = adminDoc.data().role;
+        const usersSnapshot = await API.db.collection(API.COLLECTIONS.USERS)
+            .where('telegramId', '==', Number(adminId)).get();
+        
+        if (!usersSnapshot.empty) {
+            const userDoc = usersSnapshot.docs[0];
+            const tags = userDoc.data().tags.filter(t => t !== role);
+            await API.db.collection(API.COLLECTIONS.USERS).doc(userDoc.id).update({ tags: tags });
+        }
+
+        await adminRef.delete();
+        await UI.updateAdminsList();
+        UI.showCrmSuccess('Сотрудник удален!');
+    }
+
+    async function loadSchedule() {
+        const tabsContainer = document.getElementById('scheduleCityTabs');
+        const formsContainer = document.getElementById('scheduleFormsContainer');
+        tabsContainer.innerHTML = '';
+        formsContainer.innerHTML = '<div class="loading-indicator">Загрузка...</div>';
+        
+        const days = {
+            monday: "Пн", tuesday: "Вт", wednesday: "Ср",
+            thursday: "Чт", friday: "Пт", saturday: "Сб", sunday: "Вс"
+        };
+        let formsHtml = '';
+        
+        for (const city of Main.CITIES) {
+            const tab = document.createElement('button');
+            tab.className = 'schedule-city-tab';
+            tab.textContent = city;
+            tab.onclick = () => showScheduleForCity(city, tab);
+            tabsContainer.appendChild(tab);
+            
+            let formHtml = `<div class="schedule-form" id="schedule-form-${city}">`;
+            const scheduleData = await API.getSchedule(city) || {};
+            
+            for (const dayKey in days) {
+                formHtml += `<div class="form-group">
+                    <label>${days[dayKey]}</label>
+                    <input type="text" id="schedule_${city}_${dayKey}" 
+                           value="${scheduleData[dayKey] || ''}" 
+                           placeholder="12:00-18:00">
+                </div>`;
+            }
+            formsHtml += formHtml + `</div>`;
+        }
+        
+        formsContainer.innerHTML = formsHtml;
+        if(tabsContainer.firstChild) tabsContainer.firstChild.click();
+    }
+
+    function showScheduleForCity(city, element) {
+        document.querySelectorAll('.schedule-city-tab, .schedule-form').forEach(el => el.classList.remove('active'));
+        element.classList.add('active');
+        document.getElementById(`schedule-form-${city}`).classList.add('active');
+    }
+
+    async function saveSchedule() {
+        const batch = API.db.batch();
+        const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+        
+        for (const city of Main.CITIES) {
+            const scheduleData = {};
+            days.forEach(dayKey => {
+                scheduleData[dayKey] = document.getElementById(`schedule_${city}_${dayKey}`).value.trim();
+            });
+            await API.saveSchedule(city, scheduleData);
+        }
+        
+        UI.showCrmSuccess("Расписание сохранено!");
+    }
+
+    async function showMenuItemModal(itemId = null) {
+        const form = document.getElementById('menuItemForm');
+        form.reset();
+        const title = document.getElementById('menuItemModalTitle');
+        const idField = document.getElementById('menuItemEditId');
+        const oldImageUrlField = document.getElementById('menuItemOldImageUrl');
+
+        if (itemId) {
+            title.textContent = "Редактировать блюдо";
+            idField.value = itemId;
+            const doc = await API.db.collection(API.COLLECTIONS.MENU).doc(itemId).get();
+            if (doc.exists) {
+                const data = doc.data();
+                document.getElementById('menuItemName').value = data.name;
+                document.getElementById('menuItemDesc').value = data.description || '';
+                document.getElementById('menuItemPrice').value = data.price;
+                document.getElementById('menuItemCategory').value = data.category;
+                document.getElementById('menuItemSubcategory').value = data.subcategory || '';
+                oldImageUrlField.value = data.imageUrl || '';
+            }
+        } else {
+            title.textContent = "Добавить блюдо";
+            idField.value = '';
+            oldImageUrlField.value = '';
+        }
+        document.getElementById('menuItemModal').style.display = 'flex';
+    }
+
+    async function saveMenuItem(button) {
+        await withLoading(button, async() => {
+            const editId = document.getElementById('menuItemEditId').value;
+            const name = document.getElementById('menuItemName').value;
+            const description = document.getElementById('menuItemDesc').value;
+            const price = parseFloat(document.getElementById('menuItemPrice').value);
+            const category = document.getElementById('menuItemCategory').value;
+            const subcategory = document.getElementById('menuItemSubcategory').value;
+            const imageFile = document.getElementById('menuItemImage').files[0];
+            let imageUrl = document.getElementById('menuItemOldImageUrl').value;
+
+            if (!name || isNaN(price)) {
+                return UI.showError("Ошибка", "Название и цена обязательны для заполнения.");
+            }
+
+            if (imageFile) {
+                const formData = new FormData();
+                formData.append('image', imageFile);
+
+                try {
+                    button.innerHTML = 'Обработка фото...';
+                    const result = await API.apiFetch('/api/upload-menu-image', {
+                        method: 'POST',
+                        body: formData
+                    }, Main.appState.tg);
+                    
+                    if (!result.success) {
+                        throw new Error(result.error || 'Ошибка при загрузке изображения на сервер.');
+                    }
+                    imageUrl = result.imageUrl;
+                } catch (error) {
+                    console.error(error);
+                    return UI.showError('Ошибка загрузки', error.message);
+                }
+            }
+            
+            const menuItemData = {
+                name, description, price, category, subcategory, imageUrl, isVisible: true
+            };
+            
+            await API.saveMenuItem(editId, menuItemData);
+            UI.closeModal('menuItemModal');
+            UI.showCrmSuccess("Блюдо сохранено!");
+            await UI.updateMenuItemsListCrm();
+        });
+    }
+
+    async function handleMenuFileSelect(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const importButton = document.getElementById('importMenuBtn');
+        
+        await withLoading(importButton, async () => {
+            const formData = new FormData();
+            formData.append('menuFile', file);
+
+            const result = await API.apiFetch('/api/import-menu-from-file', {
+                method: 'POST',
+                body: formData
+            }, Main.appState.tg);
+            
+            UI.showCrmSuccess("Импорт завершен!", result.message);
+            await UI.updateMenuItemsListCrm();
+        });
+        event.target.value = '';
+    }
+
+    async function saveSettings(button) {
+        await withLoading(button, async() => {
+            const cooldownInput = document.getElementById('cooldownSetting');
+            const newCooldown = parseInt(cooldownInput.value);
+            
+            if (isNaN(newCooldown) || newCooldown < 0) {
+                return UI.showError("Ошибка", "Введите корректное число дней (0 или больше).");
+            }
+            
+            await API.db.collection(API.COLLECTIONS.SETTINGS).doc('config')
+                .set({ orderCooldownDays: newCooldown }, { merge: true });
+            Main.appState.appSettings.orderCooldownDays = newCooldown;
+            UI.showCrmSuccess("Настройки сохранены!");
+        });
+    }
+
+    async function setupBroadcastTagInput() {
+        const input = document.getElementById('broadcastTagInput');
+        const suggestionsContainer = document.getElementById('tagSuggestions');
+        const selectedContainer = document.getElementById('broadcastTagsContainer');
+        const tagStats = await API.getTagStats();
+        const availableTags = Object.keys(tagStats);
+
+        const addTag = (tag) => {
+            if (!tag || Array.from(selectedContainer.children).some(el => el.dataset.tag === tag)) return;
+            const tagEl = document.createElement('span');
+            tagEl.className = 'tag';
+            tagEl.dataset.tag = tag;
+            tagEl.innerHTML = `${tag} <span class="remove-tag">×</span>`;
+            tagEl.querySelector('.remove-tag').onclick = () => tagEl.remove();
+            selectedContainer.appendChild(tagEl);
+            input.value = '';
+            suggestionsContainer.style.display = 'none';
+        };
+
+        input.addEventListener('focus', () => {
+            renderSuggestions('');
+            suggestionsContainer.style.display = 'block';
+        });
+
+        input.addEventListener('keyup', (e) => {
+            if (e.key === 'Enter') addTag(input.value.trim().toLowerCase());
+            else renderSuggestions(input.value.toLowerCase());
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('#broadcastTagInput') && !e.target.closest('#tagSuggestions')) {
+                suggestionsContainer.style.display = 'none';
+            }
+        });
+
+        function renderSuggestions(filter) {
+            suggestionsContainer.innerHTML = '';
+            availableTags.filter(tag => tag.includes(filter)).forEach(tag => {
+                const item = document.createElement('div');
+                item.className = 'tag-suggestion-item';
+                item.innerHTML = `<span>${tag}</span> <span class="user-count">${tagStats[tag]} чел.</span>`;
+                item.onclick = () => addTag(tag);
+                suggestionsContainer.appendChild(item);
+            });
+        }
+    }
+
+    async function sendBroadcast(button) {
+        await withLoading(button, async () => {
+            const message = document.getElementById('broadcastMessage').value.trim();
+            const selectedTags = Array.from(document.querySelectorAll('#broadcastTagsContainer .tag'))
+                .map(el => el.textContent.replace(' ×', ''));
+            
+            if (!message) {
+                return UI.showError('Ошибка', 'Сообщение не может быть пустым.');
+            }
+
+            await API.apiFetch('/api/broadcast', {
+                method: 'POST',
+                body: JSON.stringify({
+                    message: message,
+                    tags: selectedTags,
+                    senderChatId: Main.appState.telegramUser.id
+                })
+            }, Main.appState.tg);
+            
+            UI.showCrmSuccess("Запрос принят!", "Рассылка запущена на сервере. Отчет придет в личные сообщения.");
+        });
+    }
+
+    async function exportToExcel(button, dataType) {
+        await withLoading(button, async () => {
+            let data;
+            if (dataType === 'orders') {
+                const snapshot = await API.db.collection(API.COLLECTIONS.ORDERS)
+                    .orderBy('createdAt', 'desc').get();
+                data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            } else {
+                const snapshot = await API.db.collection(API.COLLECTIONS.USERS)
+                    .orderBy('registrationDate', 'desc').get();
+                data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            }
+
+            await API.apiFetch(`/api/export-${dataType}`, {
+                method: 'POST',
+                body: JSON.stringify({ data: data, chatId: Main.appState.telegramUser.id })
+            }, Main.appState.tg);
+
+            UI.showCrmSuccess("Запрос отправлен!", `Excel-файл будет отправлен вам в личные сообщения.`);
+        });
+    }
+
+    function copyPlaceholder(element) {
+        const textToCopy = element.textContent;
+        navigator.clipboard.writeText(textToCopy).then(() => {
+            const originalText = element.textContent;
+            element.textContent = 'Скопировано!';
+            element.style.background = '#28a745';
+            setTimeout(() => {
+                element.textContent = originalText;
+                element.style.background = '#4a4a4a';
+            }, 1500);
+        }).catch(err => {
+            console.error('Failed to copy text: ', err);
+        });
+    }
+
+    // Инициализация при загрузке DOM
+    document.addEventListener('DOMContentLoaded', () => {
+        // Настройка масок телефонов
+        ['loginPhone', 'phone', 'recipientPhone', 'editPhone'].forEach(UI.setupPhoneMask);
+        
+        // Запуск приложения
+        setTimeout(() => Main.initializeApp(), 100);
+    });
+
+</script> 
+</body>
+</html>
