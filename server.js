@@ -685,47 +685,83 @@ app.post('/api/manage-vcoins', checkAuth, async (req, res) => {
 });
 
 // ======================================================================
-// === CRON ЗАДАЧИ ===
+// === CRON ЗАДАЧИ (ПЛАНИРОВЩИК) ===
 // ======================================================================
-cron.schedule('*/30 * * * *', async () => {
-    console.log('CRON: Запуск проверки напоминаний об отчетах...');
+
+/**
+ * =================================================================
+ *  ЕЖЕНЕДЕЛЬНОЕ АВТОПОПОЛНЕНИЕ БАЛАНСА V-БОНУСОВ
+ * =================================================================
+ *  Эта задача запускается каждый день в 3:00 ночи по времени Алматы.
+ *  Она проверяет всех пользователей, у которых есть лимит (vcoin_allowance),
+ *  и если с момента последнего начисления прошло 7 или более дней,
+ *  устанавливает их баланс равным их лимиту (например, 1000).
+ */
+cron.schedule('0 3 * * *', async () => {
+    console.log('🚀 [CRON] Запуск ежедневной проверки для пополнения V-Бонусов...');
+
+    const now = new Date();
+    const sevenDaysInMillis = 7 * 24 * 60 * 60 * 1000;
+    const usersRef = db.collection('users');
+
     try {
-        const now = new Date();
-        const twentyFourHoursAgo = new Date(now.getTime() - (24 * 60 * 60 * 1000));
+        // 1. Находим всех пользователей, у которых есть лимит пополнения (vcoin_allowance > 0)
+        const snapshot = await usersRef.where('vcoin_allowance', '>', 0).get();
 
-        const ordersSnapshot = await db.collection('orders')
-            .where('status', '==', 'delivered')
-            .where('reminderSent', '==', false)
-            .get();
-
-        if (ordersSnapshot.empty) {
+        if (snapshot.empty) {
+            console.log('✅ [CRON] Не найдено пользователей для пополнения. Задача завершена.');
             return;
         }
 
-        for (const doc of ordersSnapshot.docs) {
-            const order = doc.data();
-            const deliveryDate = new Date(order.createdAt); 
+        const batch = db.batch();
+        let usersToUpdateCount = 0;
 
-            if (deliveryDate <= twentyFourHoursAgo) {
-                const userDoc = await db.collection('users').doc(order.userId).get();
-                if (userDoc.exists) {
-                    const user = userDoc.data();
-                    if (user.telegramId) {
-                        const message = `👋 Привет, ${user.registration.firstName}! Напоминаем, что мы ждем отчет по вашему заказу \`${order.orderNumber}\`. Пожалуйста, сдайте его в личном кабинете.`;
-                        try {
-                            await bot.sendMessage(user.telegramId, message, { parse_mode: 'Markdown' });
-                            await doc.ref.update({ reminderSent: true });
-                            console.log(`CRON: Напоминание отправлено пользователю ${user.telegramId} по заказу ${order.orderNumber}`);
-                        } catch (error) {
-                            console.error(`CRON: Ошибка отправки напоминания пользователю ${user.telegramId}:`, error.response?.body?.description || error.message);
-                        }
-                    }
+        snapshot.forEach(doc => {
+            const user = doc.data();
+            const userId = doc.id;
+            
+            // last_allowance_grant - это дата последнего пополнения
+            const lastGrantDate = user.last_allowance_grant ? new Date(user.last_allowance_grant) : null;
+            
+            // Если дата не установлена (самый первый раз) или прошло >= 7 дней
+            if (!lastGrantDate || (now.getTime() - lastGrantDate.getTime() >= sevenDaysInMillis)) {
+                
+                const newBalance = user.vcoin_allowance; // Устанавливаем баланс равным лимиту
+                
+                // 2. Готовим обновление в пакетной записи
+                const userDocRef = usersRef.doc(userId);
+                batch.update(userDocRef, {
+                    vcoin_balance: newBalance,
+                    last_allowance_grant: now.toISOString() // Обновляем дату последнего начисления
+                });
+                
+                usersToUpdateCount++;
+                console.log(`- [CRON] Пользователь ${user.registration.firstName} (${userId}) будет пополнен до ${newBalance} V-Бонусов.`);
+
+                // 3. Отправляем уведомление в Telegram
+                if (user.telegramId) {
+                    const message = `🎉 Ваш еженедельный бюджет обновлен! На ваш счет начислено ${newBalance} V-Бонусов. Приятных заказов!`;
+                    bot.sendMessage(user.telegramId, message).catch(e => 
+                        console.error(`- [CRON] Ошибка отправки уведомления о пополнении пользователю ${user.telegramId}: ${e.message}`)
+                    );
                 }
             }
+        });
+
+        if (usersToUpdateCount > 0) {
+            // 4. Выполняем все обновления одним запросом
+            await batch.commit();
+            console.log(`✅ [CRON] Успешно пополнено ${usersToUpdateCount} пользователей.`);
+        } else {
+            console.log('✅ [CRON] Нет пользователей, которым требуется пополнение сегодня. Задача завершена.');
         }
+
     } catch (error) {
-        console.error('CRON: Критическая ошибка при проверке напоминаний:', error);
+        console.error('❌ [CRON] КРИТИЧЕСКАЯ ОШИБКА во время еженедельного пополнения:', error);
     }
+}, {
+    scheduled: true,
+    timezone: "Asia/Almaty" // Явное указание часового пояса для предсказуемой работы
 });
 
 
