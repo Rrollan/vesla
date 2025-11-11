@@ -494,6 +494,7 @@
         cursor: pointer;
         transition: all 0.3s ease;
         position: relative;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
     }
     .report-action-card {
         border-color: var(--accent-warning);
@@ -512,7 +513,7 @@
     .action-card:hover {
         border-color: var(--accent-primary);
         transform: translateY(-4px);
-        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
+        box-shadow: 0 8px 25px rgba(0, 180, 216, 0.15);
     }
 
     .action-icon {
@@ -2678,6 +2679,12 @@
                     vcoin_balance: 0,
                     vcoin_allowance: 0
                 };
+
+                if (bloggerData.level.startsWith('macro')) {
+                    newUser.vcoin_balance = 1000;
+                    newUser.vcoin_allowance = 1000;
+                    newUser.last_allowance_grant = new Date().toISOString();
+                }
 
                 await saveUser(newUserId, newUser);
                 currentUserId = newUserId;
