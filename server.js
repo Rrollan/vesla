@@ -466,7 +466,7 @@ app.post('/api/upload-menu-image', checkAuth, async (req, res) => {
 });
 
 
-// Защищенный маршрут для импорта меню
+// === ИЗМЕНЕННЫЙ БЛОК: Защищенный маршрут для импорта меню с картинками ===
 app.post('/api/import-menu-from-file', checkAuth, async (req, res) => {
     if (!req.files || !req.files.menuFile) {
         return res.status(400).json({ error: 'Файл меню не был загружен.' });
@@ -481,34 +481,74 @@ app.post('/api/import-menu-from-file', checkAuth, async (req, res) => {
         if (menuData.length === 0) {
             return res.status(400).json({ error: 'Файл пустой или имеет неверный формат.' });
         }
-        
+
+        // --- Удаление старого меню ---
         const menuCollection = db.collection('menu');
         const oldMenuSnapshot = await menuCollection.get();
         const deleteBatch = db.batch();
         oldMenuSnapshot.docs.forEach(doc => deleteBatch.delete(doc.ref));
         await deleteBatch.commit();
-        
-        const addBatch = db.batch();
+        console.log('Старое меню успешно удалено.');
+
+        // --- Добавление нового меню с обработкой картинок ---
         let addedCount = 0;
-        menuData.forEach(item => {
+        for (const item of menuData) {
             if (item.name && item.price) {
-                const newItemRef = menuCollection.doc();
-                addBatch.set(newItemRef, {
+                let imageUrl = ''; // По умолчанию картинки нет
+
+                // Проверяем, есть ли ссылка в Excel файле
+                if (item.sourceImageUrl && item.sourceImageUrl.startsWith('http')) {
+                    try {
+                        console.log(`Обрабатываю картинку для: ${item.name}`);
+                        
+                        // 1. Скачиваем картинку по ссылке
+                        const imageResponse = await axios({
+                            url: item.sourceImageUrl,
+                            responseType: 'arraybuffer'
+                        });
+                        const imageBuffer = Buffer.from(imageResponse.data, 'binary');
+
+                        // 2. Обрабатываем картинку (сжатие и ресайз до 500x500)
+                        const processedImageBuffer = await sharp(imageBuffer)
+                            .resize(500, 500, { fit: 'cover' })
+                            .webp({ quality: 80 })
+                            .toBuffer();
+
+                        // 3. Загружаем на ImgBB
+                        const formData = new FormData();
+                        formData.append('key', IMGBB_API_KEY);
+                        formData.append('image', processedImageBuffer.toString('base64'));
+                        
+                        const imgbbResponse = await axios.post('https://api.imgbb.com/1/upload', formData);
+
+                        if (imgbbResponse.data.success) {
+                            imageUrl = imgbbResponse.data.data.url; // Получаем новую ссылку
+                            console.log(`Картинка для "${item.name}" успешно загружена: ${imageUrl}`);
+                        }
+                    } catch (imgError) {
+                        console.error(`Ошибка обработки изображения для "${item.name}": ${imgError.message}`);
+                        // Если произошла ошибка, просто оставляем imageUrl пустым
+                    }
+                }
+
+                // 4. Сохраняем блюдо в базу данных
+                const newItemData = {
                     name: String(item.name),
                     description: String(item.description || ''),
                     price: Number(item.price),
                     category: String(item.category || 'Без категории'),
                     subcategory: String(item.subcategory || ''),
-                    imageUrl: '',
+                    imageUrl: imageUrl, // Используем новую или пустую ссылку
                     isVisible: true
-                });
+                };
+                
+                await menuCollection.add(newItemData);
                 addedCount++;
             }
-        });
-
-        await addBatch.commit();
+        }
 
         res.status(200).json({ message: `Импорт завершен. Добавлено ${addedCount} блюд.` });
+
     } catch (error) {
         console.error('Ошибка импорта меню из файла:', error);
         res.status(500).json({ error: 'Внутренняя ошибка сервера при импорте.' });
