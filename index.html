@@ -2639,12 +2639,13 @@
             });
         }
 
-        // ================== НАЧАЛО: ОБНОВЛЕННАЯ ФУНКЦИЯ РЕГИСТРАЦИИ ==================
-        // ================== НАЧАЛО: ИСПРАВЛЕННАЯ ФУНКЦИЯ РЕГИСТРАЦИИ ==================
+        // ==============================================================================
+        // ======================= НАЧАЛО: ФИНАЛЬНАЯ УПРОЩЕННАЯ ВЕРСИЯ =======================
+        // ==============================================================================
+
         async function submitRegistration(button) {
             if (!ensureAuthenticated()) return;
 
-            // 1. Собираем данные из формы
             const formValues = {
                 firstName: document.getElementById('firstName').value.trim(),
                 phone: document.getElementById('phone').value.trim(),
@@ -2656,7 +2657,6 @@
                 invitationCode: document.getElementById('invitationCode').value.trim()
             };
 
-            // 2. Проводим базовую валидацию
             if (!formValues.firstName || !formValues.phone || !formValues.instagramLogin || !formValues.invitationCode || isNaN(formValues.followersCount) || isNaN(formValues.avgViews)) {
                 return showError('Ошибка', 'Пожалуйста, заполните все обязательные поля, включая код приглашения.');
             }
@@ -2667,7 +2667,6 @@
                 return showError('Ошибка пароля', 'Пароли не совпадают или короче 6 символов.');
             }
 
-            // 3. Запускаем процесс с кнопкой загрузки
             await withLoading(button, async () => {
                 const newUserId = 'tg_' + telegramUser.id;
                 const codesRef = db.collection(COLLECTIONS.INVITATION_CODES);
@@ -2675,7 +2674,6 @@
 
                 try {
                     await db.runTransaction(async (transaction) => {
-                        // A. Проверяем код приглашения
                         const codeQuery = codesRef.where('code', '==', formValues.invitationCode);
                         const codeSnapshot = await transaction.get(codeQuery);
 
@@ -2684,30 +2682,19 @@
                         }
 
                         const codeDoc = codeSnapshot.docs[0];
-                        const codeData = codeDoc.data();
-
-                        if (codeData.isUsed) {
+                        if (codeDoc.data().isUsed) {
                             throw new Error('Этот пригласительный код уже был использован.');
                         }
 
-                        // B. Проверяем, не заняты ли телефон или Instagram
                         const phoneQuery = usersRef.where('registration.phone', '==', formValues.phone);
                         const instagramQuery = usersRef.where('registration.instagramLogin', '==', formValues.instagramLogin);
 
                         const phoneSnapshot = await transaction.get(phoneQuery);
                         const instagramSnapshot = await transaction.get(instagramQuery);
 
-                        if (!phoneSnapshot.empty) {
-                            throw new Error('Этот номер телефона уже зарегистрирован.');
-                        }
-                        if (!instagramSnapshot.empty) {
-                            throw new Error('Этот логин Instagram уже зарегистрирован.');
-                        }
-                        
-                        // ИЗМЕНЕНО: Используем firebase.firestore.FieldValue.serverTimestamp() для всех дат
-                        const serverTimestamp = firebase.firestore.FieldValue.serverTimestamp();
+                        if (!phoneSnapshot.empty) throw new Error('Этот номер телефона уже зарегистрирован.');
+                        if (!instagramSnapshot.empty) throw new Error('Этот логин Instagram уже зарегистрирован.');
 
-                        // C. Если все проверки пройдены, создаем пользователя и обновляем код
                         const bloggerData = determineBloggerLevel(formValues.followersCount);
                         const newUser = {
                             registration: {
@@ -2721,8 +2708,8 @@
                             level: bloggerData.level,
                             orders: [],
                             telegramId: telegramUser.id,
-                            registrationDate: serverTimestamp, // ИЗМЕНЕНО
-                            lastActivity: serverTimestamp,     // ИЗМЕНЕНО
+                            registrationDate: new Date().toISOString(), // Используем простой формат
+                            lastActivity: new Date().toISOString(),     // Используем простой формат
                             isBlocked: false,
                             blockReason: '',
                             strikes: 0,
@@ -2738,35 +2725,33 @@
                         if (bloggerData.level.startsWith('macro')) {
                              newUser.vcoin_balance = 1000;
                              newUser.vcoin_allowance = 1000;
-                             newUser.last_allowance_grant = serverTimestamp; // ИЗМЕНЕНО
+                             newUser.last_allowance_grant = new Date().toISOString(); // Используем простой формат
                         }
 
                         const userDocRef = usersRef.doc(newUserId);
                         transaction.set(userDocRef, newUser);
                         
-                        // ИЗМЕНЕНО: Обновляем код с правильным форматом времени
+                        // ИЗМЕНЕНО: Полностью убрали поле usedAt
                         transaction.update(codeDoc.ref, {
                             isUsed: true,
-                            usedBy: newUserId,
-                            usedAt: serverTimestamp 
+                            usedBy: newUserId 
                         });
                     });
 
-                    // 4. Если транзакция успешна, завершаем регистрацию
                     currentUserId = newUserId;
                     await checkAndSetUserRole();
                     attachUserListener(currentUserId);
                     showDashboard();
 
                 } catch (e) {
-                    // 5. Если транзакция не удалась, показываем ошибку
                     console.error("Registration transaction failed: ", e);
                     showError('Ошибка регистрации', e.message);
                 }
             });
         }
-        // ================== КОНЕЦ: ИСПРАВЛЕННАЯ ФУНКЦИЯ РЕГИСТРАЦИИ ==================
-        
+        // ==============================================================================
+        // ======================== КОНЕЦ: ФИНАЛЬНАЯ УПРОЩЕННАЯ ВЕРСИЯ ========================
+        // ==============================================================================
         function getStatusInfo(status) {
             const statuses = {
                 'new': { text: 'Новый', className: 'status-new' },
