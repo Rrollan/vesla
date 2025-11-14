@@ -2640,6 +2640,7 @@
         }
 
         // ================== НАЧАЛО: ОБНОВЛЕННАЯ ФУНКЦИЯ РЕГИСТРАЦИИ ==================
+        // ================== НАЧАЛО: ИСПРАВЛЕННАЯ ФУНКЦИЯ РЕГИСТРАЦИИ ==================
         async function submitRegistration(button) {
             if (!ensureAuthenticated()) return;
 
@@ -2672,7 +2673,6 @@
                 const codesRef = db.collection(COLLECTIONS.INVITATION_CODES);
                 const usersRef = db.collection(COLLECTIONS.USERS);
 
-                // Запускаем транзакцию для гарантии целостности данных
                 try {
                     await db.runTransaction(async (transaction) => {
                         // A. Проверяем код приглашения
@@ -2703,6 +2703,9 @@
                         if (!instagramSnapshot.empty) {
                             throw new Error('Этот логин Instagram уже зарегистрирован.');
                         }
+                        
+                        // ИЗМЕНЕНО: Используем firebase.firestore.FieldValue.serverTimestamp() для всех дат
+                        const serverTimestamp = firebase.firestore.FieldValue.serverTimestamp();
 
                         // C. Если все проверки пройдены, создаем пользователя и обновляем код
                         const bloggerData = determineBloggerLevel(formValues.followersCount);
@@ -2718,8 +2721,8 @@
                             level: bloggerData.level,
                             orders: [],
                             telegramId: telegramUser.id,
-                            registrationDate: new Date().toISOString(),
-                            lastActivity: new Date().toISOString(),
+                            registrationDate: serverTimestamp, // ИЗМЕНЕНО
+                            lastActivity: serverTimestamp,     // ИЗМЕНЕНО
                             isBlocked: false,
                             blockReason: '',
                             strikes: 0,
@@ -2729,21 +2732,23 @@
                             cooldownNotified: true,
                             vcoin_balance: 0,
                             vcoin_allowance: 0,
-                            usedInvitationCode: formValues.invitationCode // Сохраняем код
+                            usedInvitationCode: formValues.invitationCode
                         };
 
                         if (bloggerData.level.startsWith('macro')) {
                              newUser.vcoin_balance = 1000;
                              newUser.vcoin_allowance = 1000;
-                             newUser.last_allowance_grant = new Date().toISOString();
+                             newUser.last_allowance_grant = serverTimestamp; // ИЗМЕНЕНО
                         }
 
                         const userDocRef = usersRef.doc(newUserId);
                         transaction.set(userDocRef, newUser);
+                        
+                        // ИЗМЕНЕНО: Обновляем код с правильным форматом времени
                         transaction.update(codeDoc.ref, {
                             isUsed: true,
                             usedBy: newUserId,
-                            usedAt: new Date()
+                            usedAt: serverTimestamp 
                         });
                     });
 
@@ -2760,8 +2765,8 @@
                 }
             });
         }
-        // ================== КОНЕЦ: ОБНОВЛЕННАЯ ФУНКЦИЯ РЕГИСТРАЦИИ ==================
-
+        // ================== КОНЕЦ: ИСПРАВЛЕННАЯ ФУНКЦИЯ РЕГИСТРАЦИИ ==================
+        
         function getStatusInfo(status) {
             const statuses = {
                 'new': { text: 'Новый', className: 'status-new' },
