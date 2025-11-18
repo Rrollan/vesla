@@ -14,7 +14,7 @@
      *    - Внедрены CSS-переменные для легкого управления темой.
      *    - Фон сделан более темным и глубоким (#1c1c1e).
      *    - Основной цвет текста сделан чуть мягче (#f0f0f0) для комфорта глаз.
-     *    - Цвета поверхностей (карточек, полей ввода) стандартизированы.
+     *    - Цвета поверхностей (карточек, полей ввода) стандаризированы.
      *    - Основные акцентные цвета (голубой и оранжевый) сохранены, но их использование стало более сбалансированным.
      *
      * 2. Типографика и общие стили:
@@ -2686,7 +2686,9 @@
                         const instagramSnapshot = await transaction.get(instagramQuery);
                         if (!instagramSnapshot.empty) throw new Error('Этот логин Instagram уже зарегистрирован.');
 
-                        const serverTimestamp = FieldValue.serverTimestamp();
+                        // --- ИЗМЕНЕНИЕ ЗДЕСЬ ---
+                        // Заменяем FieldValue.serverTimestamp() на new Date()
+                        const registrationTimestamp = new Date(); 
 
                         const bloggerData = determineBloggerLevel(formValues.followersCount);
                         const newUser = {
@@ -2701,8 +2703,9 @@
                             level: bloggerData.level,
                             orders: [],
                             telegramId: telegramUser.id,
-                            registrationDate: serverTimestamp,
-                            lastActivity: serverTimestamp,
+                            // Используем новую переменную
+                            registrationDate: registrationTimestamp,
+                            lastActivity: registrationTimestamp,
                             isBlocked: false,
                             blockReason: '',
                             strikes: 0,
@@ -2718,7 +2721,7 @@
                         if (bloggerData.level.startsWith('macro')) {
                              newUser.vcoin_balance = 1000;
                              newUser.vcoin_allowance = 1000;
-                             newUser.last_allowance_grant = serverTimestamp;
+                             newUser.last_allowance_grant = registrationTimestamp; // Используем ту же метку времени
                         }
 
                         const userDocRef = usersRef.doc(newUserId);
