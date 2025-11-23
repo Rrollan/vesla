@@ -9,29 +9,6 @@
     <style>
     /* === НАЧАЛО ОБНОВЛЕНИЯ ДИЗАЙНА === */
 
-    /* 
-     * 1. Цветовая палитра и переменные:
-     *    - Внедрены CSS-переменные для легкого управления темой.
-     *    - Фон сделан более темным и глубоким (#1c1c1e).
-     *    - Основной цвет текста сделан чуть мягче (#f0f0f0) для комфорта глаз.
-     *    - Цвета поверхностей (карточек, полей ввода) стандаризированы.
-     *    - Основные акцентные цвета (голубой и оранжевый) сохранены, но их использование стало более сбалансированным.
-     *
-     * 2. Типографика и общие стили:
-     *    - Улучшены размеры шрифтов и межстрочные интервалы для лучшей читаемости.
-     *    - Добавлена переменная для радиуса скругления углов для единообразия.
-     *
-     * 3. Элементы интерфейса (кнопки, поля, карточки):
-     *    - Кнопки получили более современный вид с мягкими тенями.
-     *    - Поля ввода получили обновленный стиль фокуса (мягкое свечение вместо резкой рамки).
-     *    - Карточки теперь используют легкую тень и тонкую границу вместо сплошной, создавая эффект глубины.
-     *    - Анимации при наведении стали более плавными и приятными.
-     * 
-     * 4. Мелкие улучшения:
-     *    - Улучшено визуальное разделение в сложных экранах (CRM, Меню).
-     *    - Добавлена большая согласованность в отступах и размерах.
-    */
-
     :root {
         /* Основная палитра */
         --background-color: #1c1c1e;
@@ -465,13 +442,17 @@
         text-align: center;
     }
 
+    /* === ФИКС 1: Исправление верстки больших чисел === */
     .stat-number {
-        font-size: 18px;
+        font-size: 15px; /* Чуть уменьшили шрифт */
         font-weight: 600;
         color: var(--accent-primary);
         display: flex;
         align-items: center;
         justify-content: center;
+        flex-wrap: wrap; /* Разрешаем перенос */
+        word-break: break-all; /* Защита от длинных строк */
+        line-height: 1.2;
     }
 
     .stat-label {
@@ -1291,6 +1272,10 @@
         .container { padding: 15px; }
         h1 { font-size: 24px; }
         .btn-primary { padding: 15px 30px; font-size: 16px; }
+        
+        /* ФИКС: Адаптив для статистики */
+        .stat-number { font-size: 14px; }
+        .user-stats { gap: 5px; }
     }
     
     /* === Обновленные скроллбары === */
@@ -2765,8 +2750,12 @@
             return statuses[status] || { text: status, className: '' };
         }
 
+        // --- ИСПРАВЛЕНИЕ №2: Форматирование V-Coins без лишних нулей ---
         function formatVBonus(amount) {
-            return `<span>${Number(amount).toFixed(1)}</span><span class="v-bonus-icon">V</span>`;
+            const num = Number(amount);
+            if (isNaN(num)) return '<span>0</span><span class="v-bonus-icon">V</span>';
+            const val = num % 1 === 0 ? num.toFixed(0) : num.toFixed(1);
+            return `<span>${val}</span><span class="v-bonus-icon">V</span>`;
         }
         
         function updateDashboard() {
@@ -2958,38 +2947,33 @@
             else if (canvasId === 'followersDistributionChart') followersDistributionChart = newChartInstance;
         }
 
+        // --- ИСПРАВЛЕНИЕ №4: Безопасная загрузка заказов CRM (без индексов) ---
         async function updateOrdersList() {
             const list = document.getElementById('ordersList');
             list.innerHTML = '<div class="loading-indicator">Загрузка...</div>';
             try {
-                const snapshot = await db.collection(COLLECTIONS.ORDERS).orderBy('createdAt', 'desc').get();
-                if (snapshot.empty) {
-                    list.innerHTML = '<div class="empty-state">Нет заказов.</div>';
-                    return;
+                // Сначала пробуем с сортировкой (нужен индекс)
+                let snap;
+                try {
+                    snap = await db.collection(COLLECTIONS.ORDERS).orderBy('createdAt', 'desc').get();
+                } catch(e) {
+                    // Если ошибка индекса, грузим без сортировки и сортируем в JS
+                    console.warn("Index missing, falling back to client-sort");
+                    snap = await db.collection(COLLECTIONS.ORDERS).get();
                 }
-                list.innerHTML = '';
-                snapshot.forEach(doc => {
-                    const order = { id: doc.id, ...doc.data() };
-                    const statusInfo = getStatusInfo(order.status);
-                    const el = document.createElement('div');
-                    el.className = 'order-item';
-                    el.dataset.search = `${order.userName} ${order.phone} ${order.instagram} ${order.orderNumber}`.toLowerCase();
-                    el.onclick = () => showOrderDetailModal(order.id);
-                    el.innerHTML = `
-                        <div class="order-header">
-                            <span class="order-id">${order.orderNumber}</span>
-                            <span class="order-status ${statusInfo.className}">${statusInfo.text}</span>
-                        </div>
-                        <div class="order-info">
-                            <strong>${order.userName}</strong> (${order.city})<br>
-                            <small>Создан: ${order.createdAt.toDate().toLocaleString('ru-RU')}</small>
-                        </div>`;
-                    list.appendChild(el);
-                });
-            } catch (error) {
-                console.error("Error fetching orders:", error);
-                list.innerHTML = '<div class="empty-state">Ошибка загрузки.</div>';
-            }
+                
+                if(snap.empty) { list.innerHTML='<div class="empty-state">Пусто</div>'; return; }
+                
+                let docs = snap.docs.map(d => ({id:d.id, ...d.data()}));
+                // Ручная сортировка если запрос без orderBy
+                docs.sort((a,b) => (b.createdAt?.seconds||0) - (a.createdAt?.seconds||0));
+
+                list.innerHTML = docs.map(o => `
+                    <div class="order-item" onclick="app.showOrderDetailModal('${o.id}')">
+                        <div class="order-header"><span class="order-id">${o.orderNumber}</span><span class="order-status status-${o.status}">${o.status}</span></div>
+                        <div class="order-info">${o.userName} (${o.city})<br><small>${o.createdAt?.toDate ? o.createdAt.toDate().toLocaleString() : ''}</small></div>
+                    </div>`).join('');
+            } catch(e) { console.error(e); list.innerHTML='Ошибка загрузки'; }
         }
         
         function calculateBloggerRating(user) {
@@ -3682,27 +3666,53 @@
             });
         }
         
-        function showOrderHistory() {
+        // --- ИСПРАВЛЕНИЕ №3: Улучшенная загрузка истории (проверяет базу, если профиль пуст) ---
+        async function showOrderHistory() {
             const list = document.getElementById('orderHistoryList');
-            const sortedOrders = (userData.orders || []).sort((a, b) => {
-                const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(0);
-                const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(0);
-                return dateB - dateA;
-            });
-            if (sortedOrders.length === 0) {
-                list.innerHTML = '<div class="empty-state">Нет заказов.</div>';
-            } else {
-                list.innerHTML = sortedOrders.map(order => {
-                    const statusInfo = getStatusInfo(order.status);
-                    return `<div class="order-item">
-                        <div class="order-header">
-                            <span class="order-id">${order.orderNumber}</span>
-                            <span class="order-status ${statusInfo.className}">${statusInfo.text}</span>
-                        </div>
-                    </div>`;
-                }).join('');
-            }
+            list.innerHTML = '<div class="loading-indicator">Загрузка...</div>';
             document.getElementById('orderHistoryModal').style.display = 'flex';
+
+            let orders = userData.orders || [];
+
+            // Если локально пусто, ищем в базе
+            if (orders.length === 0 && currentUserId) {
+                try {
+                    // Запрос без сложной сортировки, чтобы избежать ошибки индексов
+                    const snap = await db.collection(COLLECTIONS.ORDERS)
+                        .where('userId', '==', currentUserId)
+                        .get();
+                    
+                    if (!snap.empty) {
+                        orders = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                        // Сортируем на клиенте
+                        orders.sort((a, b) => {
+                            const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(0);
+                            const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(0);
+                            return dateB - dateA;
+                        });
+                    }
+                } catch (e) {
+                    console.error("History fallback error:", e);
+                }
+            }
+
+            if (orders.length === 0) {
+                list.innerHTML = '<div class="empty-state">Нет заказов.</div>';
+                return;
+            }
+
+            list.innerHTML = orders.map(order => {
+                const statusInfo = getStatusInfo(order.status);
+                return `<div class="order-item">
+                    <div class="order-header">
+                        <span class="order-id">${order.orderNumber}</span>
+                        <span class="order-status ${statusInfo.className}">${statusInfo.text}</span>
+                    </div>
+                    <div class="order-info">
+                       ${order.city}, ${order.createdAt?.toDate ? order.createdAt.toDate().toLocaleDateString() : ''}
+                    </div>
+                </div>`;
+            }).join('');
         }
 
         function editProfile() {
